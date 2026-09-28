@@ -128,6 +128,7 @@ const ru: Dict = {
     lockOption5m: "5 мин",
     lockOption15m: "15 мин",
     lockOption1h: "1 ч",
+    lockOption4h: "4 ч",
     clipOption15s: "15 с",
     clipOption30s: "30 с",
     clipOption1m: "1 мин",

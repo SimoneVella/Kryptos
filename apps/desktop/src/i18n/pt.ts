@@ -41,7 +41,7 @@ const pt: Dict = {
     errorMismatch: "As palavras-passe não coincidem.",
   },
   shell: {
-    navPasswords: "Palavras-passe",
+    navPasswords: "Cofre",
     navGenerator: "Gerador",
     navSecurity: "Segurança",
     navSettings: "Definições",
@@ -127,7 +127,8 @@ const pt: Dict = {
     lockOption1m: "1 min",
     lockOption5m: "5 min",
     lockOption15m: "15 min",
-    lockOption1h: "1 hora",
+    lockOption1h: "1 h",
+    lockOption4h: "4 h",
     clipOption15s: "15 s",
     clipOption30s: "30 s",
     clipOption1m: "1 min",

@@ -128,6 +128,7 @@ const de: Dict = {
     lockOption5m: "5 Min.",
     lockOption15m: "15 Min.",
     lockOption1h: "1 Std.",
+    lockOption4h: "4 Std.",
     clipOption15s: "15 s",
     clipOption30s: "30 s",
     clipOption1m: "1 Min.",

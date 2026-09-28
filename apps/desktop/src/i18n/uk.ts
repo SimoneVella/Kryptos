@@ -128,6 +128,7 @@ const uk: Dict = {
     lockOption5m: "5 хв",
     lockOption15m: "15 хв",
     lockOption1h: "1 год",
+    lockOption4h: "4 год",
     clipOption15s: "15 с",
     clipOption30s: "30 с",
     clipOption1m: "1 хв",

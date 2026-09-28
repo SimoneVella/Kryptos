@@ -201,6 +201,7 @@ textarea.input { height: 96px; padding: 14px 18px; resize: none; }
 
 .segmented { display: inline-flex; padding: 4px; border-radius: 999px; background: var(--surface-2); gap: 2px; }
 .segmented button {
+  white-space: nowrap;
   height: 34px; padding: 0 16px; border-radius: 999px; border: 0; background: none;
   color: var(--text-2); font-weight: 600; font-size: 13px; cursor: pointer;
 }

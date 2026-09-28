@@ -10,6 +10,7 @@ const LOCK_OPTIONS: [number, TKey][] = [
   [5, "settings.lockOption5m"],
   [15, "settings.lockOption15m"],
   [60, "settings.lockOption1h"],
+  [240, "settings.lockOption4h"],
 ];
 const CLIP_OPTIONS: [number, TKey][] = [
   [15, "settings.clipOption15s"],

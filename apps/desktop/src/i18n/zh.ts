@@ -127,6 +127,7 @@ const zh: Dict = {
     lockOption5m: "5 分钟",
     lockOption15m: "15 分钟",
     lockOption1h: "1 小时",
+    lockOption4h: "4 小时",
     clipOption15s: "15 秒",
     clipOption30s: "30 秒",
     clipOption1m: "1 分钟",
