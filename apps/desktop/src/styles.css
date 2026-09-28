@@ -327,7 +327,8 @@ textarea.input { height: 96px; padding: 14px 18px; resize: none; }
   }
   .brand, .nav-spacer { display: none; }
   .nav-item { flex-direction: column; gap: 4px; height: auto; padding: 6px 0; flex: 1; font-size: 11px; justify-content: center; border-radius: 14px; }
-  .nav-item span { display: block; }
+  .nav-item span { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; letter-spacing: -0.01em; }
+  .nav-item { min-width: 0; }
   .nav-item.active { background: none; box-shadow: none; color: var(--accent); }
   .hero { padding: 24px 20px 22px; border-radius: 28px; gap: 24px; }
   .hero-value { font-size: 48px; }

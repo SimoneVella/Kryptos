@@ -1,0 +1,33 @@
+{
+  "extName": { "message": "Kryptos" },
+  "extDescription": { "message": "Заповнює облікові дані з вашого локального сховища Kryptos. Без сервера, без мережі." },
+  "searchPlaceholder": { "message": "Фільтр" },
+  "footerText": { "message": "Офлайн · ваші дані ніколи не залишають комп'ютер" },
+  "openApp": { "message": "Відкрити Kryptos" },
+  "noSite": { "message": "Немає сайту" },
+  "unsupportedPageTitle": { "message": "Непідтримувана сторінка" },
+  "unsupportedPageText": { "message": "Відкрийте сторінку входу, щоб заповнити облікові дані." },
+  "vaultLockedTitle": { "message": "Сховище заблоковано" },
+  "vaultLockedText": { "message": "Розблокуйте його в застосунку, щоб побачити паролі для цього сайту." },
+  "appClosedTitle": { "message": "Kryptos закрито" },
+  "appClosedText": { "message": "Відкрийте застосунок на комп'ютері та розблокуйте сховище." },
+  "connectAppTitle": { "message": "Підключіть застосунок" },
+  "connectAppPre": { "message": "У застосунку перейдіть до " },
+  "connectAppSettingsPath": { "message": "Налаштування → Розширення для браузера" },
+  "connectAppMid": { "message": " і натисніть " },
+  "connectAppButton": { "message": "Підключити" },
+  "connectAppPost": { "message": ", потім перезапустіть браузер." },
+  "untrustedTitle": { "message": "Неперевірене з'єднання" },
+  "untrustedText": {
+    "message": "Kryptos відхилив запит, оскільки не вдалося перевірити браузер або розширення. Використайте підтримуваний браузер і повторно підключіть застосунок."
+  },
+  "genericErrorTitle": { "message": "Щось пішло не так" },
+  "noLoginsTitle": { "message": "Немає збережених облікових даних" },
+  "noLoginsText": {
+    "message": "Додайте пароль для $SITE$ у Kryptos.",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "fillLabel": { "message": "Заповнити" },
+  "fillFailedTitle": { "message": "Не вдалося заповнити" },
+  "rateLimitedText": { "message": "Забагато запитів за короткий час. Повторіть спробу за хвилину." }
+}

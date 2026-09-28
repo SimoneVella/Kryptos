@@ -1,3 +1,6 @@
+/** Plural forms (CLDR categories). `few`/`many` are needed by e.g. Russian and Ukrainian. */
+export type Plural = { one: string; other: string; few?: string; many?: string };
+
 // Source dictionary. Every other locale must have the exact same keys — see `Dict` in index.tsx.
 const en = {
   common: {
@@ -49,7 +52,7 @@ const en = {
   },
   home: {
     eyebrow: "Personal vault · offline",
-    countNoun: { one: "password", other: "passwords" },
+    countNoun: { one: "password", other: "passwords" } as Plural,
     allGood: "All good",
     toFix: "Security {score}% · {n} to fix",
     actionAdd: "Add",
@@ -201,5 +204,5 @@ const en = {
 export default en;
 
 /** Widens string literal types to `string` so other locales can have different text with the same shape. */
-export type Widen<T> = T extends string ? string : { [K in keyof T]: Widen<T[K]> };
+export type Widen<T> = T extends string ? string : T extends Plural ? Plural : { [K in keyof T]: Widen<T[K]> };
 export type Dict = Widen<typeof en>;

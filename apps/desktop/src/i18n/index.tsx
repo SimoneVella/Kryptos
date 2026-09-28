@@ -1,13 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "../lib/api";
-import en, { type Dict } from "./en";
+import en, { type Dict, type Plural } from "./en";
 import it from "./it";
 import es from "./es";
 import fr from "./fr";
 import de from "./de";
 import pt from "./pt";
+import zh from "./zh";
+import ru from "./ru";
+import uk from "./uk";
 
-export type Locale = "en" | "it" | "es" | "fr" | "de" | "pt";
+export type Locale = "en" | "it" | "es" | "fr" | "de" | "pt" | "zh" | "ru" | "uk";
 
 /** Each language's name, written in itself. */
 export const LOCALES: Record<Locale, string> = {
@@ -17,9 +20,12 @@ export const LOCALES: Record<Locale, string> = {
   fr: "Français",
   de: "Deutsch",
   pt: "Português",
+  zh: "简体中文",
+  ru: "Русский",
+  uk: "Українська",
 };
 
-const dicts: Record<Locale, Dict> = { en, it, es, fr, de, pt };
+const dicts: Record<Locale, Dict> = { en, it, es, fr, de, pt, zh, ru, uk };
 
 /** First `navigator.languages` entry whose language prefix we support, else `en`. */
 export function detectLocale(): Locale {
@@ -48,7 +54,7 @@ type LeafPath<T> = {
   [K in keyof T & string]: T[K] extends string ? K : T[K] extends PluralEntry ? never : `${K}.${LeafPath<T[K]>}`;
 }[keyof T & string];
 
-type PluralEntry = { one: string; other: string };
+type PluralEntry = Plural;
 
 /** Every dotted path in `Dict` that resolves to a `{ one, other }` pair. */
 type PluralPath<T> = {
@@ -104,7 +110,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const plural = useCallback(
     (key: TPluralKey, n: number, vars?: Vars) => {
       const node = (resolve(dicts[locale], key) ?? resolve(dicts.en, key)) as PluralEntry;
-      const category = new Intl.PluralRules(locale).select(n) as "one" | "other";
+      const category = new Intl.PluralRules(locale).select(n) as keyof Plural;
       const template = node[category] ?? node.other;
       return interpolate(template, { n, ...vars });
     },

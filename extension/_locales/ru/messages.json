@@ -1,0 +1,33 @@
+{
+  "extName": { "message": "Kryptos" },
+  "extDescription": { "message": "Заполняет учётные данные из вашего локального хранилища Kryptos. Без сервера, без сети." },
+  "searchPlaceholder": { "message": "Фильтр" },
+  "footerText": { "message": "Офлайн · ваши данные никогда не покидают компьютер" },
+  "openApp": { "message": "Открыть Kryptos" },
+  "noSite": { "message": "Нет сайта" },
+  "unsupportedPageTitle": { "message": "Неподдерживаемая страница" },
+  "unsupportedPageText": { "message": "Откройте страницу входа, чтобы заполнить учётные данные." },
+  "vaultLockedTitle": { "message": "Хранилище заблокировано" },
+  "vaultLockedText": { "message": "Разблокируйте его в приложении, чтобы увидеть пароли для этого сайта." },
+  "appClosedTitle": { "message": "Kryptos закрыт" },
+  "appClosedText": { "message": "Откройте приложение на компьютере и разблокируйте хранилище." },
+  "connectAppTitle": { "message": "Подключите приложение" },
+  "connectAppPre": { "message": "В приложении перейдите в " },
+  "connectAppSettingsPath": { "message": "Настройки → Расширение для браузера" },
+  "connectAppMid": { "message": " и нажмите " },
+  "connectAppButton": { "message": "Подключить" },
+  "connectAppPost": { "message": ", затем перезапустите браузер." },
+  "untrustedTitle": { "message": "Непроверенное соединение" },
+  "untrustedText": {
+    "message": "Kryptos отклонил запрос, так как не удалось проверить браузер или расширение. Используйте поддерживаемый браузер и повторно подключите приложение."
+  },
+  "genericErrorTitle": { "message": "Что-то пошло не так" },
+  "noLoginsTitle": { "message": "Нет сохранённых учётных данных" },
+  "noLoginsText": {
+    "message": "Добавьте пароль для $SITE$ в Kryptos.",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "fillLabel": { "message": "Заполнить" },
+  "fillFailedTitle": { "message": "Не удалось заполнить" },
+  "rateLimitedText": { "message": "Слишком много запросов за короткое время. Повторите попытку через минуту." }
+}

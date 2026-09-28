@@ -1,0 +1,33 @@
+{
+  "extName": { "message": "Kryptos" },
+  "extDescription": { "message": "从本地 Kryptos 密码库填充凭据。无服务器，无网络。" },
+  "searchPlaceholder": { "message": "筛选" },
+  "footerText": { "message": "离线 · 你的数据永不离开这台电脑" },
+  "openApp": { "message": "打开 Kryptos" },
+  "noSite": { "message": "没有网站" },
+  "unsupportedPageTitle": { "message": "不支持的页面" },
+  "unsupportedPageText": { "message": "打开登录页面以填充你的凭据。" },
+  "vaultLockedTitle": { "message": "密码库已锁定" },
+  "vaultLockedText": { "message": "在应用中解锁以查看此网站的密码。" },
+  "appClosedTitle": { "message": "Kryptos 已关闭" },
+  "appClosedText": { "message": "在你的电脑上打开应用并解锁密码库。" },
+  "connectAppTitle": { "message": "连接应用" },
+  "connectAppPre": { "message": "在应用中前往 " },
+  "connectAppSettingsPath": { "message": "设置 → 浏览器扩展" },
+  "connectAppMid": { "message": " 然后点击 " },
+  "connectAppButton": { "message": "连接" },
+  "connectAppPost": { "message": "，然后重启浏览器。" },
+  "untrustedTitle": { "message": "未验证的连接" },
+  "untrustedText": {
+    "message": "Kryptos 拒绝了此请求，因为无法验证浏览器或扩展。请使用受支持的浏览器并重新连接应用。"
+  },
+  "genericErrorTitle": { "message": "出了点问题" },
+  "noLoginsTitle": { "message": "没有已保存的登录信息" },
+  "noLoginsText": {
+    "message": "在 Kryptos 中为 $SITE$ 添加一个密码。",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "fillLabel": { "message": "填充" },
+  "fillFailedTitle": { "message": "无法填充" },
+  "rateLimitedText": { "message": "短时间内请求过多，请一分钟后再试。" }
+}

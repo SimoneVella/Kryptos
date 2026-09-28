@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-const LANGUAGES: &[&str] = &["system", "en", "it", "es", "fr", "de", "pt"];
+const LANGUAGES: &[&str] = &["system", "en", "it", "es", "fr", "de", "pt", "zh", "ru", "uk"];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
