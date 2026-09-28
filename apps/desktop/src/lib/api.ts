@@ -60,6 +60,7 @@ export type Settings = {
   lock_on_sleep: boolean;
   clipboard_clear_secs: number;
   browser_integration: boolean;
+  language: string;
 };
 
 /** Backend error codes worth special-casing in the UI. */

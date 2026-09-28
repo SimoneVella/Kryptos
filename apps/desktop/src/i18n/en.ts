@@ -164,6 +164,7 @@ const en = {
     importResultSkipped: '{added} imported · {skipped} already present. Now delete "{file}".',
     about: "Kryptos 0.1 · 100% offline · no network connection",
     languageTitle: "Language",
+    languageSub: "Applies right away, no restart needed",
     languageSystem: "System language",
     changeMasterTitle: "Change master password",
     currentPasswordPlaceholder: "Current password",

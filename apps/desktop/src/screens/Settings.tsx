@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Clipboard, Download, Globe, KeyRound, Moon, ShieldCheck, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
+import { Clipboard, Download, Globe, KeyRound, Languages, Moon, ShieldCheck, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
 import { api, type Settings as SettingsT } from "../lib/api";
 import { PasswordInput, Sheet, Switch, useToast } from "../components/ui";
 import { isMobile } from "../lib/utils";
-import { useT, type TKey } from "../i18n";
+import { useT, LOCALES, type TKey } from "../i18n";
 
 const LOCK_OPTIONS: [number, TKey][] = [
   [1, "settings.lockOption1m"],
@@ -19,7 +19,7 @@ const CLIP_OPTIONS: [number, TKey][] = [
 ];
 
 export default function Settings({ onImported }: { onImported: () => void }) {
-  const { t, errorMessage } = useT();
+  const { t, errorMessage, setLanguagePreference } = useT();
   const [s, setS] = useState<SettingsT | null>(null);
   const [browsers, setBrowsers] = useState<string[] | null>(null);
   const [changing, setChanging] = useState(false);
@@ -71,6 +71,21 @@ export default function Settings({ onImported }: { onImported: () => void }) {
       </div>
 
       <Group title={t("settings.groupLock")}>
+        <Row icon={<Languages size={20} />} title={t("settings.languageTitle")} sub={t("settings.languageSub")}>
+          <select
+            className="select"
+            value={s.language}
+            onChange={(e) => {
+              save({ language: e.target.value });
+              setLanguagePreference(e.target.value);
+            }}
+          >
+            <option value="system">{t("settings.languageSystem")}</option>
+            {(Object.keys(LOCALES) as (keyof typeof LOCALES)[]).map((l) => (
+              <option key={l} value={l}>{LOCALES[l]}</option>
+            ))}
+          </select>
+        </Row>
         <Row icon={<Timer size={20} />} title={t("settings.autoLockTitle")} sub={t("settings.autoLockSub")}>
           <Segmented options={LOCK_OPTIONS} value={s.auto_lock_minutes} onChange={(v) => save({ auto_lock_minutes: v })} />
         </Row>

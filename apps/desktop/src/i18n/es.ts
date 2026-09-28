@@ -165,6 +165,7 @@ const es: Dict = {
     importResultSkipped: 'Se importaron {added} · {skipped} ya existían. Ahora elimina "{file}".',
     about: "Kryptos 0.1 · 100% sin conexión · sin conexión de red",
     languageTitle: "Idioma",
+    languageSub: "Se aplica al instante, sin reiniciar",
     languageSystem: "Idioma del sistema",
     changeMasterTitle: "Cambiar contraseña maestra",
     currentPasswordPlaceholder: "Contraseña actual",

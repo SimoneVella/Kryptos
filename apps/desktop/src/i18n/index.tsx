@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { api } from "../lib/api";
 import en, { type Dict } from "./en";
 import it from "./it";
 import es from "./es";
@@ -62,7 +63,8 @@ const ERROR_CODES = new Set(Object.keys(en.errors));
 
 type Ctx = {
   locale: Locale;
-  setLocale: (l: Locale) => void;
+  /** `"system"` re-detects the browser/OS language; anything else pins the given locale. */
+  setLanguagePreference: (pref: string) => void;
   t: (key: TKey, vars?: Vars) => string;
   plural: (key: TPluralKey, n: number, vars?: Vars) => string;
   formatDate: (ts: number) => string;
@@ -71,8 +73,21 @@ type Ctx = {
 
 const I18nContext = createContext<Ctx | null>(null);
 
+function isLocale(v: string): v is Locale {
+  return v in LOCALES;
+}
+
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocale] = useState<Locale>(detectLocale);
+
+  const setLanguagePreference = useCallback((pref: string) => {
+    setLocale(isLocale(pref) ? pref : detectLocale());
+  }, []);
+
+  // Settings are readable even while the vault is locked, so this also covers Unlock/Setup.
+  useEffect(() => {
+    api.getSettings().then((s) => setLanguagePreference(s.language));
+  }, [setLanguagePreference]);
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -106,7 +121,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     [t],
   );
 
-  const value = useMemo<Ctx>(() => ({ locale, setLocale, t, plural, formatDate, errorMessage }), [locale, t, plural, formatDate, errorMessage]);
+  const value = useMemo<Ctx>(
+    () => ({ locale, setLanguagePreference, t, plural, formatDate, errorMessage }),
+    [locale, setLanguagePreference, t, plural, formatDate, errorMessage],
+  );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

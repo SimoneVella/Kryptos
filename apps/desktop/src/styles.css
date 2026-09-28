@@ -120,6 +120,12 @@ textarea.input { height: 96px; padding: 14px 18px; resize: none; }
 .input-wrap { position: relative; }
 .input-wrap .input { padding-right: 52px; }
 .input-trail { position: absolute; right: 8px; top: 8px; display: flex; gap: 2px; }
+.select {
+  height: 36px; padding: 0 14px; border-radius: var(--r-md); border: 0;
+  background: var(--surface-2); color: var(--text); font-size: 13px; font-weight: 500;
+  cursor: pointer; outline: none;
+}
+.select:focus { box-shadow: 0 0 0 1.5px var(--accent); }
 .label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin: 0 0 8px 4px; }
 .search {
   display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 16px;

@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+const LANGUAGES: &[&str] = &["system", "en", "it", "es", "fr", "de", "pt"];
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -11,11 +13,18 @@ pub struct Settings {
     pub lock_on_sleep: bool,
     pub clipboard_clear_secs: u64,
     pub browser_integration: bool,
+    pub language: String,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { auto_lock_minutes: 5, lock_on_sleep: true, clipboard_clear_secs: 30, browser_integration: false }
+        Self {
+            auto_lock_minutes: 5,
+            lock_on_sleep: true,
+            clipboard_clear_secs: 30,
+            browser_integration: false,
+            language: "system".into(),
+        }
     }
 }
 
@@ -39,6 +48,9 @@ impl Settings {
         }
         if !(10..=300).contains(&self.clipboard_clear_secs) {
             return Err("invalid_clipboard_timeout".into());
+        }
+        if !LANGUAGES.contains(&self.language.as_str()) {
+            return Err("invalid_language".into());
         }
         Ok(())
     }
