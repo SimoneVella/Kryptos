@@ -24,5 +24,6 @@
     "@vitejs/plugin-react": "^5",
     "typescript": "^5",
     "vite": "^7"
-  }
+  },
+  "license": "GPL-3.0-or-later"
 }

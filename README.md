@@ -1,7 +1,18 @@
 # Kryptos
 
 Password manager 100% offline per macOS, Windows, Linux e Android (iOS in arrivo).
-Dettagli tecnici in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Nessun server, nessun account, nessuna connessione di rete: il vault cifrato resta sul tuo dispositivo.
+Dettagli tecnici e modello di minaccia in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+> [!WARNING]
+> **Versione 0.1: software sperimentale.** Il codice non ha ancora avuto una revisione di sicurezza
+> indipendente e alcuni flussi (compilazione nel browser, autofill su Android) sono stati provati solo in
+> ambienti di test. Non usarlo come **unica** copia di password importanti: tieni un'altra copia finché il
+> progetto non è maturo. Le vulnerabilità vanno segnalate in privato: vedi [SECURITY.md](SECURITY.md).
+
+**Crittografia:** Argon2id (256 MiB su desktop, 64 MiB su mobile) e XChaCha20-Poly1305, con una vault key
+casuale cifrata dalla master password. Algoritmi pubblici e standard: la sicurezza dipende dalla tua
+master password, non dalla segretezza del codice.
 
 ```
 crates/core                 Rust: crittografia, vault, generatore, matching URL, import CSV, analisi sicurezza
@@ -68,3 +79,8 @@ Oppure, via adb:
 ```bash
 adb shell settings put secure autofill_service com.kryptos.app/.KryptosAutofillService
 ```
+
+## Licenza
+
+[GPL-3.0-or-later](LICENSE). Puoi usare, studiare, modificare e ridistribuire Kryptos. Le versioni
+modificate che distribuisci devono restare open source con la stessa licenza.
