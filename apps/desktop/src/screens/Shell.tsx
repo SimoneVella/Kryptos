@@ -19,7 +19,8 @@ export type Editing = { id: string | null; input: EntryInput };
 
 export default function Shell({ onLock }: { onLock: () => void }) {
   const { t } = useT();
-  const [tab, setTab] = useState<Tab>("home");
+  const [tab, setTabState] = useState<Tab>("home");
+  const [dir, setDir] = useState<"forward" | "back" | undefined>();
   const [entries, setEntries] = useState<EntrySummary[]>([]);
   const [report, setReport] = useState<HealthReport | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -58,6 +59,13 @@ export default function Shell({ onLock }: { onLock: () => void }) {
     { id: "settings", label: t("shell.navSettings"), icon: <SettingsIcon size={20} /> },
   ];
 
+  const setTab = (next: Tab) => {
+    if (next === tab) return;
+    const order = nav.map((n) => n.id);
+    setDir(order.indexOf(next) > order.indexOf(tab) ? "forward" : "back");
+    setTabState(next);
+  };
+
   return (
     <div className="shell">
       <nav className="nav">
@@ -78,7 +86,7 @@ export default function Shell({ onLock }: { onLock: () => void }) {
         </button>
       </nav>
 
-      <main className="main" key={tab}>
+      <main className="main" key={tab} data-dir={dir}>
         {tab === "home" && (
           <Home entries={entries} report={report} onOpen={setOpen} onNew={() => startNew()} onGo={setTab} onLock={onLock} />
         )}
