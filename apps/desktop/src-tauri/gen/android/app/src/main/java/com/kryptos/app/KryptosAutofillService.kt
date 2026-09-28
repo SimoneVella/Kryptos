@@ -50,7 +50,7 @@ class KryptosAutofillService : AutofillService() {
       val sender = PendingIntent.getActivity(
         this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_CANCEL_CURRENT,
       ).intentSender
-      response.setAuthentication(ids.toTypedArray(), sender, row("Sblocca Kryptos", label))
+      response.setAuthentication(ids.toTypedArray(), sender, row(getString(R.string.autofill_unlock), label))
       return callback.onSuccess(response.build())
     }
 

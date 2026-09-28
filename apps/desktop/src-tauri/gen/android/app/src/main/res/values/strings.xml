@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">"Kryptos"</string>
     <string name="main_activity_title">"Kryptos"</string>
+    <string name="autofill_unlock">"Unlock Kryptos"</string>
 </resources>
