@@ -5,6 +5,7 @@ import Unlock from "./screens/Unlock";
 import Shell from "./screens/Shell";
 import { ToastProvider } from "./components/ui";
 import { setPlatform } from "./lib/utils";
+import { I18nProvider } from "./i18n";
 
 export default function App() {
   const [status, setStatus] = useState<Status | null>(null);
@@ -37,14 +38,16 @@ export default function App() {
 
   if (!status) return null;
   return (
-    <ToastProvider>
-      {!status.exists ? (
-        <Setup onDone={refresh} />
-      ) : !status.unlocked ? (
-        <Unlock onDone={refresh} />
-      ) : (
-        <Shell onLock={() => api.lock().then(refresh)} />
-      )}
-    </ToastProvider>
+    <I18nProvider>
+      <ToastProvider>
+        {!status.exists ? (
+          <Setup onDone={refresh} />
+        ) : !status.unlocked ? (
+          <Unlock onDone={refresh} />
+        ) : (
+          <Shell onLock={() => api.lock().then(refresh)} />
+        )}
+      </ToastProvider>
+    </I18nProvider>
   );
 }
