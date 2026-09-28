@@ -1,4 +1,4 @@
-package com.kryptos.app
+package com.kryptos.vault
 
 import android.app.PendingIntent
 import android.app.assist.AssistStructure

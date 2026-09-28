@@ -140,7 +140,7 @@ Android Settings → Passwords & accounts → Autofill service → **Kryptos**.
 Or, via adb:
 
 ```bash
-adb shell settings put secure autofill_service com.kryptos.app/.KryptosAutofillService
+adb shell settings put secure autofill_service com.kryptos.vault/.KryptosAutofillService
 ```
 
 ## License

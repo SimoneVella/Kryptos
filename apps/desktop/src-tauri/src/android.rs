@@ -39,14 +39,14 @@ fn matches(e: &Entry, target: &str) -> bool {
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_kryptos_app_KryptosBridge_isUnlocked(_env: JNIEnv, _class: JClass) -> jboolean {
+pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_isUnlocked(_env: JNIEnv, _class: JClass) -> jboolean {
     if state().is_some_and(|s| s.is_unlocked()) { JNI_TRUE } else { JNI_FALSE }
 }
 
 /// Returns a JSON array of `{title, username, password}` for entries matching `target`,
 /// or `null` when the vault is locked / the app has not started yet.
 #[no_mangle]
-pub extern "system" fn Java_com_kryptos_app_KryptosBridge_fillData<'a>(
+pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_fillData<'a>(
     mut env: JNIEnv<'a>,
     _class: JClass<'a>,
     target: JString<'a>,

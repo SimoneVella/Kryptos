@@ -140,7 +140,7 @@ Impostazioni Android → Password e account → Servizio di compilazione automat
 Oppure, via adb:
 
 ```bash
-adb shell settings put secure autofill_service com.kryptos.app/.KryptosAutofillService
+adb shell settings put secure autofill_service com.kryptos.vault/.KryptosAutofillService
 ```
 
 ## Licenza

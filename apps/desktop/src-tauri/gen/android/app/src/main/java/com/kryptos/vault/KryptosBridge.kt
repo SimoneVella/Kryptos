@@ -1,4 +1,4 @@
-package com.kryptos.app
+package com.kryptos.vault
 
 /** JNI surface implemented in Rust (src-tauri/src/android.rs). */
 object KryptosBridge {

@@ -1,4 +1,4 @@
-package com.kryptos.app
+package com.kryptos.vault
 
 import android.os.Bundle
 import android.view.WindowManager
