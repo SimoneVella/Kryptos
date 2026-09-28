@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/home-dark.png" width="820" alt="Kryptos: schermata principale">
+  <img src="docs/screenshots/it/home-dark.png" width="820" alt="Kryptos: schermata principale">
 </p>
 
 Dettagli tecnici e modello di minaccia in [docs/ARCHITECTURE.it.md](docs/ARCHITECTURE.it.md).
@@ -40,24 +40,24 @@ master password, non dalla segretezza del codice.
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/entry-dark.png" alt="Dettaglio di una password"></td>
-    <td><img src="docs/screenshots/generator-dark.png" alt="Generatore di password"></td>
+    <td><img src="docs/screenshots/it/entry-dark.png" alt="Dettaglio di una password"></td>
+    <td><img src="docs/screenshots/it/generator-dark.png" alt="Generatore di password"></td>
   </tr>
   <tr>
     <td align="center">Dettaglio: copia sicura, appunti svuotati da soli</td>
     <td align="center">Generatore con entropia in tempo reale</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/security-dark.png" alt="Analisi sicurezza"></td>
-    <td><img src="docs/screenshots/settings-dark.png" alt="Impostazioni"></td>
+    <td><img src="docs/screenshots/it/security-dark.png" alt="Analisi sicurezza"></td>
+    <td><img src="docs/screenshots/it/settings-dark.png" alt="Impostazioni"></td>
   </tr>
   <tr>
     <td align="center">Password deboli, riutilizzate e vecchie, analizzate offline</td>
     <td align="center">Blocco automatico, import CSV, collegamento al browser</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/unlock-dark.png" alt="Sblocco"></td>
-    <td><img src="docs/screenshots/home-light.png" alt="Tema chiaro"></td>
+    <td><img src="docs/screenshots/it/unlock-dark.png" alt="Sblocco"></td>
+    <td><img src="docs/screenshots/it/home-light.png" alt="Tema chiaro"></td>
   </tr>
   <tr>
     <td align="center">Sblocco con master password (Argon2id)</td>
@@ -68,11 +68,11 @@ master password, non dalla segretezza del codice.
 **Android e estensione browser**
 
 <p align="center">
-  <img src="docs/screenshots/mobile-home-dark.png" width="240" alt="Kryptos su Android">
+  <img src="docs/screenshots/it/mobile-home-dark.png" width="240" alt="Kryptos su Android">
   &nbsp;
-  <img src="docs/screenshots/mobile-entry-dark.png" width="240" alt="Dettaglio su Android">
+  <img src="docs/screenshots/it/mobile-entry-dark.png" width="240" alt="Dettaglio su Android">
   &nbsp;
-  <img src="docs/screenshots/extension-dark.png" width="300" alt="Estensione browser">
+  <img src="docs/screenshots/it/extension-dark.png" width="300" alt="Estensione browser">
 </p>
 
 > Gli screenshot usano dati di esempio.
