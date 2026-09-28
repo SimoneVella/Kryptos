@@ -90,7 +90,7 @@ function Issue(props: {
           if (!e) return null;
           return (
             <button key={id} className="row" style={{ paddingLeft: 32 }} onClick={() => props.onOpen(id)}>
-              <Avatar name={e.title} />
+              <Avatar name={e.title} urls={e.urls} />
               <div className="row-main">
                 <span className="row-title">{e.title}</span>
                 <span className="row-sub">{e.username}</span>

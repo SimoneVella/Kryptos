@@ -30,6 +30,7 @@ body { width: 340px; margin: 0; background: var(--bg); color: var(--text); }
 main { padding: 4px 6px; max-height: 360px; overflow-y: auto; }
 .login { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px; border: 0; border-radius: 14px; background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
 .login:hover, .login:focus-visible { background: var(--surface-2); outline: none; }
+.avatar.ring { box-shadow: inset 0 0 0 1px var(--border); }
 .avatar { flex: none; width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 15px; }
 .login-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .login-main strong { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

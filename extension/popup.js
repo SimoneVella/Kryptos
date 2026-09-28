@@ -55,7 +55,43 @@ function state(icon, title, text, action) {
 }
 
 const HUES = [217, 262, 330, 12, 38, 150, 190, 290];
-function avatar(name) {
+// Offline brand logos (simple-icons, CC0), generated into brand-icons.js at build
+// time. If the file is missing the popup falls back to initial-letter avatars.
+const BRAND_ALIASES = { "youtu.be": "youtube", "twitter.com": "x", "fb.com": "facebook", "steampowered.com": "steam", "booking.com": "bookingdotcom", "proton.me": "proton", "npmjs.com": "npm", "chatgpt.com": "openai", "claude.ai": "claude" };
+const SECOND_LEVEL = new Set(["co.uk", "org.uk", "com.au", "co.jp", "com.br", "com.mx", "co.in", "co.nz", "co.za", "com.tr", "com.ar", "co.kr", "com.sg"]);
+const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+function brandIcon(title, host) {
+  const table = globalThis.KRYPTOS_BRAND_ICONS;
+  if (!table) return null;
+  const parts = host.split(".");
+  const n = SECOND_LEVEL.has(parts.slice(-2).join(".")) ? 3 : 2;
+  const domain = parts.slice(-n).join(".");
+  for (const slug of [BRAND_ALIASES[host], BRAND_ALIASES[domain], norm(parts[parts.length - n] ?? ""), norm(title)]) {
+    const hit = slug && table[slug];
+    if (hit && /^[0-9A-Fa-f]{6}$/.test(hit[0])) return hit;
+  }
+  return null;
+}
+
+function avatar(name, host) {
+  const brand = brandIcon(name, host);
+  if (brand) {
+    const [hex, path] = brand;
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    const light = 0.2126 * r + 0.7152 * g + 0.0722 * b > 150;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "52%");
+    svg.setAttribute("height", "52%");
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", path);
+    p.setAttribute("fill", light ? "#111" : "#fff");
+    svg.append(p);
+    const div = el("div", { className: "avatar ring", style: `background: #${hex}` });
+    div.append(svg);
+    return div;
+  }
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const hue = HUES[h % HUES.length];
@@ -117,7 +153,7 @@ async function main() {
         el(
           "button",
           { className: "login", onclick: () => fill(tab.id, url, l.id) },
-          avatar(l.title),
+          avatar(l.title, url.hostname.replace(/^www\./, "")),
           el("div", { className: "login-main" }, el("strong", { textContent: l.title }), el("span", { textContent: l.username || "—" })),
           el("span", { className: "fill", textContent: ext.i18n.getMessage("fillLabel") }),
         ),

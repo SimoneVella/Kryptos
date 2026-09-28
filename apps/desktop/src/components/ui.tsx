@@ -1,12 +1,23 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { strengthOf } from "../lib/utils";
 import { Check, Eye, EyeOff, X } from "lucide-react";
+import { useBrandIcon } from "../lib/brand";
 import logoUrl from "../assets/logo.png";
 import { useT } from "../i18n";
 
 /* ───────── Avatar: deterministic colour from the title ───────── */
 const HUES = [217, 262, 330, 12, 38, 150, 190, 290];
-export function Avatar({ name, size = "md" }: { name: string; size?: "md" | "lg" }) {
+export function Avatar({ name, urls, size = "md" }: { name: string; urls?: string[]; size?: "md" | "lg" }) {
+  const brand = useBrandIcon(name, urls);
+  if (brand) {
+    return (
+      <div className={`avatar ${size === "lg" ? "avatar-lg" : ""} ${brand.ring ? "avatar-ring" : ""}`} style={{ background: brand.hex }}>
+        <svg viewBox="0 0 24 24" width="52%" height="52%" aria-hidden="true">
+          <path d={brand.path} fill={brand.glyph} />
+        </svg>
+      </div>
+    );
+  }
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const hue = HUES[h % HUES.length];

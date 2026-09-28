@@ -143,6 +143,14 @@ Oppure, via adb:
 adb shell settings put secure autofill_service com.kryptos.vault/.KryptosAutofillService
 ```
 
+## Loghi dei siti
+
+Le voci mostrano il logo del sito quando è disponibile. I loghi provengono da
+[Simple Icons](https://simpleicons.org) (CC0) e sono inclusi nell'app al momento della build: **nessuna
+richiesta di rete viene mai fatta per scaricare un'icona**, quindi nessuno può sapere su quali siti hai
+un account. I siti senza logo mantengono l'iniziale colorata. Marchi e loghi appartengono ai rispettivi
+proprietari e sono usati solo per identificare i siti.
+
 ## Licenza
 
 [GPL-3.0-or-later](LICENSE). Puoi usare, studiare, modificare e ridistribuire Kryptos. Le versioni

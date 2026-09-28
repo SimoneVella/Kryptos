@@ -10,3 +10,6 @@ apps/desktop/src-tauri/gen/schemas/
 secrets/
 apps/desktop/src-tauri/binaries/
 *.tsbuildinfo
+# Generated from simple-icons at build time (npm run icons)
+apps/desktop/src/assets/brand-icons.js
+extension/brand-icons.js

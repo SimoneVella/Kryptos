@@ -143,6 +143,14 @@ Or, via adb:
 adb shell settings put secure autofill_service com.kryptos.vault/.KryptosAutofillService
 ```
 
+## Site logos
+
+Entries show the logo of their website when one is available. Logos come from
+[Simple Icons](https://simpleicons.org) (CC0), bundled with the app at build time: **no request is
+ever made to fetch an icon**, so nobody can learn which sites you have accounts on. Sites without a
+logo keep the coloured initial. All trademarks and logos belong to their respective owners and are used
+only to identify the sites.
+
 ## License
 
 [GPL-3.0-or-later](LICENSE). You can use, study, modify and redistribute Kryptos. Modified versions you

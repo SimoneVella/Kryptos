@@ -98,7 +98,7 @@ export default function Home(props: {
             </div>
             {visible.map((e) => (
               <button key={e.id} className="row" onClick={() => props.onOpen(e.id)}>
-                <Avatar name={e.title} />
+                <Avatar name={e.title} urls={e.urls} />
                 <div className="row-main">
                   <span className="row-title">{e.title}</span>
                   <span className="row-sub">{e.username || hostOf(e.urls[0]) || "—"}</span>

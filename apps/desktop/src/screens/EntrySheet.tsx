@@ -42,7 +42,7 @@ export default function EntrySheet(props: {
   return (
     <Sheet onClose={props.onClose}>
       <div className="sheet-hero">
-        <Avatar name={entry.title} size="lg" />
+        <Avatar name={entry.title} urls={entry.urls} size="lg" />
         <div>
           <h2 style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
             {entry.title}
