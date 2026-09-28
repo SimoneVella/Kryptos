@@ -1,0 +1,33 @@
+{
+  "extName": { "message": "Kryptos" },
+  "extDescription": { "message": "Remplit les identifiants depuis votre coffre-fort Kryptos local. Aucun serveur, aucun réseau." },
+  "searchPlaceholder": { "message": "Filtrer" },
+  "footerText": { "message": "Hors ligne · vos données ne quittent jamais l'ordinateur" },
+  "openApp": { "message": "Ouvrir Kryptos" },
+  "noSite": { "message": "Aucun site" },
+  "unsupportedPageTitle": { "message": "Page non prise en charge" },
+  "unsupportedPageText": { "message": "Ouvrez une page de connexion pour remplir vos identifiants." },
+  "vaultLockedTitle": { "message": "Coffre-fort verrouillé" },
+  "vaultLockedText": { "message": "Déverrouillez-le dans l'app pour voir les mots de passe de ce site." },
+  "appClosedTitle": { "message": "Kryptos est fermé" },
+  "appClosedText": { "message": "Ouvrez l'app sur votre ordinateur et déverrouillez le coffre-fort." },
+  "connectAppTitle": { "message": "Connecter l'app" },
+  "connectAppPre": { "message": "Dans l'app, allez dans " },
+  "connectAppSettingsPath": { "message": "Réglages → Extension de navigateur" },
+  "connectAppMid": { "message": " et appuyez sur " },
+  "connectAppButton": { "message": "Connecter" },
+  "connectAppPost": { "message": ", puis redémarrez le navigateur." },
+  "untrustedTitle": { "message": "Connexion non vérifiée" },
+  "untrustedText": {
+    "message": "Kryptos a refusé la demande car il n'a pas pu vérifier le navigateur ou l'extension. Utilisez un navigateur pris en charge et reconnectez l'app."
+  },
+  "genericErrorTitle": { "message": "Une erreur s'est produite" },
+  "noLoginsTitle": { "message": "Aucun identifiant enregistré" },
+  "noLoginsText": {
+    "message": "Ajoutez un mot de passe pour $SITE$ dans Kryptos.",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "fillLabel": { "message": "Remplir" },
+  "fillFailedTitle": { "message": "Impossible de remplir" },
+  "rateLimitedText": { "message": "Trop de requêtes en peu de temps. Réessayez dans une minute." }
+}

@@ -1,0 +1,33 @@
+{
+  "extName": { "message": "Kryptos" },
+  "extDescription": { "message": "Riempie le credenziali dal tuo vault Kryptos locale. Nessun server, nessuna rete." },
+  "searchPlaceholder": { "message": "Filtra" },
+  "footerText": { "message": "Offline · i dati non lasciano il computer" },
+  "openApp": { "message": "Apri Kryptos" },
+  "noSite": { "message": "Nessun sito" },
+  "unsupportedPageTitle": { "message": "Pagina non supportata" },
+  "unsupportedPageText": { "message": "Apri una pagina di login per compilare le credenziali." },
+  "vaultLockedTitle": { "message": "Vault bloccato" },
+  "vaultLockedText": { "message": "Sbloccalo nell'app per vedere le password di questo sito." },
+  "appClosedTitle": { "message": "Kryptos è chiuso" },
+  "appClosedText": { "message": "Apri l'app sul computer e sblocca il vault." },
+  "connectAppTitle": { "message": "Collega l'app" },
+  "connectAppPre": { "message": "Nell'app vai su " },
+  "connectAppSettingsPath": { "message": "Impostazioni → Estensione browser" },
+  "connectAppMid": { "message": " e premi " },
+  "connectAppButton": { "message": "Collega" },
+  "connectAppPost": { "message": ", poi riavvia il browser." },
+  "untrustedTitle": { "message": "Collegamento non verificato" },
+  "untrustedText": {
+    "message": "Kryptos ha rifiutato la richiesta perché non ha potuto verificare browser o estensione. Usa un browser supportato e ricollega l'app."
+  },
+  "genericErrorTitle": { "message": "Qualcosa è andato storto" },
+  "noLoginsTitle": { "message": "Nessun login salvato" },
+  "noLoginsText": {
+    "message": "Aggiungi una password per $SITE$ in Kryptos.",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "fillLabel": { "message": "Compila" },
+  "fillFailedTitle": { "message": "Impossibile compilare" },
+  "rateLimitedText": { "message": "Troppe richieste in poco tempo. Riprova tra un minuto." }
+}

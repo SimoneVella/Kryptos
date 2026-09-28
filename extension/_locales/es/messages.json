@@ -1,0 +1,33 @@
+{
+  "extName": { "message": "Kryptos" },
+  "extDescription": { "message": "Completa las credenciales desde tu cofre local de Kryptos. Sin servidor, sin red." },
+  "searchPlaceholder": { "message": "Filtrar" },
+  "footerText": { "message": "Sin conexión · tus datos nunca salen del ordenador" },
+  "openApp": { "message": "Abrir Kryptos" },
+  "noSite": { "message": "Ningún sitio" },
+  "unsupportedPageTitle": { "message": "Página no compatible" },
+  "unsupportedPageText": { "message": "Abre una página de inicio de sesión para completar tus credenciales." },
+  "vaultLockedTitle": { "message": "Cofre bloqueado" },
+  "vaultLockedText": { "message": "Desbloquéalo en la app para ver las contraseñas de este sitio." },
+  "appClosedTitle": { "message": "Kryptos está cerrado" },
+  "appClosedText": { "message": "Abre la app en tu ordenador y desbloquea el cofre." },
+  "connectAppTitle": { "message": "Conecta la app" },
+  "connectAppPre": { "message": "En la app ve a " },
+  "connectAppSettingsPath": { "message": "Ajustes → Extensión de navegador" },
+  "connectAppMid": { "message": " y pulsa " },
+  "connectAppButton": { "message": "Conectar" },
+  "connectAppPost": { "message": ", después reinicia el navegador." },
+  "untrustedTitle": { "message": "Conexión no verificada" },
+  "untrustedText": {
+    "message": "Kryptos rechazó la solicitud porque no pudo verificar el navegador o la extensión. Usa un navegador compatible y vuelve a conectar la app."
+  },
+  "genericErrorTitle": { "message": "Algo salió mal" },
+  "noLoginsTitle": { "message": "No hay credenciales guardadas" },
+  "noLoginsText": {
+    "message": "Añade una contraseña para $SITE$ en Kryptos.",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "fillLabel": { "message": "Rellenar" },
+  "fillFailedTitle": { "message": "No se pudo rellenar" },
+  "rateLimitedText": { "message": "Demasiadas solicitudes en poco tiempo. Inténtalo de nuevo dentro de un minuto." }
+}

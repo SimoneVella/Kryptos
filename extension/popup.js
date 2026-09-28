@@ -19,6 +19,10 @@ const ICONS = {
   globe: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>',
 };
 
+document.documentElement.lang = ext.i18n.getUILanguage();
+for (const node of document.querySelectorAll("[data-i18n]")) node.textContent = ext.i18n.getMessage(node.dataset.i18n);
+for (const node of document.querySelectorAll("[data-i18n-placeholder]")) node.placeholder = ext.i18n.getMessage(node.dataset.i18nPlaceholder);
+
 function send(msg) {
   return new Promise((resolve) => {
     try {
@@ -62,7 +66,7 @@ function avatar(name) {
   });
 }
 
-const openApp = { label: "Apri Kryptos", run: () => send({ type: "focus" }).then(() => window.close()) };
+const openApp = { label: ext.i18n.getMessage("openApp"), run: () => send({ type: "focus" }).then(() => window.close()) };
 
 async function main() {
   const [tab] = await ext.tabs.query({ active: true, currentWindow: true });
@@ -71,8 +75,8 @@ async function main() {
     url = new URL(tab.url);
   } catch {}
   if (!url || !/^https?:$/.test(url.protocol)) {
-    $site.textContent = "Nessun sito";
-    return state("globe", "Pagina non supportata", "Apri una pagina di login per compilare le credenziali.");
+    $site.textContent = ext.i18n.getMessage("noSite");
+    return state("globe", ext.i18n.getMessage("unsupportedPageTitle"), ext.i18n.getMessage("unsupportedPageText"));
   }
   $site.textContent = url.hostname.replace(/^www\./, "");
 
@@ -80,22 +84,30 @@ async function main() {
   if (!res.ok) {
     switch (res.error) {
       case "locked":
-        return state("lock", "Vault bloccato", "Sbloccalo nell'app per vedere le password di questo sito.", openApp);
+        return state("lock", ext.i18n.getMessage("vaultLockedTitle"), ext.i18n.getMessage("vaultLockedText"), openApp);
       case "app_not_running":
-        return state("key", "Kryptos è chiuso", "Apri l'app sul computer e sblocca il vault.");
+        return state("key", ext.i18n.getMessage("appClosedTitle"), ext.i18n.getMessage("appClosedText"));
       case "host_unavailable": {
-        const p = el("p", {}, "Nell'app vai su ", el("b", { textContent: "Impostazioni → Estensione browser" }), " e premi ", el("b", { textContent: "Collega" }), ", poi riavvia il browser.");
-        return state("plug", "Collega l'app", p);
+        const p = el(
+          "p",
+          {},
+          ext.i18n.getMessage("connectAppPre"),
+          el("b", { textContent: ext.i18n.getMessage("connectAppSettingsPath") }),
+          ext.i18n.getMessage("connectAppMid"),
+          el("b", { textContent: ext.i18n.getMessage("connectAppButton") }),
+          ext.i18n.getMessage("connectAppPost"),
+        );
+        return state("plug", ext.i18n.getMessage("connectAppTitle"), p);
       }
       case "untrusted_caller":
       case "untrusted_peer":
-        return state("lock", "Collegamento non verificato", "Kryptos ha rifiutato la richiesta perché non ha potuto verificare browser o estensione. Usa un browser supportato e ricollega l'app.");
+        return state("lock", ext.i18n.getMessage("untrustedTitle"), ext.i18n.getMessage("untrustedText"));
       default:
-        return state("key", "Qualcosa è andato storto", res.error);
+        return state("key", ext.i18n.getMessage("genericErrorTitle"), res.error);
     }
   }
   if (res.logins.length === 0) {
-    return state("key", "Nessun login salvato", `Aggiungi una password per ${$site.textContent} in Kryptos.`, openApp);
+    return state("key", ext.i18n.getMessage("noLoginsTitle"), ext.i18n.getMessage("noLoginsText", [$site.textContent]), openApp);
   }
 
   const render = (q = "") => {
@@ -107,7 +119,7 @@ async function main() {
           { className: "login", onclick: () => fill(tab.id, url, l.id) },
           avatar(l.title),
           el("div", { className: "login-main" }, el("strong", { textContent: l.title }), el("span", { textContent: l.username || "—" })),
-          el("span", { className: "fill", textContent: "Compila" }),
+          el("span", { className: "fill", textContent: ext.i18n.getMessage("fillLabel") }),
         ),
       ),
     );
@@ -126,7 +138,7 @@ async function main() {
 async function fill(tabId, url, id) {
   const res = await send({ type: "credentials", id, url: url.href });
   if (!res.ok)
-    return state("key", "Impossibile compilare", res.error === "rate_limited" ? "Troppe richieste in poco tempo. Riprova tra un minuto." : res.error);
+    return state("key", ext.i18n.getMessage("fillFailedTitle"), res.error === "rate_limited" ? ext.i18n.getMessage("rateLimitedText") : res.error);
   await ext.scripting.executeScript({
     target: { tabId, allFrames: true },
     func: injectCredentials,

@@ -1,0 +1,33 @@
+{
+  "extName": { "message": "Kryptos" },
+  "extDescription": { "message": "Fills in credentials from your local Kryptos vault. No server, no network." },
+  "searchPlaceholder": { "message": "Filter" },
+  "footerText": { "message": "Offline · your data never leaves the computer" },
+  "openApp": { "message": "Open Kryptos" },
+  "noSite": { "message": "No site" },
+  "unsupportedPageTitle": { "message": "Unsupported page" },
+  "unsupportedPageText": { "message": "Open a login page to fill in your credentials." },
+  "vaultLockedTitle": { "message": "Vault locked" },
+  "vaultLockedText": { "message": "Unlock it in the app to see passwords for this site." },
+  "appClosedTitle": { "message": "Kryptos is closed" },
+  "appClosedText": { "message": "Open the app on your computer and unlock the vault." },
+  "connectAppTitle": { "message": "Connect the app" },
+  "connectAppPre": { "message": "In the app go to " },
+  "connectAppSettingsPath": { "message": "Settings → Browser extension" },
+  "connectAppMid": { "message": " and press " },
+  "connectAppButton": { "message": "Connect" },
+  "connectAppPost": { "message": ", then restart the browser." },
+  "untrustedTitle": { "message": "Unverified connection" },
+  "untrustedText": {
+    "message": "Kryptos refused the request because it couldn't verify the browser or extension. Use a supported browser and reconnect the app."
+  },
+  "genericErrorTitle": { "message": "Something went wrong" },
+  "noLoginsTitle": { "message": "No saved logins" },
+  "noLoginsText": {
+    "message": "Add a password for $SITE$ in Kryptos.",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "fillLabel": { "message": "Fill" },
+  "fillFailedTitle": { "message": "Couldn't fill" },
+  "rateLimitedText": { "message": "Too many requests in a short time. Try again in a minute." }
+}

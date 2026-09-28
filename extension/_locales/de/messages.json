@@ -1,0 +1,33 @@
+{
+  "extName": { "message": "Kryptos" },
+  "extDescription": { "message": "Füllt Anmeldedaten aus deinem lokalen Kryptos-Tresor aus. Kein Server, kein Netzwerk." },
+  "searchPlaceholder": { "message": "Filtern" },
+  "footerText": { "message": "Offline · deine Daten verlassen nie den Computer" },
+  "openApp": { "message": "Kryptos öffnen" },
+  "noSite": { "message": "Keine Website" },
+  "unsupportedPageTitle": { "message": "Nicht unterstützte Seite" },
+  "unsupportedPageText": { "message": "Öffne eine Anmeldeseite, um deine Zugangsdaten auszufüllen." },
+  "vaultLockedTitle": { "message": "Tresor gesperrt" },
+  "vaultLockedText": { "message": "Entsperre ihn in der App, um die Passwörter dieser Website zu sehen." },
+  "appClosedTitle": { "message": "Kryptos ist geschlossen" },
+  "appClosedText": { "message": "Öffne die App auf deinem Computer und entsperre den Tresor." },
+  "connectAppTitle": { "message": "App verbinden" },
+  "connectAppPre": { "message": "Gehe in der App zu " },
+  "connectAppSettingsPath": { "message": "Einstellungen → Browser-Erweiterung" },
+  "connectAppMid": { "message": " und tippe auf " },
+  "connectAppButton": { "message": "Verbinden" },
+  "connectAppPost": { "message": ", starte dann den Browser neu." },
+  "untrustedTitle": { "message": "Verbindung nicht bestätigt" },
+  "untrustedText": {
+    "message": "Kryptos hat die Anfrage abgelehnt, weil Browser oder Erweiterung nicht verifiziert werden konnten. Verwende einen unterstützten Browser und verbinde die App erneut."
+  },
+  "genericErrorTitle": { "message": "Etwas ist schiefgelaufen" },
+  "noLoginsTitle": { "message": "Keine gespeicherten Zugangsdaten" },
+  "noLoginsText": {
+    "message": "Füge in Kryptos ein Passwort für $SITE$ hinzu.",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "fillLabel": { "message": "Ausfüllen" },
+  "fillFailedTitle": { "message": "Ausfüllen nicht möglich" },
+  "rateLimitedText": { "message": "Zu viele Anfragen in kurzer Zeit. Versuch es in einer Minute erneut." }
+}
