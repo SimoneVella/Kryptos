@@ -9,3 +9,4 @@ apps/desktop/src-tauri/gen/schemas/
 .DS_Store
 secrets/
 apps/desktop/src-tauri/binaries/
+*.tsbuildinfo
