@@ -18,6 +18,7 @@ export default function App() {
   useEffect(() => {
     refresh();
     const un = api.onLocked(refresh);
+    const unUnlocked = api.onUnlocked(refresh);
     // Any interaction postpones auto-lock (throttled).
     let last = 0;
     const activity = () => {
@@ -31,6 +32,7 @@ export default function App() {
     window.addEventListener("keydown", activity);
     return () => {
       un.then((f) => f());
+      unUnlocked.then((f) => f());
       window.removeEventListener("pointerdown", activity);
       window.removeEventListener("keydown", activity);
     };

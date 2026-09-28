@@ -7,6 +7,8 @@ const now = Math.floor(Date.now() / 1000);
 let unlocked = false;
 let exists = true;
 let seq = 100;
+let autofill = false;
+let biometric = "off";
 const settings = { auto_lock_minutes: 5, lock_on_sleep: true, clipboard_clear_secs: 30, browser_integration: false, language: "system" };
 const entries: Any[] = [
   { title: "Google", username: "mario.rossi@example.com", password: "Xk9#mP2$vL8@qR4!wT", urls: ["google.com"], favorite: true, age: 20 },
@@ -56,6 +58,12 @@ async function invoke(cmd: string, a: Any = {}): Promise<unknown> {
     case "export_backup": return true;
     case "connect_browser": settings.browser_integration = true; return { browsers: ["Chrome", "Arc"] };
     case "disconnect_browser": settings.browser_integration = false; return;
+    case "autofill_status": return autofill;
+    case "open_autofill_settings": autofill = true; return;
+    case "biometric_status": return biometric;
+    case "biometric_enable": await wait(400); biometric = "on"; return;
+    case "biometric_disable": biometric = "off"; return;
+    case "biometric_unlock": await wait(400); unlocked = true; return;
     case "list_entries": return entries.map(summary).sort((x, y) => Number(y.favorite) - Number(x.favorite) || x.title.localeCompare(y.title));
     case "get_entry": return entries.find((e) => e.id === a.id);
     case "add_entry": { const id = `id-${seq++}`; entries.push({ ...a.input, id, created_at: now, updated_at: now }); return id; }

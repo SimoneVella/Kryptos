@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Clipboard, Download, Globe, KeyRound, Languages, Moon, ShieldCheck, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
-import { api, type Settings as SettingsT } from "../lib/api";
+import { CheckCircle2, Clipboard, Download, Fingerprint, Globe, KeyRound, Languages, Moon, ShieldCheck, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
+import { api, type BiometricStatus, type Settings as SettingsT } from "../lib/api";
 import { PasswordInput, Sheet, Switch, useToast } from "../components/ui";
 import { isMobile } from "../lib/utils";
 import { useT, LOCALES, type TKey } from "../i18n";
@@ -30,7 +30,37 @@ export default function Settings({ onImported }: { onImported: () => void }) {
   useEffect(() => {
     api.getSettings().then(setS);
   }, []);
+
+  // Re-check when coming back from the system settings.
+  const [autofill, setAutofill] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!isMobile()) return;
+    const check = () => document.visibilityState === "visible" && api.autofillStatus().then(setAutofill);
+    check();
+    document.addEventListener("visibilitychange", check);
+    return () => document.removeEventListener("visibilitychange", check);
+  }, []);
+
+  const [bio, setBio] = useState<BiometricStatus | null>(null);
+  useEffect(() => {
+    if (isMobile()) api.biometricStatus().then(setBio);
+  }, []);
+
   if (!s) return null;
+
+  const toggleBiometric = async (on: boolean) => {
+    try {
+      if (on) {
+        await api.biometricEnable();
+        toast(t("settings.biometricOnToast"));
+      } else {
+        await api.biometricDisable();
+      }
+    } catch (e) {
+      if (e !== "cancelled" && e !== "use_master") toast(errorMessage(e));
+    }
+    setBio(await api.biometricStatus());
+  };
 
   const save = async (patch: Partial<SettingsT>) => {
     const next = { ...s, ...patch };
@@ -87,7 +117,7 @@ export default function Settings({ onImported }: { onImported: () => void }) {
             ))}
           </select>
         </Row>
-        <Row icon={<Timer size={20} />} title={t("settings.autoLockTitle")} sub={t("settings.autoLockSub")}>
+        <Row icon={<Timer size={20} />} title={t("settings.autoLockTitle")} sub={isMobile() ? t("settings.autoLockSubMobile") : t("settings.autoLockSub")}>
           <Segmented options={LOCK_OPTIONS} value={s.auto_lock_minutes} onChange={(v) => save({ auto_lock_minutes: v })} />
         </Row>
         <Row
@@ -103,12 +133,28 @@ export default function Settings({ onImported }: { onImported: () => void }) {
         <Row icon={<KeyRound size={20} />} title={t("settings.masterPasswordTitle")} sub={t("settings.masterPasswordSub")}>
           <button className="btn btn-secondary btn-sm" onClick={() => setChanging(true)}>{t("settings.change")}</button>
         </Row>
+        {isMobile() && bio && (
+          <Row
+            icon={<Fingerprint size={20} />}
+            title={t("settings.biometricTitle")}
+            sub={bio === "unavailable" ? t("settings.biometricUnavailableSub") : t("settings.biometricSub")}
+          >
+            {bio !== "unavailable" && <Switch checked={bio !== "off"} onChange={toggleBiometric} />}
+          </Row>
+        )}
       </Group>
 
       {isMobile() ? (
         <Group title={t("settings.groupAutofill")}>
-          <Row icon={<Smartphone size={20} />} title={t("settings.systemAutofillTitle")} sub={t("settings.systemAutofillSub")}>
-            <span />
+          <Row
+            icon={<Smartphone size={20} />}
+            title={t("settings.systemAutofillTitle")}
+            sub={autofill ? t("settings.systemAutofillOnSub") : t("settings.systemAutofillOffSub")}
+          >
+            {autofill === false && (
+              <button className="btn btn-primary btn-sm" onClick={() => api.openAutofillSettings()}>{t("settings.turnOn")}</button>
+            )}
+            {autofill && <CheckCircle2 size={22} style={{ color: "var(--success)", flex: "none" }} />}
           </Row>
         </Group>
       ) : (

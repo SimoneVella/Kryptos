@@ -1,15 +1,19 @@
-//! Background thread that locks the vault on inactivity, system sleep and
-//! (on macOS) when the screen is locked.
+//! Background thread that locks the vault on inactivity, system sleep,
+//! (on macOS) when the screen is locked and (on mobile) shortly after the
+//! app leaves the screen. Android also locks on screen-off, see android.rs.
 
 use std::time::{Duration, Instant, SystemTime};
-
-use tauri::{AppHandle, Emitter, Manager};
 
 use crate::state::AppState;
 
 const TICK: Duration = Duration::from_secs(2);
 
-pub fn start(app: AppHandle) {
+/// How long the vault stays open once no app screen is visible (mobile). Long
+/// enough for a two-step login (username page, then password page) to fill both.
+pub const BACKGROUND_GRACE: Duration = Duration::from_secs(60);
+
+/// `on_lock` receives the reason ("idle", "background", "sleep", "screen").
+pub fn start(state: AppState, on_lock: impl Fn(&'static str) + Send + 'static) {
     std::thread::spawn(move || {
         let (mut wall, mut mono) = (SystemTime::now(), Instant::now());
         loop {
@@ -18,16 +22,17 @@ pub fn start(app: AppHandle) {
             let slept = wall.elapsed().unwrap_or_default().saturating_sub(mono.elapsed()) > Duration::from_secs(10);
             (wall, mono) = (SystemTime::now(), Instant::now());
 
-            let state = app.state::<AppState>();
             let reason = if state.lock_if_idle() {
                 Some("idle")
+            } else if state.lock_if_background(BACKGROUND_GRACE) {
+                Some("background")
             } else if state.settings().lock_on_sleep && (slept || screen_locked()) && state.lock() {
                 Some(if slept { "sleep" } else { "screen" })
             } else {
                 None
             };
             if let Some(r) = reason {
-                let _ = app.emit("vault-locked", r);
+                on_lock(r);
             }
         }
     });

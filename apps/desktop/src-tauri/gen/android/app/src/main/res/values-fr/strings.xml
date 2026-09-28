@@ -1,3 +1,8 @@
 <resources>
     <string name="autofill_unlock">"Déverrouiller Kryptos"</string>
+    <string name="biometric_unlock_title">"Déverrouiller Kryptos"</string>
+    <string name="biometric_enable_title">"Activer le déverrouillage par empreinte"</string>
+    <string name="biometric_subtitle">"Confirmez avec votre empreinte"</string>
+    <string name="biometric_use_master">"Utiliser le mot de passe maître"</string>
+    <string name="autofill_choose_account">"Choisissez un compte"</string>
 </resources>

@@ -63,6 +63,8 @@ export type Settings = {
   language: string;
 };
 
+export type BiometricStatus = "unavailable" | "off" | "on" | "master_required";
+
 /** Backend error codes worth special-casing in the UI. */
 export type ErrorCode = "locked" | "wrong_password" | "not_found" | "vault_exists" | string;
 
@@ -96,8 +98,21 @@ export const api = {
   exportBackup: () => invoke<boolean>("export_backup"),
   connectBrowser: () => invoke<{ browsers: string[] }>("connect_browser"),
   disconnectBrowser: () => invoke<void>("disconnect_browser"),
+  /** Android: whether Kryptos is the system autofill service. */
+  autofillStatus: () => invoke<boolean>("autofill_status"),
+  /** Android: opens the system prompt to select Kryptos as autofill service. */
+  openAutofillSettings: () => invoke<void>("open_autofill_settings"),
+
+  /** Fingerprint unlock (Android). The prompt calls reject with a code such as
+   *  "cancelled", "use_master", "lockout", "invalidated", "master_required". */
+  biometricStatus: () => invoke<BiometricStatus>("biometric_status"),
+  biometricEnable: () => invoke<void>("biometric_enable"),
+  biometricDisable: () => invoke<void>("biometric_disable"),
+  biometricUnlock: () => invoke<void>("biometric_unlock"),
 
   onLocked: (cb: () => void): Promise<UnlistenFn> => listen("vault-locked", cb),
+  /** Unlocked outside the UI (fingerprint from an autofill suggestion). */
+  onUnlocked: (cb: () => void): Promise<UnlistenFn> => listen("vault-unlocked", cb),
   onBrowserFill: (cb: (e: { title: string; host: string }) => void): Promise<UnlistenFn> =>
     listen<{ title: string; host: string }>("browser-fill", (e) => cb(e.payload)),
 };

@@ -1,3 +1,8 @@
 <resources>
     <string name="autofill_unlock">"Розблокувати Kryptos"</string>
+    <string name="biometric_unlock_title">"Розблокувати Kryptos"</string>
+    <string name="biometric_enable_title">"Увімкнути розблокування відбитком"</string>
+    <string name="biometric_subtitle">"Підтвердьте відбитком пальця"</string>
+    <string name="biometric_use_master">"Використати майстер-пароль"</string>
+    <string name="autofill_choose_account">"Виберіть обліковий запис"</string>
 </resources>

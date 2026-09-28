@@ -27,6 +27,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Fingerprint prompt for the autofill "Unlock Kryptos" suggestion. Own empty
+             affinity so it does not bring the Kryptos window along. -->
+        <activity
+            android:name=".AutofillUnlockActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.kryptos_transparent" />
+
         <service
             android:name=".KryptosAutofillService"
             android:label="Kryptos"

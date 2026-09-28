@@ -101,6 +101,14 @@ commands, the same `kryptos-core` as desktop. Only what the OS requires stays na
 - Argon2id at 64 MiB: roughly 1.4 s to create the vault and about 0.4 s to unlock it on a Pixel 7 Pro
   emulator.
 - Native libraries 16 KB-aligned (`.cargo/config.toml`), as required by Android 15 and Google Play.
+- Suggestions appear inside the keyboard (inline, Android 11+) with a dropdown fallback.
+- **Fingerprint unlock**: the vault key is encrypted with an Android Keystore AES key that requires a
+  strong biometric for every single use and is destroyed when a new fingerprint is enrolled (someone who
+  knows the PIN cannot add their own finger). Only the encrypted vault key is stored. The master password
+  is still required after every reboot and every 7 days. Face unlock only works on phones where it is
+  certified as strong biometrics (e.g. Pixel 8 and later, not Pixel 7).
+- With the vault locked, the "Unlock Kryptos" suggestion shows the fingerprint prompt over the browser
+  and fills the form directly, without opening the app.
 
 **iOS** (still to do, needs Xcode): `tauri ios init` plus a *Credential Provider Extension* in Swift that
 calls into the Rust core via FFI and shares the vault with the app through an App Group. The extension
@@ -108,11 +116,13 @@ memory limit (~120 MiB) is why mobile uses 64 MiB of Argon2.
 
 ## Auto-lock
 
-- Inactivity (1, 5, 15 or 60 minutes). Elapsed time is measured with both the monotonic clock and the
+- Inactivity (1, 5, 15, 60 or 240 minutes). Elapsed time is measured with both the monotonic clock and the
   system clock, and the larger of the two wins: the lock still triggers even if the process was
   suspended.
 - Computer sleep: detected because the monotonic clock stops during sleep while the system clock doesn't.
 - Locked screen on macOS (`CGSessionCopyCurrentDictionary`).
+- Android: as soon as the screen turns off (`ACTION_SCREEN_OFF`) and 1 minute after Kryptos leaves the
+  screen (`ProcessLifecycleOwner`), long enough for a two-step login. Unlocking again takes a fingerprint.
 - Clipboard: a copied password is cleared after 15–120 s, but only if you haven't copied something else
   in the meantime.
 
@@ -123,11 +133,10 @@ memory limit (~120 MiB) is why mobile uses 64 MiB of Argon2.
 - [x] CSV import (Google/Chrome, Bitwarden, 1Password, Firefox) and encrypted backup
 - [x] MV3 extension with a fixed ID, one-click connection from the app, native host bundled with the app
 - [x] Android: same app via Tauri, system AutofillService, no network permission
-- [ ] Android: end-to-end autofill testing in Chrome (needs Chrome's initial setup completed on the
-  device)
+- [x] Android: end-to-end autofill in Chrome, with suggestions inside the keyboard
+- [x] Android: fingerprint unlock (Keystore-bound key), lock on screen-off and when leaving the app
 - [ ] Android: CSV import and backup (the file picker returns `content://` URIs, needs the fs plugin)
-- [ ] Biometric unlock (Touch ID / fingerprint), with the vault key protected by Keychain / Android
-  Keystore
+- [ ] macOS: Touch ID unlock with the vault key in the Keychain (needs a signed app)
 - [ ] iOS: Credential Provider Extension (needs Xcode)
 - [ ] Saving new logins from the browser and from apps (Android `onSaveRequest`)
 - [ ] TOTP

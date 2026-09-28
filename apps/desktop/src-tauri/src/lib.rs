@@ -10,6 +10,8 @@ mod settings;
 mod state;
 mod watchdog;
 
+#[cfg(not(target_os = "android"))]
+use tauri::Emitter;
 use tauri::Manager;
 
 use state::AppState;
@@ -20,12 +22,23 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            #[cfg(mobile)]
-            kryptos_core::paths::set_data_dir(app.path().app_data_dir()?);
-            app.manage(AppState::new(kryptos_core::paths::vault_path(), settings::Settings::path()));
-            watchdog::start(app.handle().clone());
+            // Android shares the state (and its watchdog) with the autofill side.
             #[cfg(target_os = "android")]
-            android::set_app(app.handle().clone());
+            {
+                android::set_app(app.handle().clone());
+                app.manage(android::shared_state(app.path().app_data_dir()?));
+            }
+            #[cfg(not(target_os = "android"))]
+            {
+                #[cfg(mobile)]
+                kryptos_core::paths::set_data_dir(app.path().app_data_dir()?);
+                let state = AppState::new(kryptos_core::paths::vault_path(), settings::Settings::path());
+                let handle = app.handle().clone();
+                watchdog::start(state.clone(), move |reason| {
+                    let _ = handle.emit("vault-locked", reason);
+                });
+                app.manage(state);
+            }
             #[cfg(desktop)]
             {
                 bridge::start(app.handle().clone());
@@ -64,6 +77,12 @@ pub fn run() {
             commands::export_backup,
             commands::connect_browser,
             commands::disconnect_browser,
+            commands::autofill_status,
+            commands::open_autofill_settings,
+            commands::biometric_status,
+            commands::biometric_enable,
+            commands::biometric_disable,
+            commands::biometric_unlock,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Kryptos");

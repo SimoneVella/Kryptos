@@ -1,3 +1,8 @@
 <resources>
     <string name="autofill_unlock">"Desbloquear Kryptos"</string>
+    <string name="biometric_unlock_title">"Desbloquear Kryptos"</string>
+    <string name="biometric_enable_title">"Activar el desbloqueo con huella"</string>
+    <string name="biometric_subtitle">"Confirma con tu huella"</string>
+    <string name="biometric_use_master">"Usar la contraseña maestra"</string>
+    <string name="autofill_choose_account">"Elige una cuenta"</string>
 </resources>

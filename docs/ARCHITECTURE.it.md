@@ -97,6 +97,14 @@ stesso `kryptos-core` del desktop. Resta nativo solo ciò che il sistema operati
 - `FLAG_SECURE` in produzione: niente screenshot, registrazioni o anteprime nelle app recenti.
 - Argon2id a 64 MiB: circa 1,4 s per creare il vault e circa 0,4 s per sbloccarlo sull'emulatore Pixel 7 Pro.
 - Librerie native allineate a 16 KB (`.cargo/config.toml`), come richiesto da Android 15 e Google Play.
+- I suggerimenti compaiono dentro la tastiera (inline, Android 11+), con il menu a tendina come riserva.
+- **Sblocco con impronta**: la vault key è cifrata con una chiave AES dell'Android Keystore che richiede
+  una biometria forte per ogni singolo uso e viene distrutta quando si registra una nuova impronta (chi
+  conosce il PIN non può aggiungere il proprio dito). Si salva solo la vault key cifrata. La master password
+  resta obbligatoria dopo ogni riavvio e ogni 7 giorni. Lo sblocco con il volto funziona solo sui telefoni
+  dove è certificato come biometria forte (es. Pixel 8 e successivi, non Pixel 7).
+- Con il vault bloccato, il suggerimento "Sblocca Kryptos" mostra l'impronta sopra il browser e compila
+  subito il modulo, senza aprire l'app.
 
 **iOS** (da fare, serve Xcode): `tauri ios init` più una *Credential Provider Extension* in Swift che
 chiama il core Rust tramite FFI e condivide il vault con l'app tramite App Group. Il limite di memoria
@@ -104,11 +112,13 @@ delle estensioni (~120 MiB) è il motivo dei 64 MiB di Argon2 su mobile.
 
 ## Blocco automatico
 
-- Inattività (1, 5, 15 o 60 minuti). Il tempo trascorso si misura sia con l'orologio monotono sia con quello
+- Inattività (1, 5, 15, 60 o 240 minuti). Il tempo trascorso si misura sia con l'orologio monotono sia con quello
   di sistema, e vale il maggiore dei due: il blocco scatta anche se il processo è stato sospeso.
 - Sospensione del computer: ce ne accorgiamo perché l'orologio monotono si ferma durante lo sleep, quello
   di sistema no.
 - Schermo bloccato su macOS (`CGSessionCopyCurrentDictionary`).
+- Android: appena si spegne lo schermo (`ACTION_SCREEN_OFF`) e 1 minuto dopo che Kryptos esce dallo schermo
+  (`ProcessLifecycleOwner`), abbastanza per un login in due passaggi. Per riaprirlo basta l'impronta.
 - Appunti: la password copiata viene cancellata dopo 15–120 s, ma solo se nel frattempo non hai copiato altro.
 
 ## Roadmap
@@ -118,9 +128,10 @@ delle estensioni (~120 MiB) è il motivo dei 64 MiB di Argon2 su mobile.
 - [x] Import CSV (Google/Chrome, Bitwarden, 1Password, Firefox) e backup cifrato
 - [x] Estensione MV3 con ID fisso, collegamento con un clic dall'app, native host incluso nel bundle
 - [x] Android: stessa app via Tauri, AutofillService di sistema, nessun permesso di rete
-- [ ] Android: test end-to-end dell'autofill in Chrome (serve completare la configurazione iniziale di Chrome sul dispositivo)
+- [x] Android: autofill end-to-end in Chrome, con i suggerimenti dentro la tastiera
+- [x] Android: sblocco con impronta (chiave legata al Keystore), blocco a schermo spento e all'uscita dall'app
 - [ ] Android: import CSV e backup (il selettore file restituisce URI `content://`, serve il plugin fs)
-- [ ] Sblocco biometrico (Touch ID / impronta), con la vault key protetta da Keychain / Android Keystore
+- [ ] macOS: sblocco con Touch ID, vault key nel Portachiavi (serve l'app firmata)
 - [ ] iOS: Credential Provider Extension (richiede Xcode)
 - [ ] Salvataggio di nuovi login dal browser e dalle app (Android `onSaveRequest`)
 - [ ] TOTP

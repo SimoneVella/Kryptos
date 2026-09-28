@@ -1,3 +1,8 @@
 <resources>
     <string name="autofill_unlock">"Kryptos entsperren"</string>
+    <string name="biometric_unlock_title">"Kryptos entsperren"</string>
+    <string name="biometric_enable_title">"Entsperren per Fingerabdruck aktivieren"</string>
+    <string name="biometric_subtitle">"Mit deinem Fingerabdruck bestätigen"</string>
+    <string name="biometric_use_master">"Master-Passwort verwenden"</string>
+    <string name="autofill_choose_account">"Konto auswählen"</string>
 </resources>

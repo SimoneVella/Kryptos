@@ -50,7 +50,7 @@ pub fn status(state: State<'_, AppState>) -> Status {
 
 /// Argon2id takes ~1 s by design, so these run off the main thread.
 #[tauri::command]
-pub async fn create_vault(state: State<'_, AppState>, password: String) -> CmdResult<()> {
+pub async fn create_vault(app: AppHandle, state: State<'_, AppState>, password: String) -> CmdResult<()> {
     if state.vault_exists() {
         return Err("vault_exists".into());
     }
@@ -64,11 +64,12 @@ pub async fn create_vault(state: State<'_, AppState>, password: String) -> CmdRe
     .await
     .map_err(|e| e.to_string())??;
     state.set_unlocked(vault);
+    master_verified(app).await;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn unlock(state: State<'_, AppState>, password: String) -> CmdResult<()> {
+pub async fn unlock(app: AppHandle, state: State<'_, AppState>, password: String) -> CmdResult<()> {
     let password = Zeroizing::new(password);
     let path = state.vault_path.clone();
     let vault = tauri::async_runtime::spawn_blocking(move || -> CmdResult<UnlockedVault> {
@@ -78,7 +79,17 @@ pub async fn unlock(state: State<'_, AppState>, password: String) -> CmdResult<(
     .await
     .map_err(|e| e.to_string())??;
     state.set_unlocked(vault);
+    master_verified(app).await;
     Ok(())
+}
+
+/// The master password was just typed correctly: biometric unlock may be used
+/// again for the next 7 days (Android; nothing to do elsewhere yet).
+async fn master_verified(app: AppHandle) {
+    #[cfg(target_os = "android")]
+    let _ = tauri::async_runtime::spawn_blocking(move || crate::android::master_unlocked(&app)).await;
+    #[cfg(not(target_os = "android"))]
+    let _ = app;
 }
 
 #[tauri::command]
@@ -265,4 +276,77 @@ pub fn disconnect_browser(state: State<'_, AppState>) -> CmdResult<()> {
     let mut s = state.settings();
     s.browser_integration = false;
     state.set_settings(s)
+}
+
+// Async so they run off the UI thread, which the Android side needs to be free.
+
+/// Whether Kryptos is the system autofill service (Android only; false elsewhere).
+#[tauri::command]
+pub async fn autofill_status(app: AppHandle) -> bool {
+    #[cfg(target_os = "android")]
+    return crate::android::autofill_enabled(&app);
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        false
+    }
+}
+
+#[tauri::command]
+pub async fn open_autofill_settings(app: AppHandle) {
+    #[cfg(target_os = "android")]
+    crate::android::open_autofill_settings(&app);
+    #[cfg(not(target_os = "android"))]
+    let _ = app;
+}
+
+// Biometric unlock (Android fingerprint for now). Status is one of
+// "unavailable" | "off" | "on" | "master_required". The prompt commands block
+// until the user answers, so they run on a blocking thread.
+
+#[tauri::command]
+pub async fn biometric_status(app: AppHandle) -> String {
+    #[cfg(target_os = "android")]
+    return tauri::async_runtime::spawn_blocking(move || crate::android::biometric_status(&app))
+        .await
+        .unwrap_or_else(|_| "unavailable".into());
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        "unavailable".into()
+    }
+}
+
+/// Seals the vault key under the fingerprint. The vault must be unlocked.
+#[tauri::command]
+pub async fn biometric_enable(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
+    if !state.is_unlocked() {
+        return Err("locked".into());
+    }
+    biometric_prompt(app, "biometricEnable").await
+}
+
+#[tauri::command]
+pub async fn biometric_unlock(app: AppHandle) -> CmdResult<()> {
+    biometric_prompt(app, "biometricUnlock").await
+}
+
+#[tauri::command]
+pub async fn biometric_disable(app: AppHandle) {
+    #[cfg(target_os = "android")]
+    let _ = tauri::async_runtime::spawn_blocking(move || crate::android::biometric_disable(&app)).await;
+    #[cfg(not(target_os = "android"))]
+    let _ = app;
+}
+
+async fn biometric_prompt(app: AppHandle, method: &'static str) -> CmdResult<()> {
+    #[cfg(target_os = "android")]
+    return tauri::async_runtime::spawn_blocking(move || crate::android::biometric_prompt(&app, method))
+        .await
+        .map_err(|e| e.to_string())?;
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, method);
+        Err("unavailable".into())
+    }
 }

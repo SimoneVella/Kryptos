@@ -2,4 +2,9 @@
     <string name="app_name">"Kryptos"</string>
     <string name="main_activity_title">"Kryptos"</string>
     <string name="autofill_unlock">"Unlock Kryptos"</string>
+    <string name="biometric_unlock_title">"Unlock Kryptos"</string>
+    <string name="biometric_enable_title">"Turn on fingerprint unlock"</string>
+    <string name="biometric_subtitle">"Confirm with your fingerprint"</string>
+    <string name="biometric_use_master">"Use master password"</string>
+    <string name="autofill_choose_account">"Choose an account"</string>
 </resources>

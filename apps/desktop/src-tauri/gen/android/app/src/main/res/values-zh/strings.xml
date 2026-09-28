@@ -1,3 +1,8 @@
 <resources>
     <string name="autofill_unlock">"解锁 Kryptos"</string>
+    <string name="biometric_unlock_title">"解锁 Kryptos"</string>
+    <string name="biometric_enable_title">"开启指纹解锁"</string>
+    <string name="biometric_subtitle">"请用指纹确认"</string>
+    <string name="biometric_use_master">"使用主密码"</string>
+    <string name="autofill_choose_account">"选择账号"</string>
 </resources>

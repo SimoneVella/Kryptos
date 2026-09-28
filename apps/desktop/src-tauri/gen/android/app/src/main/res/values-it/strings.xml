@@ -1,3 +1,8 @@
 <resources>
     <string name="autofill_unlock">"Sblocca Kryptos"</string>
+    <string name="biometric_unlock_title">"Sblocca Kryptos"</string>
+    <string name="biometric_enable_title">"Attiva lo sblocco con impronta"</string>
+    <string name="biometric_subtitle">"Conferma con la tua impronta"</string>
+    <string name="biometric_use_master">"Usa la master password"</string>
+    <string name="autofill_choose_account">"Scegli un account"</string>
 </resources>

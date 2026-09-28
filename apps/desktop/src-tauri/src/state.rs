@@ -1,20 +1,26 @@
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
 use kryptos_core::{storage, UnlockedVault};
+use zeroize::Zeroizing;
 
 use crate::settings::Settings;
 
+/// Cheap to clone: clones share the same vault. On Android the autofill side
+/// holds one too, since it can run before (or without) the Tauri app.
+#[derive(Clone)]
 pub struct AppState {
     pub vault_path: PathBuf,
     settings_path: PathBuf,
-    inner: Mutex<Inner>,
+    inner: Arc<Mutex<Inner>>,
 }
 
 struct Inner {
     vault: Option<UnlockedVault>,
     last_activity: Activity,
+    /// Set while no app screen is visible (mobile): the vault locks shortly after.
+    background_since: Option<Activity>,
     settings: Settings,
 }
 
@@ -35,7 +41,7 @@ impl Activity {
 impl AppState {
     pub fn new(vault_path: PathBuf, settings_path: PathBuf) -> Self {
         let settings = Settings::load(&settings_path);
-        Self { vault_path, settings_path, inner: Mutex::new(Inner { vault: None, last_activity: Activity::now(), settings }) }
+        Self { vault_path, settings_path, inner: Arc::new(Mutex::new(Inner { vault: None, last_activity: Activity::now(), background_since: None, settings })) }
     }
 
     pub fn vault_exists(&self) -> bool {
@@ -71,6 +77,29 @@ impl AppState {
         s.save(&self.settings_path)?;
         self.inner.lock().unwrap().settings = s;
         Ok(())
+    }
+
+    // Only Android reports visibility and seals the key under biometrics so far.
+    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
+    pub fn set_foreground(&self, visible: bool) {
+        let mut g = self.inner.lock().unwrap();
+        g.background_since = if visible { None } else { Some(Activity::now()) };
+    }
+
+    /// Locks once the app has been out of sight for `grace`.
+    pub fn lock_if_background(&self, grace: Duration) -> bool {
+        let mut g = self.inner.lock().unwrap();
+        if g.vault.is_some() && g.background_since.is_some_and(|b| b.elapsed() >= grace) {
+            g.vault = None;
+            return true;
+        }
+        false
+    }
+
+    /// Raw vault key while unlocked, for sealing under biometrics.
+    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
+    pub fn raw_key(&self) -> Option<Zeroizing<Vec<u8>>> {
+        self.inner.lock().unwrap().vault.as_ref().map(|v| v.raw_key())
     }
 
     pub fn lock_if_idle(&self) -> bool {
