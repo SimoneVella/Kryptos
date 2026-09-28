@@ -35,10 +35,10 @@ impl Settings {
 
     pub fn validate(&self) -> Result<(), String> {
         if !(1..=240).contains(&self.auto_lock_minutes) {
-            return Err("auto-lock must be between 1 and 240 minutes".into());
+            return Err("invalid_auto_lock".into());
         }
         if !(10..=300).contains(&self.clipboard_clear_secs) {
-            return Err("clipboard timeout must be between 10 and 300 seconds".into());
+            return Err("invalid_clipboard_timeout".into());
         }
         Ok(())
     }

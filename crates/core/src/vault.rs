@@ -159,14 +159,14 @@ fn wrap_header(vault_id: Uuid, key: &SecretKey, password: &str, kdf: KdfParams) 
 
 fn check_password(pw: &str) -> Result<()> {
     if pw.chars().count() < 8 {
-        return Err(Error::InvalidInput("master password must be at least 8 characters"));
+        return Err(Error::InvalidInput("password_too_short"));
     }
     Ok(())
 }
 
 fn validate_input(input: &EntryInput) -> Result<()> {
     if input.title.trim().is_empty() {
-        return Err(Error::InvalidInput("title is required"));
+        return Err(Error::InvalidInput("title_required"));
     }
     Ok(())
 }

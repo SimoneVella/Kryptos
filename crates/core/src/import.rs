@@ -19,17 +19,17 @@ pub fn parse_csv(data: &[u8]) -> Result<Vec<EntryInput>> {
     let mut rdr = csv::ReaderBuilder::new().flexible(true).trim(csv::Trim::All).from_reader(data);
     let headers: Vec<String> = rdr
         .headers()
-        .map_err(|_| Error::InvalidInput("unreadable CSV"))?
+        .map_err(|_| Error::InvalidInput("csv_unreadable"))?
         .iter()
         .map(|h| h.to_ascii_lowercase())
         .collect();
     let col = |names: &[&str]| names.iter().find_map(|n| headers.iter().position(|h| h == n));
     let (title, url, user, pass, notes, fav) = (col(TITLE), col(URL), col(USER), col(PASS), col(NOTES), col(FAV));
-    let pass = pass.ok_or(Error::InvalidInput("CSV has no password column"))?;
+    let pass = pass.ok_or(Error::InvalidInput("csv_no_password_column"))?;
 
     let mut out = Vec::new();
     for rec in rdr.records() {
-        let rec = rec.map_err(|_| Error::InvalidInput("malformed CSV row"))?;
+        let rec = rec.map_err(|_| Error::InvalidInput("csv_malformed"))?;
         let get = |i: Option<usize>| i.and_then(|i| rec.get(i)).unwrap_or("").to_owned();
         let password = get(Some(pass));
         if password.is_empty() {
@@ -38,7 +38,7 @@ pub fn parse_csv(data: &[u8]) -> Result<Vec<EntryInput>> {
         let url = get(url);
         let mut title = get(title);
         if title.is_empty() {
-            title = host_of(&url).unwrap_or_else(|| "Senza nome".into());
+            title = host_of(&url).unwrap_or_else(|| "Untitled".into());
         }
         out.push(EntryInput {
             title,

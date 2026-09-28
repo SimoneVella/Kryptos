@@ -32,7 +32,7 @@ impl Default for GeneratorOptions {
 /// using the OS CSPRNG and unbiased sampling.
 pub fn generate(opts: &GeneratorOptions) -> Result<String> {
     if !(8..=256).contains(&opts.length) {
-        return Err(Error::InvalidInput("length must be between 8 and 256"));
+        return Err(Error::InvalidInput("invalid_length"));
     }
     let classes: Vec<Vec<char>> = [
         (opts.lowercase, LOWER),
@@ -45,7 +45,7 @@ pub fn generate(opts: &GeneratorOptions) -> Result<String> {
     .map(|(_, set)| set.chars().filter(|c| !(opts.exclude_ambiguous && AMBIGUOUS.contains(*c))).collect())
     .collect();
     if classes.is_empty() {
-        return Err(Error::InvalidInput("select at least one character set"));
+        return Err(Error::InvalidInput("no_charset"));
     }
     let all: Vec<char> = classes.iter().flatten().copied().collect();
     let mut rng = OsRng;
