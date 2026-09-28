@@ -1,12 +1,14 @@
-# Kryptos: architettura
+*English · [Italiano](ARCHITECTURE.it.md)*
 
-Password manager offline e zero-knowledge. Nessun componente apre socket di rete.
+# Kryptos: architecture
+
+Offline, zero-knowledge password manager. No component opens a network socket.
 
 ```
-┌──────────── Browser ────────────┐        ┌──────────── App desktop (Tauri) ─────────────┐
+┌──────────── Browser ────────────┐        ┌──────────── Desktop app (Tauri) ─────────────┐
 │ extension/popup.js              │ stdio  │                                               │
 │  sendNativeMessage ─────────────┼──────▶ │ kryptos-native-host ──Unix socket 0600──▶ bridge.rs
-│  scripting.executeScript (fill) │        │ (relay, nessun segreto)            │          │
+│  scripting.executeScript (fill) │        │ (relay, no secrets)                │          │
 └─────────────────────────────────┘        │                                    ▼          │
                                            │ React UI ──invoke──▶ commands.rs ▶ AppState   │
                                            │                                    │ (vault in RAM)
@@ -16,111 +18,119 @@ Password manager offline e zero-knowledge. Nessun componente apre socket di rete
                                     ~/Library/Application Support/com.kryptos.desktop/vault.kryptos
 ```
 
-## Crittografia (`crates/core`)
+## Encryption (`crates/core`)
 
-| Cosa | Scelta |
+| What | Choice |
 |---|---|
-| Password → chiave | Argon2id: 256 MiB, t=3, p=4 su desktop; 64 MiB su mobile. Parametri salvati nell'header, con limiti min/max validati. |
-| Gerarchia delle chiavi | KEK = Argon2id(master, salt) cifra (wrap) una **vault key** casuale da 256 bit. Il body è cifrato con la vault key. |
-| Cifratura | XChaCha20-Poly1305 (AEAD, nonce casuale da 192 bit, nuovo a ogni salvataggio). |
-| Integrità | Magic + versione + header JSON sono l'AAD del body: qualsiasi modifica fa fallire la decifratura. |
-| Memoria | Chiavi e voci sono `Zeroize` e vengono azzerate al lock/drop. |
-| Disco | Scrittura atomica (tmp → fsync → rename), permessi 0600, un backup `.bak`. |
+| Password → key | Argon2id: 256 MiB, t=3, p=4 on desktop; 64 MiB on mobile. Parameters are stored in the header, with validated min/max limits. |
+| Key hierarchy | KEK = Argon2id(master, salt) wraps a random 256-bit **vault key**. The body is encrypted with the vault key. |
+| Encryption | XChaCha20-Poly1305 (AEAD, random 192-bit nonce, fresh on every save). |
+| Integrity | Magic + version + JSON header are the body's AAD: any change makes decryption fail. |
+| Memory | Keys and entries are `Zeroize`d and cleared on lock/drop. |
+| Disk | Atomic write (tmp → fsync → rename), 0600 permissions, one `.bak` backup. |
 
-Cambiare la master password richiede solo un nuovo wrap della vault key. Lo sblocco biometrico
-salverà la vault key (non la password) nel Keychain / Secure Enclave / Android Keystore:
-l'API è già pronta (`raw_key()` / `unlock_with_key()`).
+Changing the master password only requires re-wrapping the vault key. Biometric unlock will store the
+vault key (not the password) in the Keychain / Secure Enclave / Android Keystore: the API is already in
+place (`raw_key()` / `unlock_with_key()`).
 
-### Differenze rispetto al piano originale
+### Differences from the original plan
 
-- **Niente SQLCipher.** Un vault di password è piccolo (qualche centinaio di KB anche con migliaia di
-  voci), quindi un singolo file AEAD è più semplice da verificare, non si porta dietro OpenSSL, e per
-  la sincronizzazione basta trasferire un solo blob cifrato (è lo stesso modello di KeePass/KDBX).
-  Nota: SQLCipher usa AES-256-**CBC** + HMAC-SHA512, non GCM come diceva il piano.
-- **Il native host non "parla" col browser via pipe e basta**: il browser avvia un nuovo processo
-  host a ogni messaggio, e quel processo non ha accesso al vault sbloccato. Per questo l'host fa da
-  relay verso l'app tramite un **Unix domain socket** (non TCP, non raggiungibile dalla rete).
-- **Tauri non può "spegnere la rete" a livello di OS.** Quello che facciamo: nessun plugin http/shell/fs,
-  la CSP permette solo `ipc:` in `connect-src`, e JS ha solo `core:default`. Gli appunti vengono gestiti
-  da Rust, quindi le password copiate non passano da JS.
+- **No SQLCipher.** A password vault is small (a few hundred KB even with thousands of entries), so a
+  single AEAD file is simpler to audit, doesn't drag in OpenSSL, and syncing only needs to transfer one
+  encrypted blob (the same model KeePass/KDBX uses). Note: SQLCipher uses AES-256-**CBC** + HMAC-SHA512,
+  not GCM as the original plan said.
+- **The native host doesn't just "talk" to the browser over a pipe**: the browser spawns a new host
+  process for every message, and that process has no access to the unlocked vault. That's why the host
+  relays to the app over a **Unix domain socket** (not TCP, not reachable from the network).
+- **Tauri can't "turn off the network" at the OS level.** What we do instead: no http/shell/fs plugins,
+  the CSP only allows `ipc:` in `connect-src`, and JS only has `core:default`. The clipboard is handled by
+  Rust, so copied passwords never pass through JS.
 
-## Autofill nel browser
+## Browser autofill
 
-1. L'utente apre il popup (o preme ⌘⇧L). Nessun content script gira sulle pagine.
-2. Il popup invia `{type:"logins", url}` e l'app risponde con le voci che corrispondono al sito.
-3. Al click, `{type:"credentials", id, url}` restituisce le credenziali **solo se** l'URL corrisponde alla voce.
-4. Una funzione iniettata una sola volta riempie il form e controlla che `location.origin` non sia cambiato nel frattempo.
+1. The user opens the popup (or presses ⌘⇧L). No content script runs on pages.
+2. The popup sends `{type:"logins", url}` and the app replies with entries matching the site.
+3. On click, `{type:"credentials", id, url}` returns credentials **only if** the URL matches the entry.
+4. A function injected once fills the form and checks that `location.origin` hasn't changed in the
+   meantime.
 
-Corrispondenza URL (`matching.rs`): stesso dominio registrabile (eTLD+1, Public Suffix List inclusa
-nel binario, quindi senza rete). `github.io`, `co.uk` e simili sono trattati come suffissi pubblici. Una voce salvata
-per https non viene mai offerta a una pagina http.
+URL matching (`matching.rs`): same registrable domain (eTLD+1, Public Suffix List bundled in the binary,
+so no network needed). `github.io`, `co.uk` and similar are treated as public suffixes. An entry saved
+for https is never offered to an http page.
 
-**Difese del bridge**, dall'esterno verso l'interno:
+**Bridge defenses**, from the outside in:
 
-| Attacco | Difesa | Verificato |
+| Attack | Defense | Verified |
 |---|---|---|
-| Un programma si collega direttamente al socket dell'app | L'app identifica il processo collegato (`LOCAL_PEERPID`) e accetta solo il `kryptos-native-host` del proprio bundle, con firma di codice intatta e, se l'app è firmata Developer ID, dello stesso Team ID | `untrusted_peer` |
-| Un programma avvia il native host legittimo e gli scrive richieste | Il native host risponde solo se il processo che l'ha avviato è un browser con firma Apple valida di un produttore fidato (Google, Mozilla, Microsoft, Brave) e se il browser dichiara come chiamante l'ID della nostra estensione | `untrusted_caller` |
-| Un'altra estensione chiama il native host | `allowed_origins` nel manifest: il browser lo avvia solo per il nostro ID | — |
-| Una pagina ostile, un iframe di un altro sito o una pagina cambiata nel frattempo | La compilazione controlla `location.origin` in ogni frame. Nessuno script gira sulle pagine | — |
-| Siti simili (`example.com.evil.io`, `alice.github.io` rispetto a `mallory.github.io`) | Corrispondenza per eTLD+1 con la Public Suffix List. Https non viene mai offerto a http | test unitari |
-| Estrazione di massa | Al massimo 20 password al minuto, e ogni invio appare come notifica nell'app | — |
+| A program connects directly to the app's socket | The app identifies the connecting process (`LOCAL_PEERPID`) and only accepts `kryptos-native-host` from its own bundle, with an intact code signature and, if the app is Developer ID signed, the same Team ID | `untrusted_peer` |
+| A program launches the legitimate native host and writes requests to it | The native host only replies if the process that launched it is a browser with a valid Apple signature from a trusted vendor (Google, Mozilla, Microsoft, Brave) and the browser declares our extension's ID as the caller | `untrusted_caller` |
+| Another extension calls the native host | `allowed_origins` in the manifest: the browser only launches it for our ID | — |
+| A malicious page, an iframe from another site, or a page that changed in the meantime | Fill checks `location.origin` in every frame. No script runs on pages | — |
+| Lookalike sites (`example.com.evil.io`, `alice.github.io` vs. `mallory.github.io`) | eTLD+1 matching with the Public Suffix List. Https is never offered to http | unit tests |
+| Bulk extraction | At most 20 passwords per minute, and every fill shows up as a notification in the app | — |
 
-**Limiti noti, da dichiarare:**
-- Un malware che gira con il tuo utente può comunque registrare la master password mentre la digiti (keylogger). Vale per qualsiasi password manager.
-- Le build locali hanno solo una firma ad-hoc: la verifica del native host si basa sul percorso nel bundle e
-  sulla protezione "App Management" di macOS. Con la firma **Developer ID** diventa crittografica (stesso Team ID)
-  e si attiva l'hardened runtime, che impedisce ad altri processi di leggere la memoria dell'app.
-- Con l'eTLD+1, una voce salvata per `google.com` viene offerta anche su `sites.google.com`: i contenuti
-  pubblicati da utenti su sottodomini dello stesso dominio sono un rischio residuo, attenuato dal fatto che il
-  dominio è sempre mostrato nel popup prima della compilazione.
-- Su Linux la verifica del browser si basa sul nome dell'eseguibile, perché lì non c'è la firma di codice.
-- Browser aggiuntivi (Arc, Vivaldi…) vanno aggiunti a `TRUSTED_BROWSER_TEAMS` in `crates/core/src/peer.rs`
-  dopo averne letto il Team ID con `codesign -dv`.
+**Known limits, to be disclosed:**
+- Malware running as your user can still record the master password as you type it (keylogger). This is
+  true of any password manager.
+- Local builds only have an ad-hoc signature: native host verification relies on the path inside the
+  bundle and macOS's "App Management" protection. With a **Developer ID** signature it becomes
+  cryptographic (same Team ID), and hardened runtime kicks in, which stops other processes from reading
+  the app's memory.
+- With eTLD+1, an entry saved for `google.com` is also offered on `sites.google.com`: user-published
+  content on subdomains of the same domain is a residual risk, mitigated by the domain always being shown
+  in the popup before filling.
+- On Linux, browser verification relies on the executable name, since there's no code signing there.
+- Additional browsers (Arc, Vivaldi…) need to be added to `TRUSTED_BROWSER_TEAMS` in
+  `crates/core/src/peer.rs` after reading their Team ID with `codesign -dv`.
 
 ## Mobile (Tauri 2)
 
-Invece di React Native, Android e iOS usano **Tauri 2 mobile**: stessa UI React, stessi comandi Rust,
-stesso `kryptos-core` del desktop. Resta nativo solo ciò che il sistema operativo impone.
+Instead of React Native, Android and iOS use **Tauri 2 mobile**: the same React UI, the same Rust
+commands, the same `kryptos-core` as desktop. Only what the OS requires stays native.
 
 **Android** (`apps/desktop/src-tauri/gen/android`)
-- `KryptosAutofillService.kt` è il servizio di autofill di sistema. Legge il vault sbloccato **nello stesso
-  processo** tramite JNI (`src-tauri/src/android.rs`). Se il vault è bloccato, propone "Sblocca Kryptos",
-  che apre l'app.
-- Il dominio web viene considerato solo se l'app che chiede le credenziali è un browser noto (Chrome,
-  Firefox, Brave, Edge, Samsung…). Un'app qualsiasi potrebbe dichiarare `webDomain = banca.it` per rubare
-  la password. Le app native ricevono solo le voci collegate esplicitamente a `androidapp://<package>`.
-- **Nessun permesso INTERNET** nella build di produzione (c'è solo in debug, per il dev server).
-- Backup cloud e trasferimento tra dispositivi disattivati (`data_extraction_rules.xml`).
-- `FLAG_SECURE` in produzione: niente screenshot, registrazioni o anteprime nelle app recenti.
-- Argon2id a 64 MiB: circa 1,4 s per creare il vault e circa 0,4 s per sbloccarlo sull'emulatore Pixel 7 Pro.
-- Librerie native allineate a 16 KB (`.cargo/config.toml`), come richiesto da Android 15 e Google Play.
+- `KryptosAutofillService.kt` is the system autofill service. It reads the unlocked vault **in the same
+  process** via JNI (`src-tauri/src/android.rs`). If the vault is locked, it offers "Unlock Kryptos",
+  which opens the app.
+- The web domain is only trusted if the app requesting credentials is a known browser (Chrome, Firefox,
+  Brave, Edge, Samsung…). Any app could otherwise declare `webDomain = mybank.com` to steal the password.
+  Native apps only receive entries explicitly linked to `androidapp://<package>`.
+- **No INTERNET permission** in the production build (it's only present in debug, for the dev server).
+- Cloud backup and cross-device transfer are disabled (`data_extraction_rules.xml`).
+- `FLAG_SECURE` in production: no screenshots, recordings or previews in the recent-apps view.
+- Argon2id at 64 MiB: roughly 1.4 s to create the vault and about 0.4 s to unlock it on a Pixel 7 Pro
+  emulator.
+- Native libraries 16 KB-aligned (`.cargo/config.toml`), as required by Android 15 and Google Play.
 
-**iOS** (da fare, serve Xcode): `tauri ios init` più una *Credential Provider Extension* in Swift che
-chiama il core Rust tramite FFI e condivide il vault con l'app tramite App Group. Il limite di memoria
-delle estensioni (~120 MiB) è il motivo dei 64 MiB di Argon2 su mobile.
+**iOS** (still to do, needs Xcode): `tauri ios init` plus a *Credential Provider Extension* in Swift that
+calls into the Rust core via FFI and shares the vault with the app through an App Group. The extension
+memory limit (~120 MiB) is why mobile uses 64 MiB of Argon2.
 
-## Blocco automatico
+## Auto-lock
 
-- Inattività (1, 5, 15 o 60 minuti). Il tempo trascorso si misura sia con l'orologio monotono sia con quello
-  di sistema, e vale il maggiore dei due: il blocco scatta anche se il processo è stato sospeso.
-- Sospensione del computer: ce ne accorgiamo perché l'orologio monotono si ferma durante lo sleep, quello
-  di sistema no.
-- Schermo bloccato su macOS (`CGSessionCopyCurrentDictionary`).
-- Appunti: la password copiata viene cancellata dopo 15–120 s, ma solo se nel frattempo non hai copiato altro.
+- Inactivity (1, 5, 15 or 60 minutes). Elapsed time is measured with both the monotonic clock and the
+  system clock, and the larger of the two wins: the lock still triggers even if the process was
+  suspended.
+- Computer sleep: detected because the monotonic clock stops during sleep while the system clock doesn't.
+- Locked screen on macOS (`CGSessionCopyCurrentDictionary`).
+- Clipboard: a copied password is cleared after 15–120 s, but only if you haven't copied something else
+  in the meantime.
 
 ## Roadmap
 
-- [x] Core: vault, KDF, generatore, matching URL, storage atomico, import CSV, analisi sicurezza (23 test)
-- [x] Desktop: blocco automatico (inattività, sospensione, schermo bloccato), appunti auto-puliti, impostazioni persistenti
-- [x] Import CSV (Google/Chrome, Bitwarden, 1Password, Firefox) e backup cifrato
-- [x] Estensione MV3 con ID fisso, collegamento con un clic dall'app, native host incluso nel bundle
-- [x] Android: stessa app via Tauri, AutofillService di sistema, nessun permesso di rete
-- [ ] Android: test end-to-end dell'autofill in Chrome (serve completare la configurazione iniziale di Chrome sul dispositivo)
-- [ ] Android: import CSV e backup (il selettore file restituisce URI `content://`, serve il plugin fs)
-- [ ] Sblocco biometrico (Touch ID / impronta), con la vault key protetta da Keychain / Android Keystore
-- [ ] iOS: Credential Provider Extension (richiede Xcode)
-- [ ] Salvataggio di nuovi login dal browser e dalle app (Android `onSaveRequest`)
+- [x] Core: vault, KDF, generator, URL matching, atomic storage, CSV import, security analysis (23 tests)
+- [x] Desktop: auto-lock (inactivity, sleep, locked screen), self-clearing clipboard, persistent settings
+- [x] CSV import (Google/Chrome, Bitwarden, 1Password, Firefox) and encrypted backup
+- [x] MV3 extension with a fixed ID, one-click connection from the app, native host bundled with the app
+- [x] Android: same app via Tauri, system AutofillService, no network permission
+- [ ] Android: end-to-end autofill testing in Chrome (needs Chrome's initial setup completed on the
+  device)
+- [ ] Android: CSV import and backup (the file picker returns `content://` URIs, needs the fs plugin)
+- [ ] Biometric unlock (Touch ID / fingerprint), with the vault key protected by Keychain / Android
+  Keystore
+- [ ] iOS: Credential Provider Extension (needs Xcode)
+- [ ] Saving new logins from the browser and from apps (Android `onSaveRequest`)
 - [ ] TOTP
-- [ ] Windows: named pipe per il bridge e registrazione del native host nel registro
-- [ ] Sync LAN: vault cifrato via TCP locale con pairing tramite QR (chiave effimera X25519 nel QR, canale Noise), merge per voce usando `updated_at`
+- [ ] Windows: named pipe for the bridge and native host registration in the registry
+- [ ] LAN sync: vault encrypted over local TCP with QR pairing (ephemeral X25519 key in the QR, Noise
+  channel), per-entry merge using `updated_at`

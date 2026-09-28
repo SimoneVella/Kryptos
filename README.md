@@ -1,101 +1,105 @@
 <p align="center">
-  <img src="docs/assets/logo.png" width="128" alt="Logo di Kryptos">
+  <img src="docs/assets/logo.png" width="128" alt="Kryptos logo">
+</p>
+
+<p align="center">
+  English · <a href="README.it.md">Italiano</a>
 </p>
 
 <h1 align="center">Kryptos</h1>
 
 <p align="center">
-  <b>Password manager 100% offline</b> per macOS, Windows, Linux e Android (iOS in arrivo).<br>
-  Nessun server, nessun account, nessuna connessione di rete: il vault cifrato resta sul tuo dispositivo.
+  <b>100% offline password manager</b> for macOS, Windows, Linux and Android (iOS coming).<br>
+  No server, no account, no network connection: the encrypted vault stays on your device.
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/licenza-GPL--3.0-blue" alt="Licenza GPL-3.0"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="GPL-3.0 license"></a>
   <img src="https://img.shields.io/badge/core-Rust-orange" alt="Core in Rust">
   <img src="https://img.shields.io/badge/app-Tauri%202-24c8db" alt="Tauri 2">
-  <img src="https://img.shields.io/badge/stato-0.1%20sperimentale-yellow" alt="Stato: sperimentale">
+  <img src="https://img.shields.io/badge/status-0.1%20experimental-yellow" alt="Status: experimental">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/home-dark.png" width="820" alt="Kryptos: schermata principale">
+  <img src="docs/screenshots/home-dark.png" width="820" alt="Kryptos: main screen">
 </p>
 
-Dettagli tecnici e modello di minaccia in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Technical details and threat model in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 > [!WARNING]
-> **Versione 0.1: software sperimentale.** Il codice non ha ancora avuto una revisione di sicurezza
-> indipendente e alcuni flussi (compilazione nel browser, autofill su Android) sono stati provati solo in
-> ambienti di test. Non usarlo come **unica** copia di password importanti: tieni un'altra copia finché il
-> progetto non è maturo. Le vulnerabilità vanno segnalate in privato: vedi [SECURITY.md](SECURITY.md).
+> **Version 0.1: experimental software.** The code hasn't had an independent security review yet, and
+> some flows (browser fill, Android autofill) have only been tested in dev environments. Don't use it as
+> your **only** copy of important passwords: keep another copy until the project matures. Vulnerabilities
+> should be reported privately: see [SECURITY.md](SECURITY.md).
 
-**Crittografia:** Argon2id (256 MiB su desktop, 64 MiB su mobile) e XChaCha20-Poly1305, con una vault key
-casuale cifrata dalla master password. Algoritmi pubblici e standard: la sicurezza dipende dalla tua
-master password, non dalla segretezza del codice.
+**Encryption:** Argon2id (256 MiB on desktop, 64 MiB on mobile) and XChaCha20-Poly1305, with a random
+vault key wrapped by the master password. Public, standard algorithms: security depends on your master
+password, not on the secrecy of the code.
 
-## Screenshot
+## Screenshots
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/entry-dark.png" alt="Dettaglio di una password"></td>
-    <td><img src="docs/screenshots/generator-dark.png" alt="Generatore di password"></td>
+    <td><img src="docs/screenshots/entry-dark.png" alt="Password detail"></td>
+    <td><img src="docs/screenshots/generator-dark.png" alt="Password generator"></td>
   </tr>
   <tr>
-    <td align="center">Dettaglio: copia sicura, appunti svuotati da soli</td>
-    <td align="center">Generatore con entropia in tempo reale</td>
+    <td align="center">Detail view: secure copy, clipboard clears itself</td>
+    <td align="center">Generator with real-time entropy</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/security-dark.png" alt="Analisi sicurezza"></td>
-    <td><img src="docs/screenshots/settings-dark.png" alt="Impostazioni"></td>
+    <td><img src="docs/screenshots/security-dark.png" alt="Security analysis"></td>
+    <td><img src="docs/screenshots/settings-dark.png" alt="Settings"></td>
   </tr>
   <tr>
-    <td align="center">Password deboli, riutilizzate e vecchie, analizzate offline</td>
-    <td align="center">Blocco automatico, import CSV, collegamento al browser</td>
+    <td align="center">Weak, reused and old passwords, analyzed offline</td>
+    <td align="center">Auto-lock, CSV import, browser connection</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/unlock-dark.png" alt="Sblocco"></td>
-    <td><img src="docs/screenshots/home-light.png" alt="Tema chiaro"></td>
+    <td><img src="docs/screenshots/unlock-dark.png" alt="Unlock"></td>
+    <td><img src="docs/screenshots/home-light.png" alt="Light theme"></td>
   </tr>
   <tr>
-    <td align="center">Sblocco con master password (Argon2id)</td>
-    <td align="center">Tema chiaro, segue quello del sistema</td>
+    <td align="center">Unlock with master password (Argon2id)</td>
+    <td align="center">Light theme, follows the system</td>
   </tr>
 </table>
 
-**Android e estensione browser**
+**Android and browser extension**
 
 <p align="center">
-  <img src="docs/screenshots/mobile-home-dark.png" width="240" alt="Kryptos su Android">
+  <img src="docs/screenshots/mobile-home-dark.png" width="240" alt="Kryptos on Android">
   &nbsp;
-  <img src="docs/screenshots/mobile-entry-dark.png" width="240" alt="Dettaglio su Android">
+  <img src="docs/screenshots/mobile-entry-dark.png" width="240" alt="Detail view on Android">
   &nbsp;
-  <img src="docs/screenshots/extension-dark.png" width="300" alt="Estensione browser">
+  <img src="docs/screenshots/extension-dark.png" width="300" alt="Browser extension">
 </p>
 
-> Gli screenshot usano dati di esempio.
+> Screenshots use sample data.
 
 ```
-crates/core                 Rust: crittografia, vault, generatore, matching URL, import CSV, analisi sicurezza
-crates/native-host          Relay Native Messaging (browser ⇄ app), incluso nell'app come sidecar
-apps/desktop                App Tauri 2 condivisa desktop + mobile
-  src/                      UI React (unica per tutte le piattaforme)
-  src-tauri/src/            Comandi Rust, bridge browser (desktop), JNI autofill (Android)
-  src-tauri/gen/android/    Progetto Android: AutofillService in Kotlin
-extension/                  Estensione browser MV3 (Chrome, Arc, Brave, Edge, Firefox)
-apps/desktop/brand/         Logo sorgente + make-icons.py (rigenera tutte le icone)
+crates/core                 Rust: crypto, vault, generator, URL matching, CSV import, security analysis
+crates/native-host          Native Messaging relay (browser ⇄ app), bundled with the app as a sidecar
+apps/desktop                Tauri 2 app shared between desktop and mobile
+  src/                      React UI (the same one on every platform)
+  src-tauri/src/            Rust commands, browser bridge (desktop), autofill JNI (Android)
+  src-tauri/gen/android/    Android project: AutofillService in Kotlin
+extension/                  MV3 browser extension (Chrome, Arc, Brave, Edge, Firefox)
+apps/desktop/brand/         Source logo + make-icons.py (regenerates every icon)
 ```
 
-## Sviluppo
+## Development
 
-Requisiti: Rust (rustup), Node 20+. Per Android: Android Studio (SDK + NDK).
+Requirements: Rust (rustup), Node 20+. For Android: Android Studio (SDK + NDK).
 
 ```bash
 cd apps/desktop && npm install && npm run tauri dev
 ```
 
-**Anteprima di design nel browser** (dati finti, niente Rust): `npm run dev`, poi apri
-http://127.0.0.1:1420. La master password è `password`.
+**Design preview in the browser** (fake data, no Rust): `npm run dev`, then open
+http://127.0.0.1:1420. The master password is `password`.
 
-Test del core:
+Core tests:
 
 ```bash
 cargo test -p kryptos-core
@@ -104,42 +108,42 @@ cargo test -p kryptos-core
 ### Build
 
 ```bash
-cd apps/desktop && npx tauri build            # macOS .app / .dmg (include il native host)
+cd apps/desktop && npx tauri build            # macOS .app / .dmg (includes the native host)
 ```
 
 ```bash
 cd apps/desktop && npx tauri android build --apk --target aarch64
 ```
 
-Per Android servono `ANDROID_HOME`, `NDK_HOME` e `JAVA_HOME`. Il JDK incluso in Android Studio va bene:
+Android needs `ANDROID_HOME`, `NDK_HOME` and `JAVA_HOME`. The JDK bundled with Android Studio works:
 `/Applications/Android Studio.app/Contents/jbr/Contents/Home`.
 
-## Cambiare il logo
+## Changing the logo
 
 ```bash
-cd apps/desktop && python3 brand/make-icons.py /percorso/nuovo-logo.png && npx tauri icon icon.png -o src-tauri/icons && python3 brand/make-icons.py --android-only
+cd apps/desktop && python3 brand/make-icons.py /path/to/new-logo.png && npx tauri icon icon.png -o src-tauri/icons && python3 brand/make-icons.py --android-only
 ```
 
-## Estensione browser
+## Browser extension
 
-1. `chrome://extensions` → Modalità sviluppatore → *Carica estensione non pacchettizzata* → `extension/`
-   (l'ID è fisso: `jclbckdbmecjgoopnpchbijihdfeajkb`)
-2. Nell'app: **Impostazioni → Estensione browser → Collega**, poi riavvia il browser
-3. Su una pagina di login: clic sull'icona Kryptos, oppure ⌘⇧L
+1. `chrome://extensions` → Developer mode → *Load unpacked* → `extension/`
+   (the ID is fixed: `jclbckdbmecjgoopnpchbijihdfeajkb`)
+2. In the app: **Settings → Browser extension → Connect**, then restart the browser
+3. On a login page: click the Kryptos icon, or ⌘⇧L
 
-La chiave privata dell'estensione (`secrets/extension-key.pem`) serve solo per pacchettizzare un `.crx`.
-Non va condivisa ed è esclusa da git.
+The extension's private key (`secrets/extension-key.pem`) is only needed to package a `.crx`. Don't
+share it; it's excluded from git.
 
-## Autofill su Android
+## Android autofill
 
-Impostazioni Android → Password e account → Servizio di compilazione automatica → **Kryptos**.
-Oppure, via adb:
+Android Settings → Passwords & accounts → Autofill service → **Kryptos**.
+Or, via adb:
 
 ```bash
 adb shell settings put secure autofill_service com.kryptos.app/.KryptosAutofillService
 ```
 
-## Licenza
+## License
 
-[GPL-3.0-or-later](LICENSE). Puoi usare, studiare, modificare e ridistribuire Kryptos. Le versioni
-modificate che distribuisci devono restare open source con la stessa licenza.
+[GPL-3.0-or-later](LICENSE). You can use, study, modify and redistribute Kryptos. Modified versions you
+distribute must stay open source under the same license.
