@@ -9,13 +9,13 @@ let exists = true;
 let seq = 100;
 const settings = { auto_lock_minutes: 5, lock_on_sleep: true, clipboard_clear_secs: 30, browser_integration: false };
 const entries: Any[] = [
-  { title: "Google", username: "simone@gmail.com", password: "Xk9#mP2$vL8@qR4!wT", urls: ["google.com"], favorite: true, age: 20 },
-  { title: "Netflix", username: "simone@gmail.com", password: "netflix2021", urls: ["netflix.com"], favorite: false, age: 400 },
-  { title: "Intesa Sanpaolo", username: "12345678", password: "Tq7!vB3#nM9$wZ5%", urls: ["intesasanpaolo.com"], favorite: true, age: 60 },
-  { title: "GitHub", username: "simonevella", password: "hN4&kP8*rS2^fD6!", urls: ["github.com"], favorite: false, age: 5 },
-  { title: "Amazon", username: "simone@gmail.com", password: "netflix2021", urls: ["amazon.it"], favorite: false, age: 90 },
-  { title: "Spotify", username: "simone", password: "cV5@jL9#xB2$", urls: ["spotify.com"], favorite: false, age: 200 },
-  { title: "Instagram", username: "@simone", password: "Wm3!zQ7&pY1*eR8^", urls: ["instagram.com"], favorite: false, age: 30 },
+  { title: "Google", username: "mario.rossi@example.com", password: "Xk9#mP2$vL8@qR4!wT", urls: ["google.com"], favorite: true, age: 20 },
+  { title: "Netflix", username: "mario.rossi@example.com", password: "netflix2021", urls: ["netflix.com"], favorite: false, age: 400 },
+  { title: "Intesa Sanpaolo", username: "88123456", password: "Tq7!vB3#nM9$wZ5%", urls: ["intesasanpaolo.com"], favorite: true, age: 60 },
+  { title: "GitHub", username: "mrossi", password: "hN4&kP8*rS2^fD6!", urls: ["github.com"], favorite: false, age: 5 },
+  { title: "Amazon", username: "mario.rossi@example.com", password: "netflix2021", urls: ["amazon.it"], favorite: false, age: 90 },
+  { title: "Spotify", username: "mario.rossi", password: "cV5@jL9#xB2$", urls: ["spotify.com"], favorite: false, age: 200 },
+  { title: "Instagram", username: "@mario.rossi", password: "Wm3!zQ7&pY1*eR8^", urls: ["instagram.com"], favorite: false, age: 30 },
 ].map((e, i) => ({ ...e, id: `id-${i}`, notes: "", created_at: now - e.age * day, updated_at: now - e.age * day }));
 
 const summary = (e: Any) => ({ id: e.id, title: e.title, username: e.username, urls: e.urls, favorite: e.favorite, updated_at: e.updated_at });

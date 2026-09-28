@@ -1,7 +1,25 @@
-# Kryptos
+<p align="center">
+  <img src="docs/assets/logo.png" width="128" alt="Logo di Kryptos">
+</p>
 
-Password manager 100% offline per macOS, Windows, Linux e Android (iOS in arrivo).
-Nessun server, nessun account, nessuna connessione di rete: il vault cifrato resta sul tuo dispositivo.
+<h1 align="center">Kryptos</h1>
+
+<p align="center">
+  <b>Password manager 100% offline</b> per macOS, Windows, Linux e Android (iOS in arrivo).<br>
+  Nessun server, nessun account, nessuna connessione di rete: il vault cifrato resta sul tuo dispositivo.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licenza-GPL--3.0-blue" alt="Licenza GPL-3.0"></a>
+  <img src="https://img.shields.io/badge/core-Rust-orange" alt="Core in Rust">
+  <img src="https://img.shields.io/badge/app-Tauri%202-24c8db" alt="Tauri 2">
+  <img src="https://img.shields.io/badge/stato-0.1%20sperimentale-yellow" alt="Stato: sperimentale">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/home-dark.png" width="820" alt="Kryptos: schermata principale">
+</p>
+
 Dettagli tecnici e modello di minaccia in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 > [!WARNING]
@@ -13,6 +31,47 @@ Dettagli tecnici e modello di minaccia in [docs/ARCHITECTURE.md](docs/ARCHITECTU
 **Crittografia:** Argon2id (256 MiB su desktop, 64 MiB su mobile) e XChaCha20-Poly1305, con una vault key
 casuale cifrata dalla master password. Algoritmi pubblici e standard: la sicurezza dipende dalla tua
 master password, non dalla segretezza del codice.
+
+## Screenshot
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/entry-dark.png" alt="Dettaglio di una password"></td>
+    <td><img src="docs/screenshots/generator-dark.png" alt="Generatore di password"></td>
+  </tr>
+  <tr>
+    <td align="center">Dettaglio: copia sicura, appunti svuotati da soli</td>
+    <td align="center">Generatore con entropia in tempo reale</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/security-dark.png" alt="Analisi sicurezza"></td>
+    <td><img src="docs/screenshots/settings-dark.png" alt="Impostazioni"></td>
+  </tr>
+  <tr>
+    <td align="center">Password deboli, riutilizzate e vecchie, analizzate offline</td>
+    <td align="center">Blocco automatico, import CSV, collegamento al browser</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/unlock-dark.png" alt="Sblocco"></td>
+    <td><img src="docs/screenshots/home-light.png" alt="Tema chiaro"></td>
+  </tr>
+  <tr>
+    <td align="center">Sblocco con master password (Argon2id)</td>
+    <td align="center">Tema chiaro, segue quello del sistema</td>
+  </tr>
+</table>
+
+**Android e estensione browser**
+
+<p align="center">
+  <img src="docs/screenshots/mobile-home-dark.png" width="240" alt="Kryptos su Android">
+  &nbsp;
+  <img src="docs/screenshots/mobile-entry-dark.png" width="240" alt="Dettaglio su Android">
+  &nbsp;
+  <img src="docs/screenshots/extension-dark.png" width="300" alt="Estensione browser">
+</p>
+
+> Gli screenshot usano dati di esempio.
 
 ```
 crates/core                 Rust: crittografia, vault, generatore, matching URL, import CSV, analisi sicurezza
