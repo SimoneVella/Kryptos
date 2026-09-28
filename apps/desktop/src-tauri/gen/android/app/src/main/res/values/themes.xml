@@ -1,0 +1,7 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.kryptos_desktop" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Match the web UI so there is no white flash before it renders. -->
+        <item name="android:windowBackground">#F4F4F7</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">#F4F4F7</item>
+    </style>
+</resources>

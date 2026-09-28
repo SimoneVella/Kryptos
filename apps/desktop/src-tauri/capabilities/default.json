@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The UI only gets core IPC. No http, fs, shell or clipboard access from JS: secrets are copied by Rust.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

@@ -1,0 +1,6 @@
+# Android 15+ devices (and Google Play) require 16 KB-aligned native libraries.
+[target.aarch64-linux-android]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
+
+[target.x86_64-linux-android]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]

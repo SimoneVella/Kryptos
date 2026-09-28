@@ -1,0 +1,11 @@
+/target
+node_modules/
+apps/desktop/dist/
+apps/desktop/src-tauri/gen/schemas/
+.e2e/
+*.kryptos
+*.kryptos.bak
+*.kryptos.tmp
+.DS_Store
+secrets/
+apps/desktop/src-tauri/binaries/

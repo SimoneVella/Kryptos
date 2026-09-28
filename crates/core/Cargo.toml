@@ -1,0 +1,31 @@
+[package]
+name = "kryptos-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Offline, zero-knowledge vault: Argon2id key derivation + XChaCha20-Poly1305 encrypted storage."
+
+[dependencies]
+argon2 = { version = "0.5", features = ["zeroize"] }
+chacha20poly1305 = "0.10"
+rand = "0.8"
+base64 = "0.22"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+zeroize.workspace = true
+uuid = { version = "1", features = ["v4", "serde"] }
+url = "2"
+psl = "2"
+dirs = "5"
+csv = "1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3"
+core-foundation = "0.10"
+
+[dev-dependencies]
+tempfile = "3"

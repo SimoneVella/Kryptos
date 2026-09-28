@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAptvBMI3KPuQs2FxxRIB5K9p5tOssYOLgA1r+zHjKQiPxJs2LV862QGo1lauyJUVzgcFHXYQepzTQAQMLjgTaAibTrfBrZPI2qT9WhyAYSAdUp2UjvEhsuMliJBGA3Bhdhd/49lbYb390XwLZ98RqMScy/tlpMQoRoel+z3OvnPBIvQ1L3+ZDUHdXZ/FNqLM5CLYxgrddwTEZMoJRSWVQmMkD0ArsVDpGtMzXUV+0+EWHP0JQ2K2dZ9BX4RhtNue3ilvpWUzJiSUOWRP4AcGQuTkUzf3oDrOnDSw9gcToyXIzEzY9Ghw6Oq2HA321ibEUTpiRGL2DSpINmUcVej/GLwIDAQAB",
+  "name": "Kryptos",
+  "version": "0.1.0",
+  "description": "Riempie le credenziali dal tuo vault Kryptos locale. Nessun server, nessuna rete.",
+  "permissions": [
+    "nativeMessaging",
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png"
+    }
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L",
+        "mac": "Command+Shift+L"
+      }
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; object-src 'none'"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "kryptos@kryptos.local",
+      "strict_min_version": "115.0"
+    }
+  }
+}

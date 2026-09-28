@@ -1,0 +1,177 @@
+// Kryptos popup. Talks to the desktop app only through Native Messaging
+// (browser -> kryptos-native-host over stdio -> app over a Unix socket).
+// No content script runs on pages: a one-shot fill function is injected only
+// when the user picks a login, using the activeTab permission.
+
+const HOST = "com.kryptos.bridge";
+// Prefer the callback-style `chrome` namespace (also present in Firefox).
+const ext = globalThis.chrome ?? globalThis.browser;
+
+const $content = document.getElementById("content");
+const $site = document.getElementById("site");
+const $searchWrap = document.getElementById("search-wrap");
+const $search = document.getElementById("search");
+
+const ICONS = {
+  lock: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  key: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M14 9l2 2"/></svg>',
+  plug: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5M9 8V2M15 8V2M18 8v5a6 6 0 0 1-12 0V8z"/></svg>',
+  globe: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>',
+};
+
+function send(msg) {
+  return new Promise((resolve) => {
+    try {
+      ext.runtime.sendNativeMessage(HOST, msg, (reply) => {
+        if (ext.runtime.lastError || !reply) resolve({ ok: false, error: "host_unavailable" });
+        else resolve(reply);
+      });
+    } catch {
+      resolve({ ok: false, error: "host_unavailable" });
+    }
+  });
+}
+
+function el(tag, props = {}, ...children) {
+  const n = Object.assign(document.createElement(tag), props);
+  n.append(...children);
+  return n;
+}
+
+function state(icon, title, text, action) {
+  $searchWrap.hidden = true;
+  const box = el("div", { className: "state" });
+  const i = el("div", { className: "state-icon" });
+  i.innerHTML = ICONS[icon]; // static, trusted markup
+  box.append(i, el("h2", { textContent: title }));
+  if (text) box.append(typeof text === "string" ? el("p", { textContent: text }) : text);
+  if (action) box.append(el("button", { className: "btn", textContent: action.label, onclick: action.run }));
+  $content.replaceChildren(box);
+  box.querySelector("button")?.focus();
+}
+
+const HUES = [217, 262, 330, 12, 38, 150, 190, 290];
+function avatar(name) {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const hue = HUES[h % HUES.length];
+  return el("div", {
+    className: "avatar",
+    textContent: (name.trim()[0] ?? "?").toUpperCase(),
+    style: `background: linear-gradient(135deg, hsl(${hue} 85% 62%), hsl(${(hue + 30) % 360} 80% 50%))`,
+  });
+}
+
+const openApp = { label: "Apri Kryptos", run: () => send({ type: "focus" }).then(() => window.close()) };
+
+async function main() {
+  const [tab] = await ext.tabs.query({ active: true, currentWindow: true });
+  let url;
+  try {
+    url = new URL(tab.url);
+  } catch {}
+  if (!url || !/^https?:$/.test(url.protocol)) {
+    $site.textContent = "Nessun sito";
+    return state("globe", "Pagina non supportata", "Apri una pagina di login per compilare le credenziali.");
+  }
+  $site.textContent = url.hostname.replace(/^www\./, "");
+
+  const res = await send({ type: "logins", url: url.href });
+  if (!res.ok) {
+    switch (res.error) {
+      case "locked":
+        return state("lock", "Vault bloccato", "Sbloccalo nell'app per vedere le password di questo sito.", openApp);
+      case "app_not_running":
+        return state("key", "Kryptos è chiuso", "Apri l'app sul computer e sblocca il vault.");
+      case "host_unavailable": {
+        const p = el("p", {}, "Nell'app vai su ", el("b", { textContent: "Impostazioni → Estensione browser" }), " e premi ", el("b", { textContent: "Collega" }), ", poi riavvia il browser.");
+        return state("plug", "Collega l'app", p);
+      }
+      case "untrusted_caller":
+      case "untrusted_peer":
+        return state("lock", "Collegamento non verificato", "Kryptos ha rifiutato la richiesta perché non ha potuto verificare browser o estensione. Usa un browser supportato e ricollega l'app.");
+      default:
+        return state("key", "Qualcosa è andato storto", res.error);
+    }
+  }
+  if (res.logins.length === 0) {
+    return state("key", "Nessun login salvato", `Aggiungi una password per ${$site.textContent} in Kryptos.`, openApp);
+  }
+
+  const render = (q = "") => {
+    const list = res.logins.filter((l) => !q || l.title.toLowerCase().includes(q) || l.username.toLowerCase().includes(q));
+    $content.replaceChildren(
+      ...list.map((l) =>
+        el(
+          "button",
+          { className: "login", onclick: () => fill(tab.id, url, l.id) },
+          avatar(l.title),
+          el("div", { className: "login-main" }, el("strong", { textContent: l.title }), el("span", { textContent: l.username || "—" })),
+          el("span", { className: "fill", textContent: "Compila" }),
+        ),
+      ),
+    );
+  };
+  render();
+  if (res.logins.length > 4) {
+    $searchWrap.hidden = false;
+    $search.oninput = () => render($search.value.trim().toLowerCase());
+    $search.onkeydown = (e) => e.key === "Enter" && $content.querySelector(".login")?.click();
+    $search.focus();
+  } else {
+    $content.querySelector(".login")?.focus();
+  }
+}
+
+async function fill(tabId, url, id) {
+  const res = await send({ type: "credentials", id, url: url.href });
+  if (!res.ok)
+    return state("key", "Impossibile compilare", res.error === "rate_limited" ? "Troppe richieste in poco tempo. Riprova tra un minuto." : res.error);
+  await ext.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    func: injectCredentials,
+    args: [url.origin, res.username, res.password],
+  });
+  window.close();
+}
+
+// Runs inside each frame of the page (isolated world). Must be self-contained.
+function injectCredentials(expectedOrigin, username, password) {
+  // Never fill a different origin: covers navigation since the popup opened
+  // and cross-origin iframes (only same-origin frames are filled).
+  if (location.origin !== expectedOrigin) return;
+
+  const visible = (el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && !el.disabled && !el.readOnly && getComputedStyle(el).visibility !== "hidden";
+  };
+  const setValue = (el, v) => {
+    el.focus();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(el, v); // works with React/Vue/Angular controlled inputs
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+
+  const pw = [...document.querySelectorAll('input[type="password"]')].find(visible);
+  const scope = pw?.form ?? document;
+  const candidates = [
+    'input[autocomplete~="username"]',
+    'input[autocomplete~="email"]',
+    'input[type="email"]',
+    'input[name*="user" i], input[id*="user" i]',
+    'input[name*="login" i], input[id*="login" i]',
+    'input[name*="email" i], input[id*="email" i]',
+    'input[type="text"], input[type="tel"], input:not([type])',
+  ];
+  let user = null;
+  for (const sel of candidates) {
+    user = [...scope.querySelectorAll(sel)].find((el) => visible(el) && el !== pw);
+    if (user) break;
+  }
+
+  if (user && username) setValue(user, username);
+  if (pw) setValue(pw, password);
+}
+
+main();

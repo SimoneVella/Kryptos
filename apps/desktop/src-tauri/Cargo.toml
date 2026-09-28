@@ -1,0 +1,30 @@
+[package]
+name = "kryptos-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "kryptos_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+kryptos-core = { path = "../../../crates/core" }
+tauri = { version = "2", features = [] }
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
+dirs = "5"
+serde.workspace = true
+serde_json.workspace = true
+zeroize.workspace = true
+uuid = "1"
+url = "2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10"
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"

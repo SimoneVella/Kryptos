@@ -1,0 +1,15 @@
+[package]
+name = "kryptos-native-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Chrome/Firefox Native Messaging host: relays stdio <-> the desktop app's Unix socket."
+
+[[bin]]
+name = "kryptos-native-host"
+path = "src/main.rs"
+
+[dependencies]
+kryptos-core = { path = "../core" }
+serde_json.workspace = true
+libc = "0.2"
