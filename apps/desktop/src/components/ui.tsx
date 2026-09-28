@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { strengthOf } from "../lib/utils";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 import logoUrl from "../assets/logo.png";
+import { useT } from "../i18n";
 
 /* ───────── Avatar: deterministic colour from the title ───────── */
 const HUES = [217, 262, 330, 12, 38, 150, 190, 290];
@@ -26,6 +27,7 @@ export function Logo({ large }: { large?: boolean }) {
 
 /* ───────── Sheet (modal) ───────── */
 export function Sheet({ onClose, children, title }: { onClose: () => void; children: ReactNode; title?: string }) {
+  const { t } = useT();
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", k);
@@ -36,7 +38,7 @@ export function Sheet({ onClose, children, title }: { onClose: () => void; child
       <div className="sheet" role="dialog" aria-modal="true">
         <div className="sheet-top">
           <h3>{title}</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="Chiudi">
+          <button className="icon-btn" onClick={onClose} aria-label={t("common.close")}>
             <X size={20} />
           </button>
         </div>
@@ -74,6 +76,7 @@ export function PasswordInput(props: {
   mono?: boolean;
   trailing?: ReactNode;
 }) {
+  const { t } = useT();
   const [show, setShow] = useState(false);
   return (
     <div className="input-wrap">
@@ -90,7 +93,7 @@ export function PasswordInput(props: {
       />
       <div className="input-trail">
         {props.trailing}
-        <button type="button" className="icon-btn" onClick={() => setShow(!show)} aria-label={show ? "Nascondi" : "Mostra"}>
+        <button type="button" className="icon-btn" onClick={() => setShow(!show)} aria-label={show ? t("common.hide") : t("common.show")}>
           {show ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </div>
@@ -99,6 +102,7 @@ export function PasswordInput(props: {
 }
 
 export function StrengthBar({ bits }: { bits: number }) {
+  const { t } = useT();
   const s = strengthOf(bits);
   return (
     <div className="strength" style={{ padding: 0 }}>
@@ -106,8 +110,8 @@ export function StrengthBar({ bits }: { bits: number }) {
         <div style={{ width: `${s.pct}%`, background: s.color }} />
       </div>
       <div className="strength-meta">
-        <span style={{ color: s.color }}>{s.label}</span>
-        <span className="muted">{Math.round(bits)} bit</span>
+        <span style={{ color: s.color }}>{t(`strength.${s.key}`)}</span>
+        <span className="muted">{t("common.bits", { n: Math.round(bits) })}</span>
       </div>
     </div>
   );

@@ -3,13 +3,14 @@ import { Copy, Plus, RefreshCw } from "lucide-react";
 import { api, defaultGenerator, type GeneratorOptions } from "../lib/api";
 import { Switch, useToast } from "../components/ui";
 import { localStorageGet, localStorageSet, strengthOf } from "../lib/utils";
+import { useT, type TKey } from "../i18n";
 
-const TOGGLES: { key: keyof GeneratorOptions; label: string; hint: string }[] = [
-  { key: "uppercase", label: "Maiuscole", hint: "A–Z" },
-  { key: "lowercase", label: "Minuscole", hint: "a–z" },
-  { key: "digits", label: "Numeri", hint: "0–9" },
-  { key: "symbols", label: "Simboli", hint: "!@#$%" },
-  { key: "exclude_ambiguous", label: "Evita caratteri ambigui", hint: "I l 1 O 0" },
+const TOGGLES: { key: keyof GeneratorOptions; label: TKey; hint: string }[] = [
+  { key: "uppercase", label: "generator.toggleUppercase", hint: "A–Z" },
+  { key: "lowercase", label: "generator.toggleLowercase", hint: "a–z" },
+  { key: "digits", label: "generator.toggleDigits", hint: "0–9" },
+  { key: "symbols", label: "generator.toggleSymbols", hint: "!@#$%" },
+  { key: "exclude_ambiguous", label: "generator.toggleExcludeAmbiguous", hint: "I l 1 O 0" },
 ];
 
 function loadOpts(): GeneratorOptions {
@@ -20,7 +21,8 @@ function loadOpts(): GeneratorOptions {
   }
 }
 
-export default function Generator({ onSave }: { onSave: (pw: string) => void }) {
+export default function Generator({ onSave, clipboardClearSecs }: { onSave: (pw: string) => void; clipboardClearSecs: number }) {
+  const { t } = useT();
   const [opts, setOpts] = useState<GeneratorOptions>(loadOpts);
   const [pw, setPw] = useState("");
   const [bits, setBits] = useState(0);
@@ -50,8 +52,8 @@ export default function Generator({ onSave }: { onSave: (pw: string) => void }) 
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>Generatore</h1>
-          <p className="muted" style={{ marginTop: 6 }}>Password casuali create sul dispositivo con il generatore crittografico del sistema.</p>
+          <h1>{t("generator.title")}</h1>
+          <p className="muted" style={{ marginTop: 6 }}>{t("generator.subtitle")}</p>
         </div>
       </div>
 
@@ -66,32 +68,32 @@ export default function Generator({ onSave }: { onSave: (pw: string) => void }) 
             <div style={{ width: `${s.pct}%`, background: s.color }} />
           </div>
           <div className="strength-meta">
-            <span style={{ color: s.color }}>{s.label}</span>
-            <span className="muted">{Math.round(bits)} bit di entropia</span>
+            <span style={{ color: s.color }}>{t(`strength.${s.key}`)}</span>
+            <span className="muted">{t("generator.entropyBits", { n: Math.round(bits) })}</span>
           </div>
         </div>
         <div style={{ display: "flex", gap: 10, padding: "0 24px 24px", justifyContent: "center" }}>
           <button className="btn btn-secondary" onClick={() => regen()}>
-            <RefreshCw size={18} /> Rigenera
+            <RefreshCw size={18} /> {t("generator.regenerate")}
           </button>
           <button
             className="btn btn-primary"
             onClick={async () => {
               await api.copyText(pw);
-              toast("Password copiata · si cancella tra 30 s");
+              toast(t("common.copiedClearing", { secs: clipboardClearSecs }));
             }}
           >
-            <Copy size={18} /> Copia
+            <Copy size={18} /> {t("common.copy")}
           </button>
           <button className="btn btn-secondary" onClick={() => onSave(pw)}>
-            <Plus size={18} /> Salva
+            <Plus size={18} /> {t("common.save")}
           </button>
         </div>
       </section>
 
       <section className="card card-pad">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <h3>Lunghezza</h3>
+          <h3>{t("generator.length")}</h3>
           <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>{opts.length}</span>
         </div>
         <input
@@ -103,13 +105,13 @@ export default function Generator({ onSave }: { onSave: (pw: string) => void }) 
           onChange={(e) => update({ length: Number(e.target.value) })}
         />
         <div style={{ marginTop: 8 }}>
-          {TOGGLES.map((t) => (
-            <div className="toggle-row" key={t.key}>
+          {TOGGLES.map((tg) => (
+            <div className="toggle-row" key={tg.key}>
               <div>
-                <div>{t.label}</div>
-                <div className="muted mono" style={{ fontSize: 12, marginTop: 2 }}>{t.hint}</div>
+                <div>{t(tg.label)}</div>
+                <div className="muted mono" style={{ fontSize: 12, marginTop: 2 }}>{tg.hint}</div>
               </div>
-              <Switch checked={opts[t.key] as boolean} onChange={(b) => update({ [t.key]: b })} />
+              <Switch checked={opts[tg.key] as boolean} onChange={(b) => update({ [tg.key]: b })} />
             </div>
           ))}
         </div>

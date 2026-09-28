@@ -11,11 +11,11 @@ export function estimateBits(pw: string): number {
   return pool ? pw.length * Math.log2(pool) : 0;
 }
 
-export function strengthOf(bits: number): { label: string; color: string; pct: number } {
-  if (bits < 40) return { label: "Debole", color: "var(--danger)", pct: 20 };
-  if (bits < 64) return { label: "Discreta", color: "var(--warning)", pct: 45 };
-  if (bits < 90) return { label: "Forte", color: "var(--success)", pct: 75 };
-  return { label: "Fortissima", color: "var(--success)", pct: 100 };
+export function strengthOf(bits: number): { key: "weak" | "fair" | "strong" | "excellent"; color: string; pct: number } {
+  if (bits < 40) return { key: "weak", color: "var(--danger)", pct: 20 };
+  if (bits < 64) return { key: "fair", color: "var(--warning)", pct: 45 };
+  if (bits < 90) return { key: "strong", color: "var(--success)", pct: 75 };
+  return { key: "excellent", color: "var(--success)", pct: 100 };
 }
 
 

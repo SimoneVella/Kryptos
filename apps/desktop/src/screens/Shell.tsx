@@ -4,6 +4,7 @@ import { Home as HomeIcon, KeyRound, Lock, Settings as SettingsIcon, ShieldCheck
 import { api, type EntryInput, type EntrySummary, type HealthReport } from "../lib/api";
 import { Logo, useToast } from "../components/ui";
 import { emptyInput } from "../lib/utils";
+import { useT } from "../i18n";
 import Home from "./Home";
 import Generator from "./Generator";
 import Security from "./Security";
@@ -17,17 +18,20 @@ export type Editing = { id: string | null; input: EntryInput };
 
 
 export default function Shell({ onLock }: { onLock: () => void }) {
+  const { t } = useT();
   const [tab, setTab] = useState<Tab>("home");
   const [entries, setEntries] = useState<EntrySummary[]>([]);
   const [report, setReport] = useState<HealthReport | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [clipboardClearSecs, setClipboardClearSecs] = useState(30);
 
   const reload = useCallback(async () => {
     try {
-      const [list, rep] = await Promise.all([api.listEntries(), api.securityReport()]);
+      const [list, rep, settings] = await Promise.all([api.listEntries(), api.securityReport(), api.getSettings()]);
       setEntries(list);
       setReport(rep);
+      setClipboardClearSecs(settings.clipboard_clear_secs);
     } catch {
       onLock();
     }
@@ -41,17 +45,17 @@ export default function Shell({ onLock }: { onLock: () => void }) {
   // trigger is immediately visible.
   const toast = useToast();
   useEffect(() => {
-    const un = api.onBrowserFill(({ title, host }) => toast(`${title} compilato su ${host}`));
+    const un = api.onBrowserFill(({ title, host }) => toast(t("shell.filledToast", { title, host })));
     return () => void un.then((f) => f());
-  }, [toast]);
+  }, [toast, t]);
 
   const startNew = (password = "") => setEditing({ id: null, input: { ...emptyInput, password } });
 
   const nav: { id: Tab; label: string; icon: ReactElement }[] = [
-    { id: "home", label: "Password", icon: <HomeIcon size={20} /> },
-    { id: "generator", label: "Generatore", icon: <KeyRound size={20} /> },
-    { id: "security", label: "Sicurezza", icon: <ShieldCheck size={20} /> },
-    { id: "settings", label: "Impostazioni", icon: <SettingsIcon size={20} /> },
+    { id: "home", label: t("shell.navPasswords"), icon: <HomeIcon size={20} /> },
+    { id: "generator", label: t("shell.navGenerator"), icon: <KeyRound size={20} /> },
+    { id: "security", label: t("shell.navSecurity"), icon: <ShieldCheck size={20} /> },
+    { id: "settings", label: t("shell.navSettings"), icon: <SettingsIcon size={20} /> },
   ];
 
   return (
@@ -68,9 +72,9 @@ export default function Shell({ onLock }: { onLock: () => void }) {
           </button>
         ))}
         <div className="nav-spacer" />
-        <button className="nav-item" onClick={onLock} title="Blocca">
+        <button className="nav-item" onClick={onLock} title={t("shell.navLock")}>
           <Lock size={20} />
-          <span>Blocca</span>
+          <span>{t("shell.navLock")}</span>
         </button>
       </nav>
 
@@ -78,7 +82,7 @@ export default function Shell({ onLock }: { onLock: () => void }) {
         {tab === "home" && (
           <Home entries={entries} report={report} onOpen={setOpen} onNew={() => startNew()} onGo={setTab} onLock={onLock} />
         )}
-        {tab === "generator" && <Generator onSave={(pw) => startNew(pw)} />}
+        {tab === "generator" && <Generator onSave={(pw) => startNew(pw)} clipboardClearSecs={clipboardClearSecs} />}
         {tab === "security" && <Security entries={entries} report={report} onOpen={setOpen} />}
         {tab === "settings" && <Settings onImported={reload} />}
       </main>
@@ -86,6 +90,7 @@ export default function Shell({ onLock }: { onLock: () => void }) {
       {open && !editing && (
         <EntrySheet
           id={open}
+          clipboardClearSecs={clipboardClearSecs}
           onClose={() => setOpen(null)}
           onEdit={(id, input) => setEditing({ id, input })}
           onDeleted={() => {

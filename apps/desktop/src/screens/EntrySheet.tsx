@@ -4,13 +4,16 @@ import { Copy, Eye, EyeOff, Globe, KeyRound, Pencil, Star, StickyNote, Trash2, U
 import { api, type Entry, type EntryInput } from "../lib/api";
 import { Action, Avatar, Sheet, useToast } from "../components/ui";
 import { hostOf } from "../lib/utils";
+import { useT } from "../i18n";
 
 export default function EntrySheet(props: {
   id: string;
+  clipboardClearSecs: number;
   onClose: () => void;
   onEdit: (id: string, input: EntryInput) => void;
   onDeleted: () => void;
 }) {
+  const { t, formatDate } = useT();
   const [entry, setEntry] = useState<Entry | null>(null);
   const [reveal, setReveal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -24,7 +27,7 @@ export default function EntrySheet(props: {
 
   const copy = async (field: "username" | "password") => {
     await api.copyField(entry.id, field);
-    toast(field === "password" ? "Password copiata · si cancella tra 30 s" : "Nome utente copiato");
+    toast(field === "password" ? t("common.copiedClearing", { secs: props.clipboardClearSecs }) : t("entry.copyUsernameToast"));
   };
   const edit = () =>
     props.onEdit(entry.id, {
@@ -50,55 +53,55 @@ export default function EntrySheet(props: {
       </div>
 
       <div className="sheet-actions">
-        <Action icon={<User size={20} />} label="Utente" onClick={() => copy("username")} />
-        <Action icon={<KeyRound size={20} />} label="Password" onClick={() => copy("password")} />
-        <Action icon={<Pencil size={19} />} label="Modifica" onClick={edit} />
+        <Action icon={<User size={20} />} label={t("entry.actionUser")} onClick={() => copy("username")} />
+        <Action icon={<KeyRound size={20} />} label={t("entry.actionPassword")} onClick={() => copy("password")} />
+        <Action icon={<Pencil size={19} />} label={t("common.edit")} onClick={edit} />
       </div>
 
       <div className="detail-list">
         {entry.username && (
-          <Item icon={<User size={18} />} label="Nome utente" value={entry.username} onCopy={() => copy("username")} />
+          <Item icon={<User size={18} />} label={t("entry.usernameLabel")} value={entry.username} onCopy={() => copy("username")} />
         )}
         <div className="detail-item">
           <KeyRound size={18} className="muted" />
           <div className="row-main">
-            <span className="detail-label">Password</span>
+            <span className="detail-label">{t("entry.passwordLabel")}</span>
             <span className="detail-value mono">{reveal ? entry.password : "•".repeat(Math.min(entry.password.length, 16)) || "—"}</span>
           </div>
-          <button className="icon-btn" onClick={() => setReveal(!reveal)} aria-label={reveal ? "Nascondi" : "Mostra"}>
+          <button className="icon-btn" onClick={() => setReveal(!reveal)} aria-label={reveal ? t("common.hide") : t("common.show")}>
             {reveal ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
-          <button className="icon-btn" onClick={() => copy("password")} aria-label="Copia password">
+          <button className="icon-btn" onClick={() => copy("password")} aria-label={t("entry.copyPasswordAria")}>
             <Copy size={18} />
           </button>
         </div>
         {entry.urls.map((u) => (
-          <Item key={u} icon={<Globe size={18} />} label="Sito web" value={u} />
+          <Item key={u} icon={<Globe size={18} />} label={t("entry.websiteLabel")} value={u} />
         ))}
-        {entry.notes && <Item icon={<StickyNote size={18} />} label="Note" value={entry.notes} />}
+        {entry.notes && <Item icon={<StickyNote size={18} />} label={t("entry.notesLabel")} value={entry.notes} />}
       </div>
 
       <p className="muted" style={{ fontSize: 12, textAlign: "center", margin: "16px 0" }}>
-        Modificata il {new Date(entry.updated_at * 1000).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
+        {t("entry.modifiedOn", { date: formatDate(entry.updated_at) })}
       </p>
 
       {confirmDelete ? (
         <div className="form-actions">
-          <button className="btn btn-secondary" onClick={() => setConfirmDelete(false)}>Annulla</button>
+          <button className="btn btn-secondary" onClick={() => setConfirmDelete(false)}>{t("common.cancel")}</button>
           <button
             className="btn btn-danger"
             onClick={async () => {
               await api.deleteEntry(entry.id);
-              toast("Elemento eliminato");
+              toast(t("entry.deletedToast"));
               props.onDeleted();
             }}
           >
-            Elimina definitivamente
+            {t("entry.deletePermanently")}
           </button>
         </div>
       ) : (
         <button className="btn btn-danger btn-block" onClick={() => setConfirmDelete(true)}>
-          <Trash2 size={18} /> Elimina
+          <Trash2 size={18} /> {t("common.delete")}
         </button>
       )}
     </Sheet>
@@ -106,6 +109,7 @@ export default function EntrySheet(props: {
 }
 
 function Item({ icon, label, value, onCopy }: { icon: ReactElement; label: string; value: string; onCopy?: () => void }) {
+  const { t } = useT();
   return (
     <div className="detail-item">
       <span className="muted">{icon}</span>
@@ -114,7 +118,7 @@ function Item({ icon, label, value, onCopy }: { icon: ReactElement; label: strin
         <span className="detail-value">{value}</span>
       </div>
       {onCopy && (
-        <button className="icon-btn" onClick={onCopy} aria-label={`Copia ${label}`}>
+        <button className="icon-btn" onClick={onCopy} aria-label={t("entry.copyFieldAria", { label })}>
           <Copy size={18} />
         </button>
       )}

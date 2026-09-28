@@ -3,11 +3,23 @@ import { Clipboard, Download, Globe, KeyRound, Moon, ShieldCheck, Smartphone, Ti
 import { api, type Settings as SettingsT } from "../lib/api";
 import { PasswordInput, Sheet, Switch, useToast } from "../components/ui";
 import { isMobile } from "../lib/utils";
+import { useT, type TKey } from "../i18n";
 
-const LOCK_OPTIONS: [number, string][] = [[1, "1 min"], [5, "5 min"], [15, "15 min"], [60, "1 ora"]];
-const CLIP_OPTIONS: [number, string][] = [[15, "15 s"], [30, "30 s"], [60, "1 min"], [120, "2 min"]];
+const LOCK_OPTIONS: [number, TKey][] = [
+  [1, "settings.lockOption1m"],
+  [5, "settings.lockOption5m"],
+  [15, "settings.lockOption15m"],
+  [60, "settings.lockOption1h"],
+];
+const CLIP_OPTIONS: [number, TKey][] = [
+  [15, "settings.clipOption15s"],
+  [30, "settings.clipOption30s"],
+  [60, "settings.clipOption1m"],
+  [120, "settings.clipOption2m"],
+];
 
 export default function Settings({ onImported }: { onImported: () => void }) {
+  const { t, errorMessage } = useT();
   const [s, setS] = useState<SettingsT | null>(null);
   const [browsers, setBrowsers] = useState<string[] | null>(null);
   const [changing, setChanging] = useState(false);
@@ -26,7 +38,7 @@ export default function Settings({ onImported }: { onImported: () => void }) {
       await api.updateSettings(next);
     } catch (e) {
       setS(s);
-      toast(String(e));
+      toast(errorMessage(e));
     }
   };
 
@@ -36,10 +48,14 @@ export default function Settings({ onImported }: { onImported: () => void }) {
       const r = await api.importCsv();
       if (r) {
         onImported();
-        toast(`${r.added} importate${r.skipped ? ` · ${r.skipped} già presenti` : ""}. Ora elimina "${r.file}".`);
+        toast(
+          r.skipped
+            ? t("settings.importResultSkipped", { added: r.added, skipped: r.skipped, file: r.file })
+            : t("settings.importResult", { added: r.added, file: r.file }),
+        );
       }
     } catch (e) {
-      toast(String(e));
+      toast(errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -49,52 +65,48 @@ export default function Settings({ onImported }: { onImported: () => void }) {
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>Impostazioni</h1>
-          <p className="muted" style={{ marginTop: 6 }}>Tutto resta su questo dispositivo.</p>
+          <h1>{t("settings.title")}</h1>
+          <p className="muted" style={{ marginTop: 6 }}>{t("settings.subtitle")}</p>
         </div>
       </div>
 
-      <Group title="Blocco">
-        <Row icon={<Timer size={20} />} title="Blocco automatico" sub="Dopo un periodo di inattività">
+      <Group title={t("settings.groupLock")}>
+        <Row icon={<Timer size={20} />} title={t("settings.autoLockTitle")} sub={t("settings.autoLockSub")}>
           <Segmented options={LOCK_OPTIONS} value={s.auto_lock_minutes} onChange={(v) => save({ auto_lock_minutes: v })} />
         </Row>
         <Row
           icon={<Moon size={20} />}
-          title="Blocca in stop"
-          sub={isMobile() ? "Quando il telefono va in standby" : "Quando il computer va in sospensione o blocchi lo schermo"}
+          title={t("settings.lockOnSleepTitle")}
+          sub={isMobile() ? t("settings.lockOnSleepSubMobile") : t("settings.lockOnSleepSubDesktop")}
         >
           <Switch checked={s.lock_on_sleep} onChange={(v) => save({ lock_on_sleep: v })} />
         </Row>
-        <Row icon={<Clipboard size={20} />} title="Svuota appunti" sub="Cancella la password copiata dopo">
+        <Row icon={<Clipboard size={20} />} title={t("settings.clipboardTitle")} sub={t("settings.clipboardSub")}>
           <Segmented options={CLIP_OPTIONS} value={s.clipboard_clear_secs} onChange={(v) => save({ clipboard_clear_secs: v })} />
         </Row>
-        <Row icon={<KeyRound size={20} />} title="Master password" sub="Argon2id · XChaCha20-Poly1305">
-          <button className="btn btn-secondary btn-sm" onClick={() => setChanging(true)}>Cambia</button>
+        <Row icon={<KeyRound size={20} />} title={t("settings.masterPasswordTitle")} sub={t("settings.masterPasswordSub")}>
+          <button className="btn btn-secondary btn-sm" onClick={() => setChanging(true)}>{t("settings.change")}</button>
         </Row>
       </Group>
 
       {isMobile() ? (
-        <Group title="Compilazione automatica">
-          <Row
-            icon={<Smartphone size={20} />}
-            title="Autofill di sistema"
-            sub="Impostazioni Android → Password e account → Servizio di compilazione automatica → Kryptos"
-          >
+        <Group title={t("settings.groupAutofill")}>
+          <Row icon={<Smartphone size={20} />} title={t("settings.systemAutofillTitle")} sub={t("settings.systemAutofillSub")}>
             <span />
           </Row>
         </Group>
       ) : (
         <>
-        <Group title="Browser">
+        <Group title={t("settings.groupBrowser")}>
           <Row
             icon={<Globe size={20} />}
-            title="Estensione browser"
+            title={t("settings.browserExtTitle")}
             sub={
               s.browser_integration
                 ? browsers?.length
-                  ? `Collegata a ${browsers.join(", ")}`
-                  : "Collegata"
-                : "Compila le password su Chrome, Arc, Brave, Edge e Firefox"
+                  ? t("settings.browserExtConnectedTo", { browsers: browsers.join(", ") })
+                  : t("settings.browserExtConnected")
+                : t("settings.browserExtDisconnectedSub")
             }
           >
             {s.browser_integration ? (
@@ -106,7 +118,7 @@ export default function Settings({ onImported }: { onImported: () => void }) {
                   setBrowsers(null);
                 }}
               >
-                Scollega
+                {t("settings.disconnect")}
               </button>
             ) : (
               <button
@@ -116,28 +128,28 @@ export default function Settings({ onImported }: { onImported: () => void }) {
                     const r = await api.connectBrowser();
                     setBrowsers(r.browsers);
                     setS({ ...s, browser_integration: true });
-                    toast(r.browsers.length ? `Collegata a ${r.browsers.join(", ")}` : "Nessun browser trovato");
+                    toast(r.browsers.length ? t("settings.browserExtConnectedTo", { browsers: r.browsers.join(", ") }) : t("settings.noBrowserFound"));
                   } catch (e) {
-                    toast(String(e));
+                    toast(errorMessage(e));
                   }
                 }}
               >
-                Collega
+                {t("settings.connect")}
               </button>
             )}
           </Row>
         </Group>
 
-        <Group title="Dati">
-          <Row icon={<Upload size={20} />} title="Importa password" sub="CSV da Google, Chrome, Bitwarden, 1Password, Firefox">
-            <button className="btn btn-secondary btn-sm" onClick={importCsv} disabled={busy}>Importa</button>
+        <Group title={t("settings.groupData")}>
+          <Row icon={<Upload size={20} />} title={t("settings.importTitle")} sub={t("settings.importSub")}>
+            <button className="btn btn-secondary btn-sm" onClick={importCsv} disabled={busy}>{t("settings.import")}</button>
           </Row>
-          <Row icon={<Download size={20} />} title="Backup cifrato" sub="Copia del vault, leggibile solo con la master password">
+          <Row icon={<Download size={20} />} title={t("settings.backupTitle")} sub={t("settings.backupSub")}>
             <button
               className="btn btn-secondary btn-sm"
-              onClick={async () => (await api.exportBackup()) && toast("Backup salvato")}
+              onClick={async () => (await api.exportBackup()) && toast(t("settings.backupSaved"))}
             >
-              Esporta
+              {t("settings.export")}
             </button>
           </Row>
         </Group>
@@ -146,7 +158,7 @@ export default function Settings({ onImported }: { onImported: () => void }) {
 
       <section className="about">
         <WifiOff size={16} />
-        <span>Kryptos 0.1 · 100% offline · nessuna connessione di rete</span>
+        <span>{t("settings.about")}</span>
         <ShieldCheck size={16} />
       </section>
 
@@ -155,7 +167,7 @@ export default function Settings({ onImported }: { onImported: () => void }) {
           onClose={() => setChanging(false)}
           onDone={() => {
             setChanging(false);
-            toast("Master password aggiornata");
+            toast(t("settings.masterUpdatedToast"));
           }}
         />
       )}
@@ -185,12 +197,13 @@ function Row({ icon, title, sub, children }: { icon: ReactNode; title: string; s
   );
 }
 
-function Segmented({ options, value, onChange }: { options: [number, string][]; value: number; onChange: (v: number) => void }) {
+function Segmented({ options, value, onChange }: { options: [number, TKey][]; value: number; onChange: (v: number) => void }) {
+  const { t } = useT();
   return (
     <div className="segmented">
       {options.map(([v, label]) => (
         <button key={v} className={value === v ? "active" : ""} onClick={() => onChange(v)}>
-          {label}
+          {t(label)}
         </button>
       ))}
     </div>
@@ -198,6 +211,7 @@ function Segmented({ options, value, onChange }: { options: [number, string][]; 
 }
 
 function ChangeMaster({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { t, errorMessage } = useT();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -206,28 +220,28 @@ function ChangeMaster({ onClose, onDone }: { onClose: () => void; onDone: () => 
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (next.length < 8) return setError("Usa almeno 8 caratteri.");
-    if (next !== confirm) return setError("Le nuove password non coincidono.");
+    if (next.length < 8) return setError(t("common.errorTooShort"));
+    if (next !== confirm) return setError(t("settings.errorMismatchNew"));
     setBusy(true);
     try {
       await api.changeMasterPassword(current, next);
       onDone();
     } catch (err) {
-      setError(err === "wrong_password" ? "La password attuale non è corretta." : String(err));
+      setError(err === "wrong_password" ? t("settings.currentPasswordWrong") : errorMessage(err));
       setBusy(false);
     }
   };
 
   return (
-    <Sheet onClose={onClose} title="Cambia master password">
+    <Sheet onClose={onClose} title={t("settings.changeMasterTitle")}>
       <form className="form" onSubmit={submit} style={{ marginTop: 12 }}>
-        <PasswordInput value={current} onChange={setCurrent} placeholder="Password attuale" autoFocus />
-        <PasswordInput value={next} onChange={setNext} placeholder="Nuova password" />
-        <PasswordInput value={confirm} onChange={setConfirm} placeholder="Ripeti la nuova password" />
+        <PasswordInput value={current} onChange={setCurrent} placeholder={t("settings.currentPasswordPlaceholder")} autoFocus />
+        <PasswordInput value={next} onChange={setNext} placeholder={t("settings.newPasswordPlaceholder")} />
+        <PasswordInput value={confirm} onChange={setConfirm} placeholder={t("settings.confirmNewPasswordPlaceholder")} />
         {error && <p className="error">{error}</p>}
         <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Annulla</button>
-          <button className="btn btn-primary" disabled={busy || !current || !next}>{busy ? "Aggiornamento…" : "Aggiorna"}</button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>{t("common.cancel")}</button>
+          <button className="btn btn-primary" disabled={busy || !current || !next}>{busy ? t("settings.updateBusy") : t("settings.update")}</button>
         </div>
       </form>
     </Sheet>

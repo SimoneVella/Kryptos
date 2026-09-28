@@ -3,8 +3,10 @@ import { useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronRight, Clock, Copy as CopyIcon } from "lucide-react";
 import type { EntrySummary, HealthReport } from "../lib/api";
 import { Avatar } from "../components/ui";
+import { useT } from "../i18n";
 
 export default function Security({ entries, report, onOpen }: { entries: EntrySummary[]; report: HealthReport | null; onOpen: (id: string) => void }) {
+  const { t } = useT();
   if (!report) return null;
   const byId = new Map(entries.map((e) => [e.id, e]));
   const score = report.score;
@@ -15,8 +17,8 @@ export default function Security({ entries, report, onOpen }: { entries: EntrySu
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>Sicurezza</h1>
-          <p className="muted" style={{ marginTop: 6 }}>Analisi fatta interamente sul dispositivo. Nessun dato lascia il tuo computer.</p>
+          <h1>{t("security.title")}</h1>
+          <p className="muted" style={{ marginTop: 6 }}>{t("security.subtitle")}</p>
         </div>
       </div>
 
@@ -32,27 +34,30 @@ export default function Security({ entries, report, onOpen }: { entries: EntrySu
           <b>{score}</b>
         </div>
         <div>
-          <h2>{score >= 80 ? "Ottimo lavoro" : score >= 50 ? "Si può migliorare" : "Serve attenzione"}</h2>
+          <h2>{score >= 80 ? t("security.scoreGreat") : score >= 50 ? t("security.scoreOk") : t("security.scoreBad")}</h2>
           <p className="muted" style={{ marginTop: 6, lineHeight: 1.5 }}>
             {report.total === 0
-              ? "Aggiungi delle password per vedere il punteggio."
-              : `${report.total - new Set([...report.weak, ...report.reused, ...report.old]).size} password su ${report.total} non hanno problemi.`}
+              ? t("security.scoreEmptyHint")
+              : t("security.scoreSummary", {
+                  ok: report.total - new Set([...report.weak, ...report.reused, ...report.old]).size,
+                  total: report.total,
+                })}
           </p>
         </div>
       </section>
 
       <section className="card">
         <Issue
-          icon={<AlertTriangle size={20} />} tint="var(--danger)" title="Password deboli"
-          sub="Troppo corte o semplici da indovinare" ids={report.weak} byId={byId} onOpen={onOpen}
+          icon={<AlertTriangle size={20} />} tint="var(--danger)" title={t("security.weakTitle")}
+          sub={t("security.weakSub")} ids={report.weak} byId={byId} onOpen={onOpen}
         />
         <Issue
-          icon={<CopyIcon size={19} />} tint="var(--warning)" title="Password riutilizzate"
-          sub="Se una viene scoperta, lo sono anche le altre" ids={report.reused} byId={byId} onOpen={onOpen}
+          icon={<CopyIcon size={19} />} tint="var(--warning)" title={t("security.reusedTitle")}
+          sub={t("security.reusedSub")} ids={report.reused} byId={byId} onOpen={onOpen}
         />
         <Issue
-          icon={<Clock size={19} />} tint="var(--accent)" title="Password vecchie"
-          sub="Non modificate da più di un anno" ids={report.old} byId={byId} onOpen={onOpen}
+          icon={<Clock size={19} />} tint="var(--accent)" title={t("security.oldTitle")}
+          sub={t("security.oldSub")} ids={report.old} byId={byId} onOpen={onOpen}
         />
       </section>
 

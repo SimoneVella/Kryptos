@@ -3,9 +3,11 @@ import { RefreshCw } from "lucide-react";
 import { api, defaultGenerator, type EntryInput } from "../lib/api";
 import { estimateBits } from "../lib/utils";
 import { PasswordInput, Sheet, StrengthBar, Switch, useToast } from "../components/ui";
+import { useT } from "../i18n";
 import type { Editing } from "./Shell";
 
 export default function EditorSheet(props: { editing: Editing; onClose: () => void; onSaved: (id: string) => void }) {
+  const { t, errorMessage } = useT();
   const [v, setV] = useState<EntryInput>(props.editing.input);
   const [urls, setUrls] = useState(props.editing.input.urls.join(", "));
   const [error, setError] = useState("");
@@ -20,31 +22,31 @@ export default function EditorSheet(props: { editing: Editing; onClose: () => vo
     const input = { ...v, urls: urls.split(",").map((s) => s.trim()).filter(Boolean) };
     try {
       const id = isNew ? await api.addEntry(input) : (await api.updateEntry(props.editing.id!, input), props.editing.id!);
-      toast(isNew ? "Password salvata" : "Modifiche salvate");
+      toast(isNew ? t("editor.savedNewToast") : t("editor.savedEditToast"));
       props.onSaved(id);
     } catch (err) {
-      setError(String(err));
+      setError(errorMessage(err));
       setBusy(false);
     }
   };
 
   return (
-    <Sheet onClose={props.onClose} title={isNew ? "Nuova password" : "Modifica"}>
+    <Sheet onClose={props.onClose} title={isNew ? t("editor.titleNew") : t("common.edit")}>
       <form className="form" onSubmit={submit} style={{ marginTop: 12 }}>
         <div>
-          <label className="label">Nome</label>
-          <input className="input" placeholder="es. Google, Netflix, Banca" value={v.title} onChange={(e) => set("title", e.target.value)} autoFocus />
+          <label className="label">{t("editor.nameLabel")}</label>
+          <input className="input" placeholder={t("editor.namePlaceholder")} value={v.title} onChange={(e) => set("title", e.target.value)} autoFocus />
         </div>
         <div>
-          <label className="label">Sito web</label>
-          <input className="input" placeholder="example.com" value={urls} onChange={(e) => setUrls(e.target.value)} spellCheck={false} />
+          <label className="label">{t("entry.websiteLabel")}</label>
+          <input className="input" placeholder={t("editor.websitePlaceholder")} value={urls} onChange={(e) => setUrls(e.target.value)} spellCheck={false} />
         </div>
         <div>
-          <label className="label">Nome utente o email</label>
+          <label className="label">{t("editor.usernameLabel")}</label>
           <input className="input" value={v.username} onChange={(e) => set("username", e.target.value)} spellCheck={false} autoComplete="off" />
         </div>
         <div>
-          <label className="label">Password</label>
+          <label className="label">{t("entry.passwordLabel")}</label>
           <PasswordInput
             value={v.password}
             onChange={(p) => set("password", p)}
@@ -53,7 +55,7 @@ export default function EditorSheet(props: { editing: Editing; onClose: () => vo
               <button
                 type="button"
                 className="icon-btn"
-                title="Genera"
+                title={t("common.generate")}
                 onClick={async () => set("password", (await api.generatePassword(defaultGenerator)).password)}
               >
                 <RefreshCw size={18} />
@@ -67,17 +69,17 @@ export default function EditorSheet(props: { editing: Editing; onClose: () => vo
           )}
         </div>
         <div>
-          <label className="label">Note</label>
+          <label className="label">{t("entry.notesLabel")}</label>
           <textarea className="input" value={v.notes} onChange={(e) => set("notes", e.target.value)} />
         </div>
         <div className="toggle-row" style={{ padding: "4px 4px" }}>
-          <span>Aggiungi ai preferiti</span>
+          <span>{t("editor.favoriteToggle")}</span>
           <Switch checked={v.favorite} onChange={(b) => set("favorite", b)} />
         </div>
         {error && <p className="error">{error}</p>}
         <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={props.onClose}>Annulla</button>
-          <button className="btn btn-primary" disabled={busy || !v.title.trim()}>{isNew ? "Salva" : "Salva modifiche"}</button>
+          <button type="button" className="btn btn-secondary" onClick={props.onClose}>{t("common.cancel")}</button>
+          <button className="btn btn-primary" disabled={busy || !v.title.trim()}>{isNew ? t("editor.saveNew") : t("editor.saveEdit")}</button>
         </div>
       </form>
     </Sheet>
