@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { CheckCircle2, Clipboard, Download, Fingerprint, Globe, KeyRound, Languages, Moon, ShieldCheck, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
-import { api, type BiometricStatus, type Settings as SettingsT } from "../lib/api";
+import { CheckCircle2, Clipboard, Download, FileInput, Fingerprint, Globe, KeyRound, Languages, Moon, QrCode, ScanLine, ShieldCheck, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
+import { api, type BiometricStatus, type Settings as SettingsT, type StagedCopy } from "../lib/api";
+import { MergeSheet, ScanQrSheet, SendQrSheet } from "./Sync";
 import { PasswordInput, Sheet, Switch, useToast } from "../components/ui";
 import { isMobile } from "../lib/utils";
 import { useT, LOCALES, type TKey } from "../i18n";
@@ -24,6 +25,8 @@ export default function Settings({ onImported }: { onImported: () => void }) {
   const [s, setS] = useState<SettingsT | null>(null);
   const [browsers, setBrowsers] = useState<string[] | null>(null);
   const [changing, setChanging] = useState(false);
+  const [staged, setStaged] = useState<StagedCopy | null>(null);
+  const [qr, setQr] = useState<"send" | "scan" | null>(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
@@ -60,6 +63,20 @@ export default function Settings({ onImported }: { onImported: () => void }) {
       if (e !== "cancelled" && e !== "use_master") toast(errorMessage(e));
     }
     setBio(await api.biometricStatus());
+  };
+
+  /** Runs an action and shows its error, if any, as a toast. */
+  const attempt = async (f: () => Promise<unknown>) => {
+    try {
+      await f();
+    } catch (e) {
+      toast(errorMessage(e));
+    }
+  };
+
+  const received = async (base64: string) => {
+    setQr(null);
+    await attempt(async () => setStaged(await api.syncStageBytes(base64)));
   };
 
   const save = async (patch: Partial<SettingsT>) => {
@@ -207,18 +224,28 @@ export default function Settings({ onImported }: { onImported: () => void }) {
           <button className="btn btn-secondary btn-sm" onClick={importCsv} disabled={busy}>{t("settings.import")}</button>
         </Row>
         <Row icon={<Download size={20} />} title={t("settings.backupTitle")} sub={t("settings.backupSub")}>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={async () => {
-              try {
-                if (await api.exportBackup()) toast(t("settings.backupSaved"));
-              } catch (e) {
-                toast(errorMessage(e));
-              }
-            }}
-          >
-            {t("settings.export")}
+          <div className="row-buttons">
+            <button className="btn btn-secondary btn-sm" onClick={() => attempt(async () => (await api.exportBackup()) && toast(t("settings.backupSaved")))}>
+              {t("settings.export")}
+            </button>
+            {isMobile() && (
+              <button className="btn btn-secondary btn-sm" onClick={() => attempt(api.shareBackup)}>{t("settings.share")}</button>
+            )}
+          </div>
+        </Row>
+      </Group>
+
+      <Group title={t("settings.groupSync")}>
+        <Row icon={<FileInput size={20} />} title={t("settings.syncMergeTitle")} sub={t("settings.syncMergeSub")}>
+          <button className="btn btn-secondary btn-sm" onClick={() => attempt(async () => setStaged(await api.syncStageFile()))}>
+            {t("settings.syncChooseFile")}
           </button>
+        </Row>
+        <Row icon={<ScanLine size={20} />} title={t("settings.syncScanTitle")} sub={t("settings.syncScanSub")}>
+          <button className="btn btn-secondary btn-sm" onClick={() => setQr("scan")}>{t("settings.syncScan")}</button>
+        </Row>
+        <Row icon={<QrCode size={20} />} title={t("settings.syncSendTitle")} sub={t("settings.syncSendSub")}>
+          <button className="btn btn-secondary btn-sm" onClick={() => setQr("send")}>{t("settings.syncShow")}</button>
         </Row>
       </Group>
 
@@ -228,6 +255,19 @@ export default function Settings({ onImported }: { onImported: () => void }) {
         <ShieldCheck size={16} />
       </section>
 
+      {qr === "send" && <SendQrSheet onClose={() => setQr(null)} />}
+      {qr === "scan" && <ScanQrSheet onClose={() => setQr(null)} onReceived={received} />}
+      {staged && (
+        <MergeSheet
+          copy={staged}
+          onClose={() => setStaged(null)}
+          onDone={(r) => {
+            setStaged(null);
+            onImported();
+            toast(t("settings.syncMergedToast", { added: r.added, updated: r.updated, deleted: r.deleted }));
+          }}
+        />
+      )}
       {changing && (
         <ChangeMaster
           onClose={() => setChanging(false)}

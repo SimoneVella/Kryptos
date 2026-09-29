@@ -61,6 +61,11 @@ async function invoke(cmd: string, a: Any = {}): Promise<unknown> {
     case "autofill_status": return autofill;
     case "open_autofill_settings": autofill = true; return;
     case "biometric_status": return biometric;
+    case "sync_stage_file": return { file: "Kryptos-backup-2026-09-29.kryptos", same_vault: true };
+    case "sync_stage_bytes": return { file: "", same_vault: true };
+    case "sync_merge": await wait(600); if (a.password !== "password") throw "wrong_password"; return { added: 2, updated: 1, deleted: 0 };
+    case "sync_cancel": case "share_backup": return;
+    case "sync_qr_frames": return { frames: [], bytes: 0 };
     case "biometric_enable": await wait(400); biometric = "on"; return;
     case "biometric_disable": biometric = "off"; return;
     case "biometric_unlock": await wait(400); unlocked = true; return;

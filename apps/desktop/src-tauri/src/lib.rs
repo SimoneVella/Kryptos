@@ -8,6 +8,7 @@ mod commands;
 mod android;
 mod settings;
 mod state;
+mod sync;
 mod watchdog;
 
 #[cfg(not(target_os = "android"))]
@@ -22,6 +23,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .manage(sync::Staged::default())
         .setup(|app| {
             // Android shares the state (and its watchdog) with the autofill side.
             #[cfg(target_os = "android")]
@@ -84,6 +86,12 @@ pub fn run() {
             commands::biometric_enable,
             commands::biometric_disable,
             commands::biometric_unlock,
+            sync::sync_stage_file,
+            sync::sync_stage_bytes,
+            sync::sync_merge,
+            sync::sync_cancel,
+            sync::sync_qr_frames,
+            sync::share_backup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Kryptos");

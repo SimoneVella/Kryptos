@@ -3,6 +3,11 @@
     <!-- No INTERNET permission: the release app cannot open network sockets at all.
          Debug builds add it in src/debug/AndroidManifest.xml to reach the dev server. -->
 
+    <!-- Camera: only to scan the QR codes another device shows when moving the vault
+         over (asked at runtime, the first time). Not required to install the app. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 

@@ -11,4 +11,5 @@
     public void biometricUnlock();
     public void biometricDisable();
     public void onMasterUnlock();
+    public void shareFile(java.lang.String, java.lang.String);
 }

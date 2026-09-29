@@ -8,10 +8,12 @@ import android.view.View
 import android.view.WindowManager
 import android.view.autofill.AutofillManager
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.FileProvider
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
+import java.io.File
 
 class MainActivity : TauriActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,4 +86,17 @@ class MainActivity : TauriActivity() {
   fun biometricDisable() = Biometric.disable(this)
 
   fun onMasterUnlock() = Biometric.onMasterUnlock(this)
+
+  /** Shares an encrypted backup: copies [src] into the cache as [name] and opens the share sheet. */
+  fun shareFile(src: String, name: String) {
+    val dir = File(cacheDir, "share").apply { deleteRecursively(); mkdirs() }
+    val copy = File(dir, name)
+    runCatching { File(src).copyTo(copy, overwrite = true) }.onFailure { return }
+    val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", copy)
+    val send = Intent(Intent.ACTION_SEND)
+      .setType("application/octet-stream")
+      .putExtra(Intent.EXTRA_STREAM, uri)
+      .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    startActivity(Intent.createChooser(send, null))
+  }
 }

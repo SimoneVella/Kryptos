@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged by Tauri into the app's Info.plist. -->
+<plist version="1.0">
+<dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Kryptos uses the camera only to scan the QR codes another device shows when you move your vault over. Nothing is recorded or sent anywhere.</string>
+</dict>
+</plist>

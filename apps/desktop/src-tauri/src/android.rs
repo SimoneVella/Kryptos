@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use std::sync::{mpsc, Mutex, OnceLock};
 use std::time::Duration;
 
-use jni::objects::{JByteArray, JClass, JObject, JString};
+use jni::objects::{JByteArray, JClass, JObject, JString, JValue};
 use jni::sys::{jboolean, jbyteArray, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use kryptos_core::matching::entry_matches;
@@ -129,6 +129,19 @@ pub fn biometric_prompt(app: &AppHandle, method: &'static str) -> Result<(), Str
 
 pub fn biometric_disable(app: &AppHandle) {
     call_void(app, "biometricDisable");
+}
+
+/// Copies `src` into the app cache as `name` and opens the system share sheet for it.
+pub fn share_file(app: &AppHandle, src: String, name: String) {
+    with_activity(app, move |env, activity| {
+        let (Ok(src), Ok(name)) = (env.new_string(src), env.new_string(name)) else { return };
+        let _ = env.call_method(
+            activity,
+            "shareFile",
+            "(Ljava/lang/String;Ljava/lang/String;)V",
+            &[JValue::Object(&src), JValue::Object(&name)],
+        );
+    });
 }
 
 /// The master password was just verified: restarts the 7-day biometric window.

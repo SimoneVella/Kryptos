@@ -11,6 +11,27 @@ use crate::format::{self, Header, WRAP_AAD};
 struct VaultData {
     #[serde(default)]
     entries: Vec<Entry>,
+    /// Deleted entries (id and time only), so that merging with an older copy of
+    /// the vault does not bring them back. Missing in vaults written before sync.
+    #[serde(default)]
+    tombstones: Vec<Tombstone>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+struct Tombstone {
+    id: Uuid,
+    deleted_at: u64,
+}
+
+/// What a merge changed in the receiving vault.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct MergeReport {
+    /// Entries only the other copy had.
+    pub added: usize,
+    /// Entries the other copy had edited more recently.
+    pub updated: usize,
+    /// Entries the other copy had deleted after their last edit here.
+    pub deleted: usize,
 }
 
 /// A decrypted vault held in RAM. Dropping it wipes keys and entries.
@@ -146,8 +167,71 @@ impl UnlockedVault {
     pub fn delete(&mut self, id: Uuid) -> Result<()> {
         let before = self.data.entries.len();
         self.data.entries.retain(|e| e.id != id);
-        if self.data.entries.len() == before { Err(Error::NotFound) } else { Ok(()) }
+        if self.data.entries.len() == before {
+            return Err(Error::NotFound);
+        }
+        self.data.tombstones.retain(|t| t.id != id);
+        self.data.tombstones.push(Tombstone { id, deleted_at: now() });
+        Ok(())
     }
+
+    // ---- sync ----
+
+    /// Decrypts another copy of the vault (a backup, or one received from another
+    /// device) with its own master password and merges it into this one.
+    pub fn merge_bytes(&mut self, bytes: &[u8], password: &str) -> Result<MergeReport> {
+        let other = UnlockedVault::unlock(bytes, password)?;
+        Ok(self.merge_from(&other))
+    }
+
+    /// Merges another copy entry by entry: the most recent change wins, where a
+    /// deletion counts as a change (at equal times the deletion wins). An entry
+    /// edited after it was deleted elsewhere comes back. Entries that only differ
+    /// by id but have the same site, username and password (e.g. the same CSV
+    /// imported on both devices) are not duplicated.
+    pub fn merge_from(&mut self, other: &UnlockedVault) -> MergeReport {
+        let mut report = MergeReport::default();
+
+        // Latest deletion time per id, from both sides.
+        let mut deleted: std::collections::HashMap<Uuid, u64> = std::collections::HashMap::new();
+        for t in self.data.tombstones.iter().chain(&other.data.tombstones) {
+            let d = deleted.entry(t.id).or_insert(0);
+            *d = (*d).max(t.deleted_at);
+        }
+        let is_deleted = |id: Uuid, updated_at: u64| deleted.get(&id).is_some_and(|&d| d >= updated_at);
+
+        let before = self.data.entries.len();
+        self.data.entries.retain(|e| !is_deleted(e.id, e.updated_at));
+        report.deleted = before - self.data.entries.len();
+
+        for theirs in &other.data.entries {
+            if is_deleted(theirs.id, theirs.updated_at) {
+                continue;
+            }
+            match self.data.entries.iter().position(|e| e.id == theirs.id) {
+                Some(i) if theirs.updated_at > self.data.entries[i].updated_at => {
+                    self.data.entries[i] = theirs.clone();
+                    report.updated += 1;
+                }
+                Some(_) => {}
+                None if self.data.entries.iter().any(|e| same_login(e, theirs)) => {}
+                None => {
+                    self.data.entries.push(theirs.clone());
+                    report.added += 1;
+                }
+            }
+        }
+
+        let mut tombstones: Vec<_> = deleted.into_iter().map(|(id, deleted_at)| Tombstone { id, deleted_at }).collect();
+        tombstones.sort_by_key(|t| t.deleted_at);
+        self.data.tombstones = tombstones;
+        report
+    }
+}
+
+fn same_login(a: &Entry, b: &Entry) -> bool {
+    let host = |e: &Entry| e.urls.first().and_then(|u| crate::import::host_of(u)).unwrap_or_default();
+    a.username == b.username && a.password == b.password && host(a) == host(b)
 }
 
 fn wrap_header(vault_id: Uuid, key: &SecretKey, password: &str, kdf: KdfParams) -> Result<Header> {
@@ -257,5 +341,91 @@ mod tests {
         v.delete(id).unwrap();
         assert!(v.list().is_empty());
         assert!(matches!(v.delete(id), Err(Error::NotFound)));
+    }
+
+    fn pair() -> (UnlockedVault, UnlockedVault) {
+        let a = UnlockedVault::create("correct horse", KdfParams::TEST).unwrap();
+        let b = UnlockedVault::unlock(&a.to_bytes(), "correct horse").unwrap();
+        (a, b)
+    }
+
+    fn touch(v: &mut UnlockedVault, id: Uuid, title: &str, at: u64) {
+        let e = v.data.entries.iter_mut().find(|e| e.id == id).unwrap();
+        e.title = title.into();
+        e.updated_at = at;
+    }
+
+    #[test]
+    fn merge_adds_updates_and_keeps_newer() {
+        let (mut a, mut b) = pair();
+        let shared = a.add(input("Shared")).unwrap();
+        let mut b2 = UnlockedVault::unlock(&a.to_bytes(), "correct horse").unwrap();
+        std::mem::swap(&mut b, &mut b2);
+        let mut only = input("Only B");
+        only.urls = vec!["https://only-b.test".into()];
+        let only_b = b.add(only).unwrap();
+        touch(&mut b, shared, "Edited on B", 2_000_000_000);
+
+        let r = a.merge_from(&b);
+        assert_eq!(r, MergeReport { added: 1, updated: 1, deleted: 0 });
+        assert_eq!(a.get(shared).unwrap().title, "Edited on B");
+        assert!(a.get(only_b).is_ok());
+
+        // Older copy does not overwrite the newer edit.
+        touch(&mut b, shared, "Stale", 1);
+        assert_eq!(a.merge_from(&b), MergeReport::default());
+        assert_eq!(a.get(shared).unwrap().title, "Edited on B");
+    }
+
+    #[test]
+    fn merge_propagates_deletions_both_ways() {
+        let (mut a, _) = pair();
+        let id = a.add(input("Doomed")).unwrap();
+        let mut b = UnlockedVault::unlock(&a.to_bytes(), "correct horse").unwrap();
+
+        b.delete(id).unwrap();
+        assert_eq!(a.merge_from(&b).deleted, 1);
+        assert!(a.get(id).is_err());
+
+        // Merging back the other way must not resurrect it on B.
+        let old_a = UnlockedVault::unlock(&a.to_bytes(), "correct horse").unwrap();
+        assert_eq!(b.merge_from(&old_a), MergeReport::default());
+        assert!(b.get(id).is_err());
+
+        // Tombstones survive a save/unlock round trip.
+        let reopened = UnlockedVault::unlock(&a.to_bytes(), "correct horse").unwrap();
+        assert_eq!(reopened.data.tombstones.len(), 1);
+    }
+
+    #[test]
+    fn edit_after_delete_wins() {
+        let (mut a, _) = pair();
+        let id = a.add(input("Phoenix")).unwrap();
+        let mut b = UnlockedVault::unlock(&a.to_bytes(), "correct horse").unwrap();
+        a.delete(id).unwrap();
+        let deleted_at = a.data.tombstones[0].deleted_at;
+        touch(&mut b, id, "Edited later", deleted_at + 10);
+
+        assert_eq!(a.merge_from(&b).added, 1);
+        assert_eq!(a.get(id).unwrap().title, "Edited later");
+    }
+
+    #[test]
+    fn merge_skips_same_login_with_other_id() {
+        let (mut a, mut b) = pair();
+        a.add(input("Example")).unwrap();
+        b.add(input("Example (imported twice)")).unwrap();
+        assert_eq!(a.merge_from(&b), MergeReport::default());
+        assert_eq!(a.entries().len(), 1);
+    }
+
+    #[test]
+    fn merge_bytes_needs_the_other_password() {
+        let (mut a, _) = pair();
+        let mut other = UnlockedVault::create("another password", KdfParams::TEST).unwrap();
+        other.add(input("From elsewhere")).unwrap();
+        let bytes = other.to_bytes();
+        assert!(matches!(a.merge_bytes(&bytes, "correct horse"), Err(Error::WrongPassword)));
+        assert_eq!(a.merge_bytes(&bytes, "another password").unwrap().added, 1);
     }
 }

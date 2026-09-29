@@ -21,9 +21,9 @@ use crate::browser;
 use crate::settings::Settings;
 use crate::state::AppState;
 
-type CmdResult<T> = Result<T, String>;
+pub(crate) type CmdResult<T> = Result<T, String>;
 
-fn code(e: Error) -> String {
+pub(crate) fn code(e: Error) -> String {
     match e {
         Error::WrongPassword => "wrong_password".into(),
         Error::NotFound => "not_found".into(),
@@ -243,7 +243,7 @@ pub async fn import_csv(app: AppHandle, state: State<'_, AppState>) -> CmdResult
 }
 
 /// Display name of a picked file; Android only gives an opaque, percent-encoded URI.
-fn file_name(picked: &FilePath) -> String {
+pub(crate) fn file_name(picked: &FilePath) -> String {
     match picked {
         FilePath::Path(p) => p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
         FilePath::Url(u) => {
@@ -290,7 +290,7 @@ pub async fn export_backup(app: AppHandle, state: State<'_, AppState>) -> CmdRes
     Ok(true)
 }
 
-fn today() -> String {
+pub(crate) fn today() -> String {
     // YYYY-MM-DD without pulling in a date crate (civil-from-days, Howard Hinnant).
     let days = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() / 86400).unwrap_or(0) as i64;
     let z = days + 719_468;

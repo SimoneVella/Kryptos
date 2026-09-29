@@ -63,6 +63,10 @@ export type Settings = {
   language: string;
 };
 
+export type MergeReport = { added: number; updated: number; deleted: number };
+/** A copy of a vault waiting for its master password before being merged. */
+export type StagedCopy = { file: string; same_vault: boolean };
+
 export type BiometricStatus = "unavailable" | "off" | "on" | "master_required";
 
 /** Backend error codes worth special-casing in the UI. */
@@ -109,6 +113,17 @@ export const api = {
   biometricEnable: () => invoke<void>("biometric_enable"),
   biometricDisable: () => invoke<void>("biometric_disable"),
   biometricUnlock: () => invoke<void>("biometric_unlock"),
+
+  /** Sync without network: pick a backup / hand over a copy received as QR codes
+   *  (base64), then merge it with that copy's master password. */
+  syncStageFile: () => invoke<StagedCopy | null>("sync_stage_file"),
+  syncStageBytes: (data: string) => invoke<StagedCopy>("sync_stage_bytes", { data }),
+  syncMerge: (password: string) => invoke<MergeReport>("sync_merge", { password }),
+  syncCancel: () => invoke<void>("sync_cancel"),
+  /** This vault (encrypted) as QR codes to show in a loop, one SVG per frame. */
+  syncQrFrames: () => invoke<{ frames: string[]; bytes: number }>("sync_qr_frames"),
+  /** Android: encrypted backup to the system share sheet. */
+  shareBackup: () => invoke<void>("share_backup"),
 
   onLocked: (cb: () => void): Promise<UnlistenFn> => listen("vault-locked", cb),
   /** Unlocked outside the UI (fingerprint from an autofill suggestion). */

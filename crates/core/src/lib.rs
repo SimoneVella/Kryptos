@@ -19,4 +19,4 @@ pub mod vault;
 pub use entry::{Entry, EntryInput, EntrySummary};
 pub use error::{Error, Result};
 pub use generator::GeneratorOptions;
-pub use vault::UnlockedVault;
+pub use vault::{MergeReport, UnlockedVault};

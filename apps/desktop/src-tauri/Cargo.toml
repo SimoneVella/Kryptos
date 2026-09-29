@@ -23,6 +23,8 @@ zeroize.workspace = true
 uuid = "1"
 url = "2"
 tauri-plugin-fs = "2"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+base64 = "0.22"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.10"
