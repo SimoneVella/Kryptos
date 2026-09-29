@@ -21,7 +21,7 @@ const CLIP_OPTIONS: [number, TKey][] = [
 ];
 
 export default function Settings({ onImported }: { onImported: () => void }) {
-  const { t, errorMessage, setLanguagePreference } = useT();
+  const { t, plural, locale, errorMessage, setLanguagePreference } = useT();
   const [s, setS] = useState<SettingsT | null>(null);
   const [browsers, setBrowsers] = useState<string[] | null>(null);
   const [changing, setChanging] = useState(false);
@@ -264,7 +264,11 @@ export default function Settings({ onImported }: { onImported: () => void }) {
           onDone={(r) => {
             setStaged(null);
             onImported();
-            toast(t("settings.syncMergedToast", { added: r.added, updated: r.updated, deleted: r.deleted }));
+            const details = ([["sync.mergedAdded", r.added], ["sync.mergedUpdated", r.updated], ["sync.mergedDeleted", r.deleted]] as const)
+              .filter(([, n]) => n > 0)
+              .map(([key, n]) => plural(key, n))
+              .join(locale === "zh" ? "，" : ", ");
+            toast(details ? t("settings.syncMergedToast", { details }) : t("settings.syncNothingToast"));
           }}
         />
       )}

@@ -298,12 +298,15 @@ textarea.input { height: 96px; padding: 14px 18px; resize: none; }
 .shake { animation: shake 0.35s; }
 
 /* ───────── Toast ───────── */
+/* width: max-content, or the left: 50% offset would cap it at half the screen and wrap early. */
 .toast {
   position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 100;
-  display: flex; align-items: center; gap: 10px; padding: 12px 18px 12px 14px; border-radius: 999px;
-  background: #1c1c23; color: #fff; font-weight: 500; box-shadow: var(--shadow-lg); animation: toast 0.25s ease;
+  width: max-content; max-width: min(440px, calc(100vw - 32px));
+  display: flex; align-items: center; gap: 12px; padding: 12px 18px 12px 12px; border-radius: 22px;
+  background: #1c1c23; color: #fff; font-weight: 500; line-height: 1.35; box-shadow: var(--shadow-lg); animation: toast 0.25s ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
-.toast-dot { width: 24px; height: 24px; border-radius: 999px; display: grid; place-items: center; background: var(--success); }
+.toast-dot { flex: none; width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center; background: var(--success); }
 
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { opacity: 0; transform: translateY(16px) scale(0.98); } }
@@ -381,7 +384,7 @@ textarea.input { height: 96px; padding: 14px 18px; resize: none; }
   .setting-row .segmented button { flex: 1; padding: 0 8px; }
   .score { flex-direction: column; text-align: center; gap: 16px; }
   .gen-display { font-size: 22px; padding: 28px 16px 22px; }
-  .toast { bottom: calc(96px + env(safe-area-inset-bottom)); max-width: calc(100vw - 32px); }
+  .toast { bottom: calc(96px + env(safe-area-inset-bottom)); }
   .auth-card { padding-top: env(safe-area-inset-top); }
 }
 @keyframes sheet-up { from { transform: translateY(100%); } }
