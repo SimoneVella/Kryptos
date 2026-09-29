@@ -14,6 +14,18 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// Release signing. The keystore and its passwords never go in git: they are read from
+// gen/android/keystore.properties (git-ignored), or from the file named by the
+// KRYPTOS_KEYSTORE_PROPERTIES environment variable (CI, test keys). Keys:
+// storeFile (absolute path), storePassword, keyAlias, keyPassword.
+// Without it, release builds come out unsigned.
+val keystoreProperties = Properties().apply {
+    val propFile = System.getenv("KRYPTOS_KEYSTORE_PROPERTIES")?.let { file(it) } ?: rootProject.file("keystore.properties")
+    if (propFile.exists()) {
+        propFile.inputStream().use { load(it) }
+    }
+}
+
 android {
     compileSdk = 36
     namespace = "com.kryptos.vault"
@@ -24,6 +36,16 @@ android {
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    }
+    signingConfigs {
+        if (keystoreProperties.containsKey("storeFile")) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
     }
     buildTypes {
         getByName("debug") {
@@ -39,6 +61,7 @@ android {
             }
         }
         getByName("release") {
+            signingConfig = signingConfigs.findByName("release")
             optimization {
                enable = true
             }

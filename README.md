@@ -118,6 +118,17 @@ cd apps/desktop && npx tauri android build --apk --target aarch64
 Android needs `ANDROID_HOME`, `NDK_HOME` and `JAVA_HOME`. The JDK bundled with Android Studio works:
 `/Applications/Android Studio.app/Contents/jbr/Contents/Home`.
 
+**Signing Android releases.** Create the key once, outside the repository (keytool asks for the passwords):
+
+```bash
+keytool -genkeypair -v -keystore ~/kryptos-release.jks -alias kryptos -keyalg RSA -keysize 4096 -validity 10000
+```
+
+Then create `apps/desktop/src-tauri/gen/android/keystore.properties` (git-ignored) with `storeFile` (absolute
+path to the `.jks`), `storePassword`, `keyAlias` and `keyPassword`. CI can point to another file with
+`KRYPTOS_KEYSTORE_PROPERTIES`. Keep a backup of the `.jks` and its passwords: updates must be signed with the
+same key. Without the file, release builds come out unsigned.
+
 ## Changing the logo
 
 ```bash
