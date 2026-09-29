@@ -154,6 +154,27 @@ Oppure, via adb:
 adb shell settings put secure autofill_service com.kryptos.vault/.KryptosAutofillService
 ```
 
+## Spostare le password tra dispositivi
+
+Kryptos non ha un server, quindi i dispositivi non si parlano mai via rete. Per portare le password dal
+telefono al computer (o viceversa) si sposta una **copia del vault cifrato** e la si unisce:
+**Impostazioni → Sincronizza tra dispositivi**.
+
+- **Con un file.** Sul dispositivo che ha le password: *Backup cifrato → Esporta* (su Android anche
+  *Condividi*, per mandarlo con Quick Share, Drive, una chat con te stesso…). Sull'altro: *Unisci un
+  backup → Scegli file*.
+- **Con i codici QR, senza nessun file.** Su un dispositivo: *Invia con i codici QR → Mostra*: il vault
+  cifrato compare come una breve sequenza di QR. Sull'altro: *Ricevi con i codici QR → Inquadra*, e punta
+  la fotocamera sullo schermo finché la barra non è piena. Comodo dal computer al telefono (per il verso
+  opposto serve una fotocamera sul computer).
+
+In entrambi i casi poi inserisci la **master password della copia ricevuta** (di solito è la stessa) e
+Kryptos unisce voce per voce: aggiunge quello che ha solo l'altra copia, per le modifiche vince la più
+recente e riporta anche le cancellazioni. Niente viene mai sostituito in blocco.
+
+Quello che viaggia è il vault cifrato, esattamente come un backup: chi intercetta il file, o filma i QR,
+ha comunque bisogno della master password. Detto questo, non lasciare backup in giro in cartelle condivise.
+
 ## Loghi dei siti
 
 Le voci mostrano il logo del sito quando è disponibile. I loghi provengono da

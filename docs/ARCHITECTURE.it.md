@@ -121,9 +121,33 @@ delle estensioni (~120 MiB) è il motivo dei 64 MiB di Argon2 su mobile.
   (`ProcessLifecycleOwner`), abbastanza per un login in due passaggi. Per riaprirlo basta l'impronta.
 - Appunti: la password copiata viene cancellata dopo 15–120 s, ma solo se nel frattempo non hai copiato altro.
 
+## Sincronizzazione senza rete
+
+I dispositivi non si collegano mai tra loro: si porta una copia del **file del vault cifrato** e la si
+unisce (`crates/core/src/vault.rs`, `apps/desktop/src-tauri/src/sync.rs`).
+
+- **Trasporto.** Un file di backup (Android lo passa al menu di condivisione di sistema tramite il suo
+  `FileProvider`), oppure una sequenza di QR mostrata su uno schermo e letta con la fotocamera dell'altro
+  dispositivo (`getUserMedia` + [jsQR](https://github.com/cozmo/jsQR), incluso nell'app). Testo di ogni
+  fotogramma: `KRY1|<sessione>|<indice>|<totale>|<base64 di 200 byte>`, correzione d'errore M, versione 13,
+  5 fotogrammi al secondo. I 200 byte sono stati scelti decodificando fotogrammi veri con sfocatura e
+  contrasto basso simulati; con 300 byte (versione 16) la lettura falliva. Un vault con 100 login sono
+  circa 150 fotogrammi, una trentina di secondi per giro.
+- **Viaggia il file del vault così com'è su disco**, quindi il canale non impara più di quanto imparerebbe
+  da un backup: un file intercettato o una sequenza di QR filmata richiedono comunque la master password,
+  e Argon2id rende costoso indovinarla. Per mostrare i QR il vault deve essere sbloccato.
+- **Unione.** La copia ricevuta si apre con la *sua* master password (può essere un vault diverso) e si
+  unisce voce per voce per id: vince l'`updated_at` più recente; una cancellazione lascia un **tombstone**
+  (id + data, nessun dato) che vince su qualsiasi modifica precedente, mentre una modifica fatta dopo la
+  cancellazione vince sul tombstone. Una voce con un altro id ma stesso sito, username e password non viene
+  duplicata (lo stesso CSV importato su due dispositivi). Se gli orologi dei dispositivi non sono allineati
+  un conflitto può risolversi dalla parte sbagliata; per un singolo utente è accettabile.
+- **Permessi.** Android chiede la fotocamera solo quando parte la scansione; resta senza permesso INTERNET.
+  macOS dichiara `NSCameraUsageDescription` e l'entitlement per la fotocamera.
+
 ## Roadmap
 
-- [x] Core: vault, KDF, generatore, matching URL, storage atomico, import CSV, analisi sicurezza (23 test)
+- [x] Core: vault, KDF, generatore, matching URL, storage atomico, import CSV, analisi sicurezza, unione per la sincronizzazione (30 test)
 - [x] Desktop: blocco automatico (inattività, sospensione, schermo bloccato), appunti auto-puliti, impostazioni persistenti
 - [x] Import CSV (Google/Chrome, Bitwarden, 1Password, Firefox) e backup cifrato
 - [x] Estensione MV3 con ID fisso, collegamento con un clic dall'app, native host incluso nel bundle
@@ -136,4 +160,5 @@ delle estensioni (~120 MiB) è il motivo dei 64 MiB di Argon2 su mobile.
 - [ ] Salvataggio di nuovi login dal browser e dalle app (Android `onSaveRequest`)
 - [ ] TOTP
 - [ ] Windows: named pipe per il bridge e registrazione del native host nel registro
-- [ ] Sync LAN: vault cifrato via TCP locale con pairing tramite QR (chiave effimera X25519 nel QR, canale Noise), merge per voce usando `updated_at`
+- [x] Sincronizzazione senza rete: unione di un backup o trasferimento con i QR, unione per voce con tombstone
+- [ ] Sync LAN opzionale (abbinamento con QR e chiave effimera X25519, canale Noise). Su Android servirebbe il permesso INTERNET, quindi solo su richiesta esplicita

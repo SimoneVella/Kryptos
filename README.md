@@ -154,6 +154,27 @@ Or, via adb:
 adb shell settings put secure autofill_service com.kryptos.vault/.KryptosAutofillService
 ```
 
+## Moving passwords between devices
+
+Kryptos has no server, so devices never talk to each other over the network. To bring the passwords
+from your phone to your computer (or the other way round) you move a **copy of the encrypted vault**
+and merge it: **Settings → Sync between devices**.
+
+- **With a file.** On the device that has the passwords: *Encrypted backup → Export* (on Android also
+  *Share*, to send it with Quick Share, Drive, a chat with yourself…). On the other device: *Merge a
+  backup → Choose file*.
+- **With QR codes, no file at all.** On one device: *Send with QR codes → Show*: the encrypted vault is
+  shown as a short loop of QR codes. On the other: *Receive with QR codes → Scan*, and point the camera
+  at the screen until the bar is full. Useful from computer to phone (the computer needs a camera for the
+  other direction).
+
+Either way you then enter the **master password of the copy you received** (usually the same one) and
+Kryptos merges entry by entry: what only the other copy has is added, the most recent edit wins, and
+deletions are carried over too. Nothing is ever replaced wholesale.
+
+What travels is the encrypted vault, exactly like a backup: whoever intercepts the file, or films the
+QR codes, still needs the master password. Even so, don't leave backups lying around in shared folders.
+
 ## Site logos
 
 Entries show the logo of their website when one is available. Logos come from

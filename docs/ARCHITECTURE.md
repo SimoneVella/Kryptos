@@ -126,9 +126,32 @@ memory limit (~120 MiB) is why mobile uses 64 MiB of Argon2.
 - Clipboard: a copied password is cleared after 15–120 s, but only if you haven't copied something else
   in the meantime.
 
+## Sync without network
+
+Devices never connect to each other: a copy of the **encrypted vault file** is carried over and merged
+(`crates/core/src/vault.rs`, `apps/desktop/src-tauri/src/sync.rs`).
+
+- **Transport.** Either a backup file (Android can hand it to the system share sheet through its
+  `FileProvider`), or a loop of QR codes shown on one screen and read with the other device's camera
+  (`getUserMedia` + [jsQR](https://github.com/cozmo/jsQR), bundled). Frame text:
+  `KRY1|<session>|<index>|<count>|<base64 of 200 bytes>`, error correction M, version 13, 5 frames/s.
+  200 bytes was picked by decoding real frames under simulated camera blur and low contrast; 300 bytes
+  (version 16) failed. A vault with 100 logins is about 150 frames, roughly 30 s per loop.
+- **What travels is the vault file as on disk**, so the channel learns no more than from a backup: an
+  intercepted file or a filmed QR loop still needs the master password, and Argon2id makes guessing it
+  expensive. Showing the QR loop requires the vault to be unlocked.
+- **Merge.** The incoming copy is opened with *its own* master password (it can be a different vault)
+  and merged entry by entry by id: the newer `updated_at` wins; a deletion leaves a **tombstone**
+  (id + time, no data) that wins over any older edit, and an edit made after a deletion wins over the
+  tombstone. An entry with another id but the same site, username and password is not duplicated (the
+  same CSV imported on two devices). Clock skew between devices can pick the wrong side of a conflict;
+  acceptable for a single user.
+- **Permissions.** Android asks for the camera only when scanning starts; it still has no INTERNET
+  permission. macOS declares `NSCameraUsageDescription` and the camera entitlement.
+
 ## Roadmap
 
-- [x] Core: vault, KDF, generator, URL matching, atomic storage, CSV import, security analysis (23 tests)
+- [x] Core: vault, KDF, generator, URL matching, atomic storage, CSV import, security analysis, sync merge (30 tests)
 - [x] Desktop: auto-lock (inactivity, sleep, locked screen), self-clearing clipboard, persistent settings
 - [x] CSV import (Google/Chrome, Bitwarden, 1Password, Firefox) and encrypted backup
 - [x] MV3 extension with a fixed ID, one-click connection from the app, native host bundled with the app
@@ -141,5 +164,6 @@ memory limit (~120 MiB) is why mobile uses 64 MiB of Argon2.
 - [ ] Saving new logins from the browser and from apps (Android `onSaveRequest`)
 - [ ] TOTP
 - [ ] Windows: named pipe for the bridge and native host registration in the registry
-- [ ] LAN sync: vault encrypted over local TCP with QR pairing (ephemeral X25519 key in the QR, Noise
-  channel), per-entry merge using `updated_at`
+- [x] Sync without network: merge a backup or a QR-code transfer, per-entry merge with tombstones
+- [ ] Optional LAN sync (QR pairing with an ephemeral X25519 key, Noise channel). Would need the INTERNET
+  permission on Android, so only as an opt-in
