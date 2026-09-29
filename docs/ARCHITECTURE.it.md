@@ -130,7 +130,7 @@ delle estensioni (~120 MiB) è il motivo dei 64 MiB di Argon2 su mobile.
 - [x] Android: stessa app via Tauri, AutofillService di sistema, nessun permesso di rete
 - [x] Android: autofill end-to-end in Chrome, con i suggerimenti dentro la tastiera
 - [x] Android: sblocco con impronta (chiave legata al Keystore), blocco a schermo spento e all'uscita dall'app
-- [ ] Android: import CSV e backup (il selettore file restituisce URI `content://`, serve il plugin fs)
+- [x] Android: import CSV e backup cifrato (selettore file di sistema, URI `content://` tramite il plugin fs)
 - [ ] macOS: sblocco con Touch ID, vault key nel Portachiavi (serve l'app firmata)
 - [ ] iOS: Credential Provider Extension (richiede Xcode)
 - [ ] Salvataggio di nuovi login dal browser e dalle app (Android `onSaveRequest`)

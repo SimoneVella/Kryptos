@@ -345,6 +345,11 @@ textarea.input { height: 96px; padding: 14px 18px; resize: none; }
     border-top: 1px solid var(--border);
   }
   .brand, .nav-spacer { display: none; }
+  /* Frosted strip behind the status bar, so scrolled content doesn't run under the clock. */
+  .shell::before {
+    content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); z-index: 40;
+    background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(20px);
+  }
   .nav-item { flex-direction: column; gap: 4px; height: auto; padding: 6px 0; flex: 1; font-size: 11px; justify-content: center; border-radius: 14px; }
   .nav-item span { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; letter-spacing: -0.01em; }
   .nav-item { min-width: 0; }
@@ -372,3 +377,15 @@ textarea.input { height: 96px; padding: 14px 18px; resize: none; }
   .auth-card { padding-top: env(safe-area-inset-top); }
 }
 @keyframes sheet-up { from { transform: translateY(100%); } }
+
+/* Touch screens have no real hover: undo :hover styles, which would otherwise stay stuck
+   on the last thing tapped. Same selectors as above, so declaring them last wins. */
+@media (hover: none) {
+  .btn-primary:hover:not(:disabled) { background: var(--accent); }
+  .btn-secondary:hover:not(:disabled) { background: var(--surface-2); }
+  .icon-btn:hover { background: transparent; color: var(--text-2); }
+  .nav-item:not(.active):hover { background: none; color: var(--text-2); }
+  .row:hover { background: none; }
+  .action:hover .action-circle { background: rgba(255, 255, 255, 0.18); }
+  .sheet-actions .action:hover .action-circle { background: var(--accent-soft); color: var(--accent); }
+}

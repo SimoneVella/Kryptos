@@ -12,7 +12,10 @@ use tauri_plugin_clipboard_manager::ClipboardExt;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
-use tauri_plugin_dialog::DialogExt;
+use std::io::Write;
+
+use tauri_plugin_dialog::{DialogExt, FilePath};
+use tauri_plugin_fs::{FsExt, OpenOptions};
 
 use crate::browser;
 use crate::settings::Settings;
@@ -224,14 +227,51 @@ pub struct ImportResult {
 /// parses the CSV and merges it into the vault. Returns None if cancelled.
 #[tauri::command]
 pub async fn import_csv(app: AppHandle, state: State<'_, AppState>) -> CmdResult<Option<ImportResult>> {
-    let picked = app.dialog().file().set_title("Importa password (CSV)").add_filter("CSV", &["csv"]).blocking_pick_file();
-    let Some(picked) = picked else { return Ok(None) };
-    let path = picked.into_path().map_err(|_| "unsupported_on_this_device")?;
-    let data = Zeroizing::new(std::fs::read(&path).map_err(|e| e.to_string())?);
+    let dialog = app.dialog().file().set_title("Importa password (CSV)");
+    // Android maps extensions to MIME types, and exported CSVs are often not "text/csv":
+    // filtering there would grey out the very file the user is looking for.
+    #[cfg(not(target_os = "android"))]
+    let dialog = dialog.add_filter("CSV", &["csv"]);
+    let Some(picked) = dialog.blocking_pick_file() else { return Ok(None) };
+    let file = file_name(&picked);
+    // The fs plugin also reads Android `content://` URIs. It is used from Rust only:
+    // the UI gets no file-system permission.
+    let data = Zeroizing::new(app.fs().read(picked).map_err(|e| e.to_string())?);
     let inputs = kryptos_core::import::parse_csv(&data).map_err(code)?;
     let (added, skipped) = state.mutate(|v| Ok(v.import(inputs)))?;
-    let file = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     Ok(Some(ImportResult { added, skipped, file }))
+}
+
+/// Display name of a picked file; Android only gives an opaque, percent-encoded URI.
+fn file_name(picked: &FilePath) -> String {
+    match picked {
+        FilePath::Path(p) => p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
+        FilePath::Url(u) => {
+            let last = u.path_segments().and_then(|mut s| s.next_back()).unwrap_or_default();
+            let decoded = percent_decode(last);
+            decoded.rsplit(['/', ':']).next().unwrap_or_default().to_string()
+        }
+    }
+}
+
+fn percent_decode(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        let hex = |c: u8| (c as char).to_digit(16);
+        match (b[i], b.get(i + 1).copied().and_then(hex), b.get(i + 2).copied().and_then(hex)) {
+            (b'%', Some(h), Some(l)) => {
+                out.push((h * 16 + l) as u8);
+                i += 3;
+            }
+            (c, _, _) => {
+                out.push(c);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// Copies the encrypted vault file to a user-chosen location.
@@ -241,8 +281,12 @@ pub async fn export_backup(app: AppHandle, state: State<'_, AppState>) -> CmdRes
     let name = format!("Kryptos-backup-{}.kryptos", today());
     let picked = app.dialog().file().set_title("Salva backup cifrato").set_file_name(name).blocking_save_file();
     let Some(picked) = picked else { return Ok(false) };
-    let dest = picked.into_path().map_err(|_| "unsupported_on_this_device")?;
-    std::fs::copy(&state.vault_path, dest).map_err(|e| e.to_string())?;
+    // The vault file is already encrypted: the backup is a byte-for-byte copy.
+    let bytes = std::fs::read(&state.vault_path).map_err(|e| e.to_string())?;
+    let mut opts = OpenOptions::new();
+    opts.write(true).create(true).truncate(true);
+    let mut out = app.fs().open(picked, opts).map_err(|e| e.to_string())?;
+    out.write_all(&bytes).and_then(|_| out.sync_all()).map_err(|e| e.to_string())?;
     Ok(true)
 }
 

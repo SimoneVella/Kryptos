@@ -135,7 +135,7 @@ memory limit (~120 MiB) is why mobile uses 64 MiB of Argon2.
 - [x] Android: same app via Tauri, system AutofillService, no network permission
 - [x] Android: end-to-end autofill in Chrome, with suggestions inside the keyboard
 - [x] Android: fingerprint unlock (Keystore-bound key), lock on screen-off and when leaving the app
-- [ ] Android: CSV import and backup (the file picker returns `content://` URIs, needs the fs plugin)
+- [x] Android: CSV import and encrypted backup (system file picker, `content://` URIs via the fs plugin)
 - [ ] macOS: Touch ID unlock with the vault key in the Keychain (needs a signed app)
 - [ ] iOS: Credential Provider Extension (needs Xcode)
 - [ ] Saving new logins from the browser and from apps (Android `onSaveRequest`)

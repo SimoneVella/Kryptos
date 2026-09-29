@@ -158,7 +158,6 @@ export default function Settings({ onImported }: { onImported: () => void }) {
           </Row>
         </Group>
       ) : (
-        <>
         <Group title={t("settings.groupBrowser")}>
           <Row
             icon={<Globe size={20} />}
@@ -201,22 +200,27 @@ export default function Settings({ onImported }: { onImported: () => void }) {
             )}
           </Row>
         </Group>
-
-        <Group title={t("settings.groupData")}>
-          <Row icon={<Upload size={20} />} title={t("settings.importTitle")} sub={t("settings.importSub")}>
-            <button className="btn btn-secondary btn-sm" onClick={importCsv} disabled={busy}>{t("settings.import")}</button>
-          </Row>
-          <Row icon={<Download size={20} />} title={t("settings.backupTitle")} sub={t("settings.backupSub")}>
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={async () => (await api.exportBackup()) && toast(t("settings.backupSaved"))}
-            >
-              {t("settings.export")}
-            </button>
-          </Row>
-        </Group>
-        </>
       )}
+
+      <Group title={t("settings.groupData")}>
+        <Row icon={<Upload size={20} />} title={t("settings.importTitle")} sub={t("settings.importSub")}>
+          <button className="btn btn-secondary btn-sm" onClick={importCsv} disabled={busy}>{t("settings.import")}</button>
+        </Row>
+        <Row icon={<Download size={20} />} title={t("settings.backupTitle")} sub={t("settings.backupSub")}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={async () => {
+              try {
+                if (await api.exportBackup()) toast(t("settings.backupSaved"));
+              } catch (e) {
+                toast(errorMessage(e));
+              }
+            }}
+          >
+            {t("settings.export")}
+          </button>
+        </Row>
+      </Group>
 
       <section className="about">
         <WifiOff size={16} />
