@@ -29,5 +29,24 @@
   },
   "fillLabel": { "message": "Ausfüllen" },
   "fillFailedTitle": { "message": "Ausfüllen nicht möglich" },
-  "rateLimitedText": { "message": "Zu viele Anfragen in kurzer Zeit. Versuch es in einer Minute erneut." }
+  "rateLimitedText": { "message": "Zu viele Anfragen in kurzer Zeit. Versuch es in einer Minute erneut." },
+  "confirmInAppTitle": { "message": "In Kryptos bestätigen" },
+  "confirmInAppText": { "message": "Kryptos bittet dich, dieses Ausfüllen zu bestätigen." },
+  "fillDeniedText": { "message": "Ausfüllen in Kryptos abgebrochen." },
+  "fillTimeoutText": { "message": "Keine Bestätigung innerhalb von 3 Minuten." },
+  "fillBusyText": { "message": "Ein anderes Ausfüllen wartet bereits auf Bestätigung in Kryptos." },
+  "saveLoginButton": { "message": "Anmeldung dieser Seite speichern" },
+  "saveTitle": {
+    "message": "Für $SITE$ in Kryptos speichern?",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "saveConfirm": { "message": "Speichern" },
+  "saveNoUsername": { "message": "(kein Benutzername)" },
+  "saveNothingTitle": { "message": "Nichts zu speichern" },
+  "saveNothingText": { "message": "Gib zuerst dein Passwort im Anmeldeformular ein und speichere dann." },
+  "savedTitle": { "message": "Gespeichert" },
+  "savedText": { "message": "Anmeldung in Kryptos gespeichert." },
+  "updatedText": { "message": "Passwort in Kryptos aktualisiert." },
+  "unchangedText": { "message": "Diese Anmeldung ist bereits in Kryptos." },
+  "saveFailedTitle": { "message": "Speichern fehlgeschlagen" }
 }

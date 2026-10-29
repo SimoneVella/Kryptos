@@ -5,4 +5,9 @@
     <string name="biometric_subtitle">"请用指纹确认"</string>
     <string name="biometric_use_master">"使用主密码"</string>
     <string name="autofill_choose_account">"选择账号"</string>
+    <string name="biometric_fill_title">"填充 %1$s"</string>
+    <string name="autofill_saved">"已保存到 Kryptos"</string>
+    <string name="autofill_updated">"已在 Kryptos 中更新密码"</string>
+    <string name="autofill_save_unlock">"解锁 Kryptos 以保存此登录信息"</string>
+    <string name="autofill_save_failed">"Kryptos 无法保存此登录信息"</string>
 </resources>

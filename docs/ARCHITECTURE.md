@@ -6,8 +6,8 @@ Offline, zero-knowledge password manager. No component opens a network socket.
 
 ```
 ┌──────────── Browser ────────────┐        ┌──────────── Desktop app (Tauri) ─────────────┐
-│ extension/popup.js              │ stdio  │                                               │
-│  sendNativeMessage ─────────────┼──────▶ │ kryptos-native-host ──Unix socket 0600──▶ bridge.rs
+│ extension/popup + background.js │ stdio  │                                               │
+│  connectNative ─────────────────┼──────▶ │ kryptos-native-host ──Unix socket 0600──▶ bridge.rs
 │  scripting.executeScript (fill) │        │ (relay, no secrets)                │          │
 └─────────────────────────────────┘        │                                    ▼          │
                                            │ React UI ──invoke──▶ commands.rs ▶ AppState   │
@@ -28,6 +28,7 @@ Offline, zero-knowledge password manager. No component opens a network socket.
 | Integrity | Magic + version + JSON header are the body's AAD: any change makes decryption fail. |
 | Memory | Keys and entries are `Zeroize`d and cleared on lock/drop. |
 | Disk | Atomic write (tmp → fsync → rename), 0600 permissions, one `.bak` backup. |
+| 2FA codes | TOTP (RFC 6238, SHA-1/256/512, 6–8 digits) computed locally in `totp.rs` from the secret stored in the entry (base32 key or `otpauth://` link), tested against the RFC vectors. Imported from Bitwarden/1Password/Dashlane CSVs. |
 
 Changing the master password only requires re-wrapping the vault key. Biometric unlock will store the
 vault key (not the password) in the Keychain / Secure Enclave / Android Keystore: the API is already in
@@ -50,9 +51,24 @@ place (`raw_key()` / `unlock_with_key()`).
 
 1. The user opens the popup (or presses ⌘⇧L). No content script runs on pages.
 2. The popup sends `{type:"logins", url}` and the app replies with entries matching the site.
-3. On click, `{type:"credentials", id, url}` returns credentials **only if** the URL matches the entry.
-4. A function injected once fills the form and checks that `location.origin` hasn't changed in the
-   meantime.
+3. On click, the popup hands the fill to `background.js` and the app window comes forward to **confirm
+   this fill** (`confirm.rs`): Touch ID or the Mac password (LocalAuthentication, `DeviceOwnerAuthentication`),
+   or the master password, verified against the vault file with Argon2id. Settings → Browser → *Confirm each
+   fill* picks which; outside macOS it is always the master password. Neither ever reaches the browser.
+   The popup closes as soon as Kryptos takes the focus, which is why the wait happens in the background
+   script, over a `connectNative` port that also keeps the service worker alive.
+4. Only then does `{type:"credentials", id, url}` return credentials, and **only if** the URL matches the
+   entry. The vault is not held while the user answers: it is read again afterwards, so a lock in the
+   meantime still wins. One request waits at a time (a second one gets `busy`); after 170 s it gets
+   `timeout` (the native host waits 180 s for this request, 10 s for the others).
+5. A function injected once fills the form and checks that `location.origin` hasn't changed in the
+   meantime. If Kryptos came forward only to ask, it hides again and the browser gets the focus back.
+
+**Saving a login** is also started by the user: *Save login from this page* in the popup injects a function
+once that reads the login form (same origin only), shows the username and a masked password, and on *Save*
+sends `{type:"save", url, username, password}`. The app applies the same rule as Android
+(`UnlockedVault::save_login`): new password for the entry of that site and username, otherwise a new entry
+for the page origin. Saves count towards the same 20-per-minute limit and show up in the app.
 
 URL matching (`matching.rs`): same registrable domain (eTLD+1, Public Suffix List bundled in the binary,
 so no network needed). `github.io`, `co.uk` and similar are treated as public suffixes. An entry saved
@@ -67,7 +83,7 @@ for https is never offered to an http page.
 | Another extension calls the native host | `allowed_origins` in the manifest: the browser only launches it for our ID | — |
 | A malicious page, an iframe from another site, or a page that changed in the meantime | Fill checks `location.origin` in every frame. No script runs on pages | — |
 | Lookalike sites (`example.com.evil.io`, `alice.github.io` vs. `mallory.github.io`) | eTLD+1 matching with the Public Suffix List. Https is never offered to http | unit tests |
-| Bulk extraction | At most 20 passwords per minute, and every fill shows up as a notification in the app | — |
+| Bulk extraction | Every fill needs the user's OK in the app (Touch ID, Mac password or master password); at most 20 passwords per minute, and every fill shows up as a notification in the app | — |
 
 **Known limits, to be disclosed:**
 - Malware running as your user can still record the master password as you type it (keylogger). This is
@@ -90,8 +106,7 @@ commands, the same `kryptos-core` as desktop. Only what the OS requires stays na
 
 **Android** (`apps/desktop/src-tauri/gen/android`)
 - `KryptosAutofillService.kt` is the system autofill service. It reads the unlocked vault **in the same
-  process** via JNI (`src-tauri/src/android.rs`). If the vault is locked, it offers "Unlock Kryptos",
-  which opens the app.
+  process** via JNI (`src-tauri/src/android.rs`). If the vault is locked, it offers "Unlock Kryptos".
 - The web domain is only trusted if the app requesting credentials is a known browser (Chrome, Firefox,
   Brave, Edge, Samsung…). Any app could otherwise declare `webDomain = mybank.com` to steal the password.
   Native apps only receive entries explicitly linked to `androidapp://<package>`.
@@ -107,8 +122,22 @@ commands, the same `kryptos-core` as desktop. Only what the OS requires stays na
   knows the PIN cannot add their own finger). Only the encrypted vault key is stored. The master password
   is still required after every reboot and every 7 days. Face unlock only works on phones where it is
   certified as strong biometrics (e.g. Pixel 8 and later, not Pixel 7).
-- With the vault locked, the "Unlock Kryptos" suggestion shows the fingerprint prompt over the browser
-  and fills the form directly, without opening the app.
+- **A fingerprint for every fill.** With fingerprint unlock on, suggestions carry no username or password:
+  each one is an authentication intent (`AutofillUnlockActivity`). Tapping it shows the fingerprint prompt
+  over the browser and only then returns the filled dataset, so Android never holds a password the user
+  hasn't picked. The prompt uses the same Keystore key as unlocking (the released vault key is wiped
+  unused), so the check is enforced by the secure hardware, not just by a callback. With the vault locked,
+  the same tap unlocks it: one prompt, not two. The intent only carries the entry id; matching is redone
+  on the form itself, so it cannot pull an entry for another site. Without fingerprint unlock, suggestions
+  fill directly while the vault is unlocked, as before.
+- **Saving new logins.** Every login form gets a `SaveInfo` (password required, username optional, also
+  when the fields just disappear), so after typing a new password Android asks "Save to Kryptos?". On yes,
+  `onSaveRequest` hands it to Rust (`UnlockedVault::save_login`): the entry for the same site and username
+  gets the new password, otherwise a new entry is created, linked to the page domain (trusted browsers) or
+  to `androidapp://<package>` (apps), with the same rules as filling. With the vault locked the login waits
+  in memory only, for at most 5 minutes: `SaveLoginActivity` asks for the fingerprint, or, without it,
+  Kryptos opens and saves it right after the master password. Logins spread over two screens (username,
+  then password) are saved with the password only.
 
 **iOS** (still to do, needs Xcode): `tauri ios init` plus a *Credential Provider Extension* in Swift that
 calls into the Rust core via FFI and shares the vault with the app through an App Group. The extension
@@ -161,8 +190,11 @@ Devices never connect to each other: a copy of the **encrypted vault file** is c
 - [x] Android: CSV import and encrypted backup (system file picker, `content://` URIs via the fs plugin)
 - [ ] macOS: Touch ID unlock with the vault key in the Keychain (needs a signed app)
 - [ ] iOS: Credential Provider Extension (needs Xcode)
-- [ ] Saving new logins from the browser and from apps (Android `onSaveRequest`)
-- [ ] TOTP
+- [x] Android: saving new logins from apps and browsers (`onSaveRequest`)
+- [x] Saving new logins from the desktop browser extension (button in the popup)
+- [x] TOTP: 2FA codes in entries (paste the key or the `otpauth://` link, copy the current code), plus
+      backup codes that can be marked as used (the mark syncs like any other change)
+- [ ] TOTP: scan the QR with the camera, fill the code on Android and from the extension
 - [ ] Windows: named pipe for the bridge and native host registration in the registry
 - [x] Sync without network: merge a backup or a QR-code transfer, per-entry merge with tombstones
 - [ ] Optional LAN sync (QR pairing with an ephemeral X25519 key, Noise channel). Would need the INTERNET

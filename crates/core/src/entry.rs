@@ -16,6 +16,12 @@ pub struct Entry {
     pub notes: String,
     #[serde(default)]
     pub favorite: bool,
+    /// 2FA secret: a base32 secret or an `otpauth://totp/...` link (see totp.rs).
+    #[serde(default)]
+    pub totp: String,
+    /// One-time recovery codes the site gave when 2FA was turned on.
+    #[serde(default)]
+    pub backup_codes: Vec<BackupCode>,
     /// Unix seconds.
     pub created_at: u64,
     pub updated_at: u64,
@@ -33,6 +39,18 @@ pub struct EntryInput {
     pub notes: String,
     #[serde(default)]
     pub favorite: bool,
+    #[serde(default)]
+    pub totp: String,
+    #[serde(default)]
+    pub backup_codes: Vec<BackupCode>,
+}
+
+/// A 2FA recovery code; each works once, so the user marks the ones spent.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
+pub struct BackupCode {
+    pub code: String,
+    #[serde(default)]
+    pub used: bool,
 }
 
 /// Safe-to-list view: never carries the password or notes.

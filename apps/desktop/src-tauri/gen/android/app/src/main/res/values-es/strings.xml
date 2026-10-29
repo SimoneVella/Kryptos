@@ -5,4 +5,9 @@
     <string name="biometric_subtitle">"Confirma con tu huella"</string>
     <string name="biometric_use_master">"Usar la contraseña maestra"</string>
     <string name="autofill_choose_account">"Elige una cuenta"</string>
+    <string name="biometric_fill_title">"Rellenar %1$s"</string>
+    <string name="autofill_saved">"Guardado en Kryptos"</string>
+    <string name="autofill_updated">"Contraseña actualizada en Kryptos"</string>
+    <string name="autofill_save_unlock">"Desbloquea Kryptos para guardar este inicio de sesión"</string>
+    <string name="autofill_save_failed">"Kryptos no pudo guardar este inicio de sesión"</string>
 </resources>

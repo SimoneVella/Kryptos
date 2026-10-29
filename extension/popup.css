@@ -45,4 +45,10 @@ main { padding: 4px 6px; max-height: 360px; overflow-y: auto; }
 .state code { font-size: 11px; background: var(--surface-2); padding: 2px 6px; border-radius: 6px; }
 .btn { margin-top: 8px; height: 38px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
 
+.save-row { display: flex; justify-content: center; padding: 2px 10px 10px; }
+.save-row[hidden] { display: none; }
+.link { height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--text); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.link:hover, .link:focus-visible { background: var(--accent-soft); color: var(--accent); outline: none; }
+.typed { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 14px; background: var(--surface-2); min-width: 220px; }
+.typed span { color: var(--muted); font-size: 12px; }
 footer { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--border); }

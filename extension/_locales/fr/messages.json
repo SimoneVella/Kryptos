@@ -29,5 +29,24 @@
   },
   "fillLabel": { "message": "Remplir" },
   "fillFailedTitle": { "message": "Impossible de remplir" },
-  "rateLimitedText": { "message": "Trop de requêtes en peu de temps. Réessayez dans une minute." }
+  "rateLimitedText": { "message": "Trop de requêtes en peu de temps. Réessayez dans une minute." },
+  "confirmInAppTitle": { "message": "Confirmez dans Kryptos" },
+  "confirmInAppText": { "message": "Kryptos vous demande de confirmer ce remplissage." },
+  "fillDeniedText": { "message": "Remplissage annulé dans Kryptos." },
+  "fillTimeoutText": { "message": "Aucune confirmation en 3 minutes." },
+  "fillBusyText": { "message": "Un autre remplissage attend déjà une confirmation dans Kryptos." },
+  "saveLoginButton": { "message": "Enregistrer l'identifiant de cette page" },
+  "saveTitle": {
+    "message": "Enregistrer dans Kryptos pour $SITE$ ?",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "saveConfirm": { "message": "Enregistrer" },
+  "saveNoUsername": { "message": "(aucun identifiant)" },
+  "saveNothingTitle": { "message": "Rien à enregistrer" },
+  "saveNothingText": { "message": "Saisissez d'abord votre mot de passe dans le formulaire, puis enregistrez." },
+  "savedTitle": { "message": "Enregistré" },
+  "savedText": { "message": "Identifiant enregistré dans Kryptos." },
+  "updatedText": { "message": "Mot de passe mis à jour dans Kryptos." },
+  "unchangedText": { "message": "Cet identifiant est déjà dans Kryptos." },
+  "saveFailedTitle": { "message": "Échec de l'enregistrement" }
 }

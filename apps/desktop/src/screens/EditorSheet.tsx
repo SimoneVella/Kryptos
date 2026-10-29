@@ -10,6 +10,7 @@ export default function EditorSheet(props: { editing: Editing; onClose: () => vo
   const { t, errorMessage } = useT();
   const [v, setV] = useState<EntryInput>(props.editing.input);
   const [urls, setUrls] = useState(props.editing.input.urls.join(", "));
+  const [codes, setCodes] = useState(props.editing.input.backup_codes.map((c) => c.code).join("\n"));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -19,7 +20,13 @@ export default function EditorSheet(props: { editing: Editing; onClose: () => vo
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const input = { ...v, urls: urls.split(",").map((s) => s.trim()).filter(Boolean) };
+    // One code per line (commas too); codes already marked as used stay marked.
+    const backup_codes = codes
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((code) => ({ code, used: v.backup_codes.find((c) => c.code === code)?.used ?? false }));
+    const input = { ...v, urls: urls.split(",").map((s) => s.trim()).filter(Boolean), backup_codes };
     try {
       const id = isNew ? await api.addEntry(input) : (await api.updateEntry(props.editing.id!, input), props.editing.id!);
       toast(isNew ? t("editor.savedNewToast") : t("editor.savedEditToast"));
@@ -67,6 +74,32 @@ export default function EditorSheet(props: { editing: Editing; onClose: () => vo
               <StrengthBar bits={estimateBits(v.password)} />
             </div>
           )}
+        </div>
+        <div>
+          <label className="label">{t("editor.totpLabel")}</label>
+          <input
+            className="input mono"
+            placeholder={t("editor.totpPlaceholder")}
+            value={v.totp}
+            onChange={(e) => set("totp", e.target.value)}
+            spellCheck={false}
+            autoComplete="off"
+            autoCapitalize="off"
+          />
+          <p className="hint">{t("editor.totpHint")}</p>
+        </div>
+        <div>
+          <label className="label">{t("editor.backupCodesLabel")}</label>
+          <textarea
+            className="input mono"
+            placeholder={t("editor.backupCodesPlaceholder")}
+            value={codes}
+            onChange={(e) => setCodes(e.target.value)}
+            spellCheck={false}
+            autoComplete="off"
+            autoCapitalize="off"
+          />
+          <p className="hint">{t("editor.backupCodesHint")}</p>
         </div>
         <div>
           <label className="label">{t("entry.notesLabel")}</label>

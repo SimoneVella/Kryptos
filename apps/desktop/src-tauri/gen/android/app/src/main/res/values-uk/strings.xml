@@ -5,4 +5,9 @@
     <string name="biometric_subtitle">"Підтвердьте відбитком пальця"</string>
     <string name="biometric_use_master">"Використати майстер-пароль"</string>
     <string name="autofill_choose_account">"Виберіть обліковий запис"</string>
+    <string name="biometric_fill_title">"Заповнити %1$s"</string>
+    <string name="autofill_saved">"Збережено в Kryptos"</string>
+    <string name="autofill_updated">"Пароль оновлено в Kryptos"</string>
+    <string name="autofill_save_unlock">"Розблокуйте Kryptos, щоб зберегти цей вхід"</string>
+    <string name="autofill_save_failed">"Kryptos не вдалося зберегти цей вхід"</string>
 </resources>

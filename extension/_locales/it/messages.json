@@ -29,5 +29,24 @@
   },
   "fillLabel": { "message": "Compila" },
   "fillFailedTitle": { "message": "Impossibile compilare" },
-  "rateLimitedText": { "message": "Troppe richieste in poco tempo. Riprova tra un minuto." }
+  "rateLimitedText": { "message": "Troppe richieste in poco tempo. Riprova tra un minuto." },
+  "confirmInAppTitle": { "message": "Conferma in Kryptos" },
+  "confirmInAppText": { "message": "Kryptos ti chiede di confermare questa compilazione." },
+  "fillDeniedText": { "message": "Compilazione annullata in Kryptos." },
+  "fillTimeoutText": { "message": "Nessuna conferma entro 3 minuti." },
+  "fillBusyText": { "message": "Un'altra compilazione è già in attesa di conferma in Kryptos." },
+  "saveLoginButton": { "message": "Salva il login di questa pagina" },
+  "saveTitle": {
+    "message": "Salvare in Kryptos per $SITE$?",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "saveConfirm": { "message": "Salva" },
+  "saveNoUsername": { "message": "(nessun username)" },
+  "saveNothingTitle": { "message": "Niente da salvare" },
+  "saveNothingText": { "message": "Scrivi prima la password nel modulo di accesso, poi salva." },
+  "savedTitle": { "message": "Salvato" },
+  "savedText": { "message": "Login salvato in Kryptos." },
+  "updatedText": { "message": "Password aggiornata in Kryptos." },
+  "unchangedText": { "message": "Questo login è già in Kryptos." },
+  "saveFailedTitle": { "message": "Salvataggio non riuscito" }
 }

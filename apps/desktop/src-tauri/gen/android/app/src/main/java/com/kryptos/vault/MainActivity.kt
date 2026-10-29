@@ -7,6 +7,8 @@ import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
 import android.view.autofill.AutofillManager
+import android.webkit.WebView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.core.content.FileProvider
 import androidx.core.graphics.Insets
@@ -26,6 +28,22 @@ class MainActivity : TauriActivity() {
     }
     followKeyboard(findViewById(android.R.id.content))
     KryptosBridge.ensureReady(this)
+  }
+
+  // The UI is a single page, so WebView history is empty and the default back
+  // handling would close the app. Ask the UI first (src/lib/back.ts): it closes
+  // the open sheet or returns to the passwords tab; otherwise Android goes back.
+  override fun onWebViewCreate(webView: WebView) {
+    onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+      override fun handleOnBackPressed() {
+        webView.evaluateJavascript("window.__kryptosBack?.() === true") { handled ->
+          if (handled == "true") return@evaluateJavascript
+          isEnabled = false
+          onBackPressedDispatcher.onBackPressed()
+          isEnabled = true
+        }
+      }
+    })
   }
 
   /**

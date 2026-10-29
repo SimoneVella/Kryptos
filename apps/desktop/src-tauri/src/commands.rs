@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use kryptos_core::crypto::KdfParams;
 use kryptos_core::health::{self, HealthReport};
+use kryptos_core::totp::Totp;
 use kryptos_core::{generator, storage, Entry, EntryInput, EntrySummary, Error, GeneratorOptions, UnlockedVault};
 use serde::Serialize;
 use tauri::{AppHandle, State};
@@ -128,6 +129,13 @@ pub fn update_entry(state: State<'_, AppState>, id: String, input: EntryInput) -
     state.mutate(|v| v.update(id, input).map_err(code))
 }
 
+/// Marks one of an entry's 2FA backup codes as spent (or not).
+#[tauri::command]
+pub fn mark_backup_code(state: State<'_, AppState>, id: String, index: usize, used: bool) -> CmdResult<()> {
+    let id = parse_id(&id)?;
+    state.mutate(|v| v.set_backup_code_used(id, index, used).map_err(code))
+}
+
 #[tauri::command]
 pub fn delete_entry(state: State<'_, AppState>, id: String) -> CmdResult<()> {
     let id = parse_id(&id)?;
@@ -144,14 +152,35 @@ pub fn copy_field(app: AppHandle, state: State<'_, AppState>, id: String, field:
         match field.as_str() {
             "password" => Ok(Zeroizing::new(e.password.clone())),
             "username" => Ok(Zeroizing::new(e.username.clone())),
+            "totp" => Ok(Zeroizing::new(Totp::parse(&e.totp).map_err(code)?.now().0)),
             _ => Err("invalid_field".into()),
         }
     })?;
     app.clipboard().write_text(secret.as_str()).map_err(|e| e.to_string())?;
-    if field == "password" {
+    if field == "password" || field == "totp" {
         schedule_clear(app, secret, state.settings().clipboard_clear_secs);
     }
     Ok(())
+}
+
+#[derive(Serialize)]
+pub struct TotpCode {
+    code: String,
+    /// Seconds before the code changes.
+    remaining: u64,
+    period: u64,
+}
+
+/// The entry's current 2FA code. A read, not activity: the code view polls it
+/// every second and must not keep the vault from auto-locking.
+#[tauri::command]
+pub fn totp_code(state: State<'_, AppState>, id: String) -> CmdResult<TotpCode> {
+    let id = parse_id(&id)?;
+    state.read(|v| {
+        let t = Totp::parse(&v.get(id).map_err(code)?.totp).map_err(code)?;
+        let (code, remaining) = t.now();
+        Ok(TotpCode { code, remaining, period: t.period })
+    })
 }
 
 /// Copies arbitrary text (e.g. a freshly generated password) with the same auto-clear.
@@ -348,6 +377,16 @@ pub async fn open_autofill_settings(app: AppHandle) {
 // "unavailable" | "off" | "on" | "master_required". The prompt commands block
 // until the user answers, so they run on a blocking thread.
 
+/// Android: the vault was just opened in the app; saves a login the user asked
+/// to keep while it was locked (see android.rs). Its outcome, or None.
+#[tauri::command]
+pub fn apply_pending_save() -> Option<&'static str> {
+    #[cfg(target_os = "android")]
+    return crate::android::apply_pending_save();
+    #[cfg(not(target_os = "android"))]
+    None
+}
+
 #[tauri::command]
 pub async fn biometric_status(app: AppHandle) -> String {
     #[cfg(target_os = "android")]
@@ -393,4 +432,62 @@ async fn biometric_prompt(app: AppHandle, method: &'static str) -> CmdResult<()>
         let _ = (app, method);
         Err("unavailable".into())
     }
+}
+
+// Confirmation of a browser fill (desktop), answered in the app window. `id` is
+// the request announced by the "fill-confirm" event.
+
+/// Touch ID or the Mac password. `reason` is shown in the system prompt.
+#[tauri::command]
+pub async fn fill_confirm_system(id: u64, reason: String) -> CmdResult<()> {
+    #[cfg(desktop)]
+    {
+        if !crate::confirm::is_pending(id) {
+            return Err("timeout".into());
+        }
+        tauri::async_runtime::spawn_blocking(move || crate::confirm::system_auth(&reason))
+            .await
+            .map_err(|e| e.to_string())??;
+        crate::confirm::answer(id, true);
+        Ok(())
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = (id, reason);
+        Err("unsupported_on_this_device".into())
+    }
+}
+
+/// The master password, checked against the vault file (not just "is unlocked").
+#[tauri::command]
+pub async fn fill_confirm_master(state: State<'_, AppState>, id: u64, password: String) -> CmdResult<()> {
+    #[cfg(desktop)]
+    {
+        if !crate::confirm::is_pending(id) {
+            return Err("timeout".into());
+        }
+        let password = Zeroizing::new(password);
+        let path = state.vault_path.clone();
+        tauri::async_runtime::spawn_blocking(move || -> CmdResult<()> {
+            let bytes = storage::read(&path).map_err(code)?;
+            UnlockedVault::unlock(&bytes, &password).map(drop).map_err(code)
+        })
+        .await
+        .map_err(|e| e.to_string())??;
+        crate::confirm::answer(id, true);
+        Ok(())
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = (state, id, password);
+        Err("unsupported_on_this_device".into())
+    }
+}
+
+#[tauri::command]
+pub fn fill_confirm_cancel(id: u64) {
+    #[cfg(desktop)]
+    crate::confirm::answer(id, false);
+    #[cfg(not(desktop))]
+    let _ = id;
 }

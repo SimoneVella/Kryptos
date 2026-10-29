@@ -5,4 +5,9 @@
     <string name="biometric_subtitle">"Confirme com a sua impressão digital"</string>
     <string name="biometric_use_master">"Usar a palavra-passe mestra"</string>
     <string name="autofill_choose_account">"Escolha uma conta"</string>
+    <string name="biometric_fill_title">"Preencher %1$s"</string>
+    <string name="autofill_saved">"Guardado no Kryptos"</string>
+    <string name="autofill_updated">"Palavra-passe atualizada no Kryptos"</string>
+    <string name="autofill_save_unlock">"Desbloqueie o Kryptos para guardar este login"</string>
+    <string name="autofill_save_failed">"O Kryptos não conseguiu guardar este login"</string>
 </resources>

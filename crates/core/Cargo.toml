@@ -19,6 +19,9 @@ url = "2"
 psl = "2"
 dirs = "5"
 csv = "1"
+hmac = "0.12"
+sha1 = "0.10"
+sha2 = "0.10"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

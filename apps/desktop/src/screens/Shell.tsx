@@ -5,6 +5,7 @@ import { api, type EntryInput, type EntrySummary, type HealthReport } from "../l
 import { Logo, useToast } from "../components/ui";
 import { emptyInput } from "../lib/utils";
 import { useT } from "../i18n";
+import { useBackButton } from "../lib/back";
 import Home from "./Home";
 import Generator from "./Generator";
 import Security from "./Security";
@@ -50,6 +51,17 @@ export default function Shell({ onLock }: { onLock: () => void }) {
     return () => void un.then((f) => f());
   }, [toast, t]);
 
+  // Logins saved from other apps, sites or the browser extension, including one
+  // that waited for this unlock on Android (applied once the listener is in place).
+  useEffect(() => {
+    const un = api.onLoginSaved(({ title, outcome }) => {
+      reload();
+      if (outcome !== "unchanged") toast(t(outcome === "added" ? "shell.savedToast" : "shell.updatedToast", { title }));
+    });
+    un.then(() => api.applyPendingSave());
+    return () => void un.then((f) => f());
+  }, [reload, toast, t]);
+
   const startNew = (password = "") => setEditing({ id: null, input: { ...emptyInput, password } });
 
   const nav: { id: Tab; label: string; icon: ReactElement }[] = [
@@ -65,6 +77,8 @@ export default function Shell({ onLock }: { onLock: () => void }) {
     setDir(order.indexOf(next) > order.indexOf(tab) ? "forward" : "back");
     setTabState(next);
   };
+  // Back from another tab returns to the passwords list before leaving the app.
+  useBackButton(() => setTab("home"), tab !== "home");
 
   return (
     <div className="shell">

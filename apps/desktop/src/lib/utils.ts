@@ -19,7 +19,7 @@ export function strengthOf(bits: number): { key: "weak" | "fair" | "strong" | "e
 }
 
 
-export const emptyInput: EntryInput = { title: "", username: "", password: "", urls: [], notes: "", favorite: false };
+export const emptyInput: EntryInput = { title: "", username: "", password: "", urls: [], notes: "", favorite: false, totp: "", backup_codes: [] };
 
 export function hostOf(url?: string): string {
   if (!url) return "";
@@ -52,3 +52,4 @@ export function setPlatform(p: string) {
   platform = p;
 }
 export const isMobile = () => platform === "android" || platform === "ios";
+export const isMac = () => platform === "macos";

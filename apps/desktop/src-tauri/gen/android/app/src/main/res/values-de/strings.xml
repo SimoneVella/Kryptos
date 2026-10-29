@@ -5,4 +5,9 @@
     <string name="biometric_subtitle">"Mit deinem Fingerabdruck bestätigen"</string>
     <string name="biometric_use_master">"Master-Passwort verwenden"</string>
     <string name="autofill_choose_account">"Konto auswählen"</string>
+    <string name="biometric_fill_title">"%1$s ausfüllen"</string>
+    <string name="autofill_saved">"In Kryptos gespeichert"</string>
+    <string name="autofill_updated">"Passwort in Kryptos aktualisiert"</string>
+    <string name="autofill_save_unlock">"Entsperre Kryptos, um diese Anmeldung zu speichern"</string>
+    <string name="autofill_save_failed">"Kryptos konnte diese Anmeldung nicht speichern"</string>
 </resources>

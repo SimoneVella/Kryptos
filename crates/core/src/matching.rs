@@ -38,6 +38,17 @@ pub fn entry_matches(entry: &Entry, page: &str) -> bool {
     entry.urls.iter().any(|u| url_matches(u, page))
 }
 
+/// Like [`entry_matches`], but `target` may also be `androidapp://<package>` (a
+/// native Android app), which only matches entries the user explicitly linked to
+/// that exact package: package names are not proof of identity.
+pub fn target_matches(entry: &Entry, target: &str) -> bool {
+    if target.starts_with("androidapp://") {
+        entry.urls.iter().any(|u| u.trim().eq_ignore_ascii_case(target))
+    } else {
+        entry_matches(entry, target)
+    }
+}
+
 /// Accepts "example.com" as shorthand for "https://example.com".
 fn parse_lenient(s: &str) -> Option<Url> {
     let s = s.trim();
@@ -76,6 +87,28 @@ mod tests {
         assert!(!m("http://localhost:3000", "http://localhost:4000"));
         assert!(m("http://192.168.1.1", "http://192.168.1.1/admin"));
         assert!(!m("http://192.168.1.1", "http://192.168.1.2"));
+    }
+
+    #[test]
+    fn android_apps_exact() {
+        use super::target_matches as t;
+        let e = |url: &str| crate::Entry {
+            id: uuid::Uuid::nil(),
+            title: "x".into(),
+            username: String::new(),
+            password: String::new(),
+            urls: vec![url.into()],
+            notes: String::new(),
+            favorite: false,
+            totp: String::new(),
+            backup_codes: Vec::new(),
+            created_at: 0,
+            updated_at: 0,
+        };
+        assert!(t(&e("androidapp://com.example.app"), "androidapp://com.example.app"));
+        assert!(!t(&e("androidapp://com.example.app"), "androidapp://com.example.app.evil"));
+        assert!(!t(&e("https://example.com"), "androidapp://com.example"));
+        assert!(t(&e("example.com"), "https://www.example.com"));
     }
 
     #[test]

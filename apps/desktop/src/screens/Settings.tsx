@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { CheckCircle2, Clipboard, Download, FileInput, Fingerprint, Globe, KeyRound, Languages, Moon, QrCode, ScanLine, ShieldCheck, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
+import { CheckCircle2, Clipboard, Download, FileInput, Fingerprint, Globe, KeySquare, KeyRound, Languages, Moon, QrCode, ScanLine, ShieldCheck, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
 import { api, type BiometricStatus, type Settings as SettingsT, type StagedCopy } from "../lib/api";
 import { MergeSheet, ScanQrSheet, SendQrSheet } from "./Sync";
 import { PasswordInput, Sheet, Switch, useToast } from "../components/ui";
-import { isMobile } from "../lib/utils";
+import { isMac, isMobile } from "../lib/utils";
 import { useT, LOCALES, type TKey } from "../i18n";
 
 const LOCK_OPTIONS: [number, TKey][] = [
@@ -12,6 +12,10 @@ const LOCK_OPTIONS: [number, TKey][] = [
   [15, "settings.lockOption15m"],
   [60, "settings.lockOption1h"],
   [240, "settings.lockOption4h"],
+];
+const FILL_CONFIRM_OPTIONS: [SettingsT["fill_confirm"], TKey][] = [
+  ["system", "settings.fillConfirmSystem"],
+  ["master", "settings.fillConfirmMaster"],
 ];
 const CLIP_OPTIONS: [number, TKey][] = [
   [15, "settings.clipOption15s"],
@@ -216,6 +220,14 @@ export default function Settings({ onImported }: { onImported: () => void }) {
               </button>
             )}
           </Row>
+          <Row
+            icon={<KeySquare size={20} />}
+            title={t("settings.fillConfirmTitle")}
+            sub={isMac() ? t("settings.fillConfirmSubMac") : t("settings.fillConfirmSubOther")}
+          >
+            {/* Touch ID / Mac password only exist on macOS: elsewhere it's always the master password. */}
+            {isMac() && <Segmented options={FILL_CONFIRM_OPTIONS} value={s.fill_confirm} onChange={(v) => save({ fill_confirm: v })} />}
+          </Row>
         </Group>
       )}
 
@@ -254,6 +266,7 @@ export default function Settings({ onImported }: { onImported: () => void }) {
         <span>{t("settings.about")}</span>
         <ShieldCheck size={16} />
       </section>
+      <p className="version">{t("settings.version", { version: __APP_VERSION__, build: __BUILD_ID__ })}</p>
 
       {qr === "send" && <SendQrSheet onClose={() => setQr(null)} />}
       {qr === "scan" && <ScanQrSheet onClose={() => setQr(null)} onReceived={received} />}
@@ -307,7 +320,7 @@ function Row({ icon, title, sub, children }: { icon: ReactNode; title: string; s
   );
 }
 
-function Segmented({ options, value, onChange }: { options: [number, TKey][]; value: number; onChange: (v: number) => void }) {
+function Segmented<T extends string | number>({ options, value, onChange }: { options: [T, TKey][]; value: T; onChange: (v: T) => void }) {
   const { t } = useT();
   return (
     <div className="segmented">

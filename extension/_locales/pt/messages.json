@@ -29,5 +29,24 @@
   },
   "fillLabel": { "message": "Preencher" },
   "fillFailedTitle": { "message": "Não foi possível preencher" },
-  "rateLimitedText": { "message": "Demasiados pedidos em pouco tempo. Tenta novamente dentro de um minuto." }
+  "rateLimitedText": { "message": "Demasiados pedidos em pouco tempo. Tenta novamente dentro de um minuto." },
+  "confirmInAppTitle": { "message": "Confirme no Kryptos" },
+  "confirmInAppText": { "message": "O Kryptos pede-lhe que confirme este preenchimento." },
+  "fillDeniedText": { "message": "Preenchimento cancelado no Kryptos." },
+  "fillTimeoutText": { "message": "Sem confirmação em 3 minutos." },
+  "fillBusyText": { "message": "Outro preenchimento já está à espera de confirmação no Kryptos." },
+  "saveLoginButton": { "message": "Guardar o login desta página" },
+  "saveTitle": {
+    "message": "Guardar no Kryptos para $SITE$?",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "saveConfirm": { "message": "Guardar" },
+  "saveNoUsername": { "message": "(sem nome de utilizador)" },
+  "saveNothingTitle": { "message": "Nada para guardar" },
+  "saveNothingText": { "message": "Escreva primeiro a palavra-passe no formulário de login e depois guarde." },
+  "savedTitle": { "message": "Guardado" },
+  "savedText": { "message": "Login guardado no Kryptos." },
+  "updatedText": { "message": "Palavra-passe atualizada no Kryptos." },
+  "unchangedText": { "message": "Este login já está no Kryptos." },
+  "saveFailedTitle": { "message": "Não foi possível guardar" }
 }

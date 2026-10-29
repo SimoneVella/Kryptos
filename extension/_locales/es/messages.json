@@ -29,5 +29,24 @@
   },
   "fillLabel": { "message": "Rellenar" },
   "fillFailedTitle": { "message": "No se pudo rellenar" },
-  "rateLimitedText": { "message": "Demasiadas solicitudes en poco tiempo. Inténtalo de nuevo dentro de un minuto." }
+  "rateLimitedText": { "message": "Demasiadas solicitudes en poco tiempo. Inténtalo de nuevo dentro de un minuto." },
+  "confirmInAppTitle": { "message": "Confirma en Kryptos" },
+  "confirmInAppText": { "message": "Kryptos te pide que confirmes este relleno." },
+  "fillDeniedText": { "message": "Relleno cancelado en Kryptos." },
+  "fillTimeoutText": { "message": "Sin confirmación en 3 minutos." },
+  "fillBusyText": { "message": "Otro relleno ya está esperando confirmación en Kryptos." },
+  "saveLoginButton": { "message": "Guardar el inicio de sesión de esta página" },
+  "saveTitle": {
+    "message": "¿Guardar en Kryptos para $SITE$?",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "saveConfirm": { "message": "Guardar" },
+  "saveNoUsername": { "message": "(sin usuario)" },
+  "saveNothingTitle": { "message": "Nada que guardar" },
+  "saveNothingText": { "message": "Escribe primero tu contraseña en el formulario y luego guarda." },
+  "savedTitle": { "message": "Guardado" },
+  "savedText": { "message": "Inicio de sesión guardado en Kryptos." },
+  "updatedText": { "message": "Contraseña actualizada en Kryptos." },
+  "unchangedText": { "message": "Este inicio de sesión ya está en Kryptos." },
+  "saveFailedTitle": { "message": "No se pudo guardar" }
 }

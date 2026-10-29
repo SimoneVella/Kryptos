@@ -9,14 +9,21 @@
 //! 3. The native host itself only relays when its parent is a browser signed
 //!    by a trusted vendor and the caller is the Kryptos extension.
 //! 4. Credentials are only released for a URL that matches the entry (eTLD+1),
-//!    at most `MAX_FILLS_PER_MINUTE` times a minute, and every release is
-//!    shown in the app.
+//!    after the user confirms that fill in the app window (Touch ID, the Mac
+//!    password or the master password, see confirm.rs), at most
+//!    `MAX_FILLS_PER_MINUTE` times a minute, and every release is shown in the app.
 //!
 //! Protocol: one JSON request line -> one JSON response line.
 //!   {"type":"status"}                          -> {"ok":true,"unlocked":bool}
 //!   {"type":"logins","url":U}                  -> {"ok":true,"logins":[{id,title,username}]}
 //!   {"type":"credentials","id":I,"url":U}      -> {"ok":true,"username":..,"password":..}
+//!                                                 (waits for the user; errors "denied", "timeout", "busy")
+//!   {"type":"save","url":U,"username":..,"password":..}
+//!                                              -> {"ok":true,"outcome":"added"|"updated"|"unchanged"}
 //!   {"type":"focus"}                           -> brings the app window forward (to unlock)
+//!
+//! Saving is started by the user in the extension popup ("Save login from this
+//! page"), which reads the form only then; no script watches pages for logins.
 
 use std::collections::VecDeque;
 use std::sync::Mutex;
@@ -27,6 +34,8 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
 
 use kryptos_core::matching::entry_matches;
+use kryptos_core::SaveOutcome;
+use zeroize::Zeroizing;
 
 use crate::state::AppState;
 
@@ -36,6 +45,7 @@ enum Request {
     Status,
     Logins { url: String },
     Credentials { id: String, url: String },
+    Save { url: String, username: String, password: String },
     Focus,
 }
 
@@ -109,26 +119,58 @@ fn handle(app: &AppHandle, line: &str) -> Value {
                 .collect();
             Ok(json!({ "ok": true, "logins": logins }))
         }),
-        Request::Credentials { id, url } => {
-            let res = state.read(|v| {
-                let id = uuid::Uuid::parse_str(&id).map_err(|_| "invalid_id")?;
-                let e = v.get(id).map_err(|_| "not_found")?;
-                if !entry_matches(e, &url) {
-                    return Err("url_mismatch".into());
-                }
-                if !fill_allowed() {
-                    return Err("rate_limited".into());
-                }
-                Ok((e.title.clone(), json!({ "ok": true, "username": e.username, "password": e.password })))
-            });
-            res.map(|(title, reply)| {
-                let host = url::Url::parse(&url).ok().and_then(|u| u.host_str().map(str::to_owned)).unwrap_or_default();
-                let _ = app.emit("browser-fill", json!({ "title": title, "host": host }));
-                reply
-            })
-        }
+        Request::Credentials { id, url } => credentials(app, &state, &id, &url),
+        Request::Save { url, username, password } => save(app, &state, &url, Zeroizing::new(username), Zeroizing::new(password)),
     };
     result.unwrap_or_else(|e| json!({ "ok": false, "error": e }))
+}
+
+/// Releases one entry's credentials for `url`, after the user confirms it in
+/// the app window. The vault is not held while the user answers: it is read
+/// again afterwards, so a lock in the meantime still wins.
+fn credentials(app: &AppHandle, state: &AppState, id: &str, url: &str) -> Result<Value, String> {
+    let id = uuid::Uuid::parse_str(id).map_err(|_| "invalid_id")?;
+    let entry = |v: &kryptos_core::UnlockedVault| -> Result<kryptos_core::Entry, String> {
+        let e = v.get(id).map_err(|_| "not_found")?;
+        if !entry_matches(e, url) {
+            return Err("url_mismatch".into());
+        }
+        Ok(e.clone())
+    };
+    let (title, username) = state.read(|v| entry(v).map(|e| (e.title.clone(), e.username.clone())))?;
+    let host = url::Url::parse(url).ok().and_then(|u| u.host_str().map(str::to_owned)).unwrap_or_default();
+
+    crate::confirm::ask(app, title, username, host.clone(), &state.settings().fill_confirm)?;
+
+    let e = state.read(entry)?; // Entry wipes itself on drop
+    if !fill_allowed() {
+        return Err("rate_limited".into());
+    }
+    let _ = app.emit("browser-fill", json!({ "title": e.title, "host": host }));
+    Ok(json!({ "ok": true, "username": e.username, "password": e.password }))
+}
+
+/// Saves the login the user typed on `url` (same rules as Android's save sheet:
+/// the entry for that site and username gets the new password, else a new one).
+fn save(app: &AppHandle, state: &AppState, url: &str, username: Zeroizing<String>, password: Zeroizing<String>) -> Result<Value, String> {
+    let page = url::Url::parse(url).map_err(|_| "bad_url")?;
+    if !matches!(page.scheme(), "https" | "http") {
+        return Err("bad_url".into());
+    }
+    let host = page.host_str().ok_or("bad_url")?;
+    let title = host.strip_prefix("www.").unwrap_or(host).to_owned();
+    if !fill_allowed() {
+        return Err("rate_limited".into());
+    }
+    let target = page.origin().ascii_serialization();
+    let outcome = state.mutate(|v| v.save_login(&target, &title, &username, &password).map_err(crate::commands::code))?;
+    let word = match outcome {
+        SaveOutcome::Added(_) => "added",
+        SaveOutcome::Updated(_) => "updated",
+        SaveOutcome::Unchanged(_) => "unchanged",
+    };
+    let _ = app.emit("login-saved", json!({ "title": title, "outcome": word }));
+    Ok(json!({ "ok": true, "outcome": word }))
 }
 
 #[cfg(unix)]

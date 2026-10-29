@@ -4,6 +4,7 @@ import { Check, Eye, EyeOff, X } from "lucide-react";
 import { useBrandIcon } from "../lib/brand";
 import logoUrl from "../assets/logo.png";
 import { useT } from "../i18n";
+import { useBackButton } from "../lib/back";
 
 /* ───────── Avatar: deterministic colour from the title ───────── */
 const HUES = [217, 262, 330, 12, 38, 150, 190, 290];
@@ -39,6 +40,7 @@ export function Logo({ large }: { large?: boolean }) {
 /* ───────── Sheet (modal) ───────── */
 export function Sheet({ onClose, children, title }: { onClose: () => void; children: ReactNode; title?: string }) {
   const { t } = useT();
+  useBackButton(onClose);
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", k);

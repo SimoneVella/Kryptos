@@ -141,6 +141,11 @@ cd apps/desktop && python3 brand/make-icons.py /path/to/new-logo.png && npx taur
    (the ID is fixed: `jclbckdbmecjgoopnpchbijihdfeajkb`)
 2. In the app: **Settings → Browser extension → Connect**, then restart the browser
 3. On a login page: click the Kryptos icon, or ⌘⇧L
+4. Pick the login and confirm in Kryptos: Touch ID or your Mac password, or the master password if you
+   prefer (**Settings → Browser → Confirm each fill**). Every single fill asks, so the only password you
+   ever type is the master password, or none at all.
+5. New account or changed password? Type it in the form, open the popup and press **Save login from this
+   page**.
 
 The extension's private key (`secrets/extension-key.pem`) is only needed to package a `.crx`. Don't
 share it; it's excluded from git.
@@ -153,6 +158,21 @@ Or, via adb:
 ```bash
 adb shell settings put secure autofill_service com.kryptos.vault/.KryptosAutofillService
 ```
+
+With fingerprint unlock on (**Settings → Fingerprint unlock**), every suggestion asks for your
+fingerprint before filling.
+
+When you log in or sign up with a password Kryptos doesn't know yet, Android offers to save it in
+Kryptos (or to update the password of that account).
+
+## 2FA codes
+
+Kryptos can also hold the two-step verification code of a site. When the site shows its QR code, choose
+"can't scan it?", copy the key and paste it in the entry's **2FA code** field (an `otpauth://` link works
+too). The entry then shows the current 6-digit code, ready to copy. Paste the site's **backup codes**
+there as well, one per line: you can copy each one and mark it as used. Keeping password and code in the same
+vault is convenient, but for your most important accounts (email, bank) a separate authenticator app is
+safer.
 
 ## Moving passwords between devices
 

@@ -9,7 +9,7 @@ let exists = true;
 let seq = 100;
 let autofill = false;
 let biometric = "off";
-const settings = { auto_lock_minutes: 5, lock_on_sleep: true, clipboard_clear_secs: 30, browser_integration: false, language: "system" };
+const settings = { auto_lock_minutes: 5, lock_on_sleep: true, clipboard_clear_secs: 30, browser_integration: false, language: "system", fill_confirm: "system" };
 const entries: Any[] = [
   { title: "Google", username: "mario.rossi@example.com", password: "Xk9#mP2$vL8@qR4!wT", urls: ["google.com"], favorite: true, age: 20 },
   { title: "Netflix", username: "mario.rossi@example.com", password: "netflix2021", urls: ["netflix.com"], favorite: false, age: 400 },
@@ -18,7 +18,7 @@ const entries: Any[] = [
   { title: "Amazon", username: "mario.rossi@example.com", password: "netflix2021", urls: ["amazon.it"], favorite: false, age: 90 },
   { title: "Spotify", username: "mario.rossi", password: "cV5@jL9#xB2$", urls: ["spotify.com"], favorite: false, age: 200 },
   { title: "Instagram", username: "@mario.rossi", password: "Wm3!zQ7&pY1*eR8^", urls: ["instagram.com"], favorite: false, age: 30 },
-].map((e, i) => ({ ...e, id: `id-${i}`, notes: "", created_at: now - e.age * day, updated_at: now - e.age * day }));
+].map((e, i) => ({ totp: e.title === "GitHub" ? "JBSWY3DPEHPK3PXP" : "", backup_codes: e.title === "GitHub" ? ["a1b2c-3d4e5", "f6g7h-8i9j0", "k1l2m-3n4o5", "p6q7r-8s9t0"].map((code, n) => ({ code, used: n === 0 })) : [] as Any[], ...e, id: `id-${i}`, notes: "", created_at: now - e.age * day, updated_at: now - e.age * day }));
 
 const summary = (e: Any) => ({ id: e.id, title: e.title, username: e.username, urls: e.urls, favorite: e.favorite, updated_at: e.updated_at });
 
@@ -61,6 +61,9 @@ async function invoke(cmd: string, a: Any = {}): Promise<unknown> {
     case "autofill_status": return autofill;
     case "open_autofill_settings": autofill = true; return;
     case "biometric_status": return biometric;
+    case "mark_backup_code": entries.find((e) => e.id === a.id)!.backup_codes[a.index].used = a.used; return;
+    case "totp_code": { const t = Math.floor(Date.now() / 1000); return { code: String(100000 + (Math.floor(t / 30) * 7919) % 900000), remaining: 30 - (t % 30), period: 30 }; }
+    case "apply_pending_save": return null;
     case "sync_stage_file": return { file: "Kryptos-backup-2026-09-29.kryptos", same_vault: true };
     case "sync_stage_bytes": return { file: "", same_vault: true };
     case "sync_merge": await wait(600); if (a.password !== "password") throw "wrong_password"; return { added: 2, updated: 1, deleted: 0 };
@@ -77,17 +80,37 @@ async function invoke(cmd: string, a: Any = {}): Promise<unknown> {
     case "security_report": return report();
     case "generate_password": return gen(a.options);
     case "change_master_password": await wait(500); if (a.current !== "password") throw "wrong_password"; return;
-    case "plugin:event|listen": return 1;
+    case "fill_confirm_system": await wait(800); emit("fill-confirm-done", a.id); return;
+    case "fill_confirm_master": await wait(500); if (a.password !== "password") throw "wrong_password"; emit("fill-confirm-done", a.id); return;
+    case "fill_confirm_cancel": emit("fill-confirm-done", a.id); return;
+    case "plugin:event|listen": (listeners[a.event] ??= []).push(a.handler); return a.handler;
     case "plugin:event|unlisten": return;
   }
   throw `mock: unknown command ${cmd}`;
 }
 
 let cb = 0;
+const callbacks = new Map<number, (e: Any) => void>();
+const listeners: Record<string, number[]> = {};
+function emit(event: string, payload: unknown) {
+  for (const h of listeners[event] ?? []) callbacks.get(h)?.({ event, id: 0, payload });
+}
+let fillSeq = 0;
+/** Preview the browser-fill confirmation: run `__mockFill()` in the console. */
+(window as Any).__mockFill = () =>
+  emit("fill-confirm", { id: ++fillSeq, title: "GitHub", username: "mrossi", host: "github.com", mode: settings.fill_confirm });
 (window as Any).__TAURI_INTERNALS__ = {
   invoke,
-  transformCallback: () => ++cb,
+  transformCallback: (f: (e: Any) => void) => {
+    callbacks.set(++cb, f);
+    return cb;
+  },
   metadata: { currentWindow: { label: "main" }, currentWebview: { windowLabel: "main", label: "main" } },
+};
+(window as Any).__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+  unregisterListener: (event: string, id: number) => {
+    listeners[event] = (listeners[event] ?? []).filter((h) => h !== id);
+  },
 };
 console.info("[Kryptos] design preview with mock data — master password: \"password\"");
 export {};

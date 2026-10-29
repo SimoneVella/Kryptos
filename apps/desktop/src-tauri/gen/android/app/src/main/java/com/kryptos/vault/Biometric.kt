@@ -57,7 +57,7 @@ object Biometric {
     val vaultKey = KryptosBridge.vaultKey() ?: return done("locked")
     val cipher = runCatching { Cipher.getInstance(TRANSFORM).apply { init(Cipher.ENCRYPT_MODE, createKey()) } }
       .getOrElse { vaultKey.fill(0); return done("failed") }
-    prompt(activity, cipher, R.string.biometric_enable_title) { c, error ->
+    prompt(activity, cipher, activity.getString(R.string.biometric_enable_title), cancelable = false) { c, error ->
       val sealed = c?.let { runCatching { it.doFinal(vaultKey) }.getOrNull() }
       vaultKey.fill(0)
       if (c == null || sealed == null) return@prompt done(if (c == null) error else "failed")
@@ -68,6 +68,30 @@ object Biometric {
 
   /** Asks for the fingerprint and unlocks the vault in Rust with the released key. */
   fun unlock(activity: FragmentActivity, done: (String) -> Unit) {
+    unseal(activity, activity.getString(R.string.biometric_unlock_title), cancelable = false, done) { vaultKey ->
+      val ok = KryptosBridge.unlockWithKey(vaultKey)
+      if (!ok) disable(activity) // the vault was replaced: this key no longer opens it
+      if (ok) "ok" else "invalidated"
+    }
+  }
+
+  /**
+   * Confirms a single autofill while the vault is already unlocked. Same
+   * fingerprint-bound key as [unlock], so the check is enforced by the Keystore
+   * and not just by a callback: the released vault key is wiped unused.
+   */
+  fun confirm(activity: FragmentActivity, title: String, done: (String) -> Unit) {
+    unseal(activity, title, cancelable = true, done) { "ok" }
+  }
+
+  /** Releases the sealed vault key with a fingerprint and hands it to [use] (wiped afterwards). */
+  private fun unseal(
+    activity: FragmentActivity,
+    title: String,
+    cancelable: Boolean,
+    done: (String) -> Unit,
+    use: (ByteArray) -> String,
+  ) {
     when (status(activity)) {
       "on" -> {}
       "master_required" -> return done("master_required")
@@ -83,13 +107,12 @@ object Biometric {
       disable(activity)
       return done(if (e is KeyPermanentlyInvalidatedException) "invalidated" else "failed")
     }
-    prompt(activity, cipher, R.string.biometric_unlock_title) { c, error ->
+    prompt(activity, cipher, title, cancelable) { c, error ->
       if (c == null) return@prompt done(error)
       val vaultKey = runCatching { c.doFinal(sealed) }.getOrNull() ?: return@prompt done("failed")
-      val ok = KryptosBridge.unlockWithKey(vaultKey)
+      val result = use(vaultKey)
       vaultKey.fill(0)
-      if (!ok) disable(activity) // the vault was replaced: this key no longer opens it
-      done(if (ok) "ok" else "invalidated")
+      done(result)
     }
   }
 
@@ -108,11 +131,13 @@ object Biometric {
 
   private fun bootCount(ctx: Context) = Settings.Global.getInt(ctx.contentResolver, Settings.Global.BOOT_COUNT, 0)
 
-  private fun prompt(activity: FragmentActivity, cipher: Cipher, title: Int, done: (Cipher?, String) -> Unit) {
+  /** [cancelable]: the second button just cancels instead of offering the master password. */
+  private fun prompt(activity: FragmentActivity, cipher: Cipher, title: String, cancelable: Boolean, done: (Cipher?, String) -> Unit) {
+    val negative = if (cancelable) activity.getString(android.R.string.cancel) else activity.getString(R.string.biometric_use_master)
     val info = BiometricPrompt.PromptInfo.Builder()
-      .setTitle(activity.getString(title))
+      .setTitle(title)
       .setSubtitle(activity.getString(R.string.biometric_subtitle))
-      .setNegativeButtonText(activity.getString(R.string.biometric_use_master))
+      .setNegativeButtonText(negative)
       .setAllowedAuthenticators(AUTH)
       .setConfirmationRequired(false)
       .build()

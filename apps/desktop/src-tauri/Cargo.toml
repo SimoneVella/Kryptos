@@ -28,6 +28,11 @@ base64 = "0.22"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.10"
+# Touch ID / Mac password to confirm browser fills (confirm.rs). Same objc2 family Tauri already uses.
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSError"] }
+objc2-local-authentication = { version = "0.3", default-features = false, features = ["std", "block2", "LAContext", "LAError"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21"

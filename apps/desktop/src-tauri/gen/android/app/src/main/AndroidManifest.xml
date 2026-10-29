@@ -41,6 +41,14 @@
             android:taskAffinity=""
             android:theme="@style/Theme.kryptos_transparent" />
 
+        <!-- Fingerprint prompt to save a login while the vault is locked. -->
+        <activity
+            android:name=".SaveLoginActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.kryptos_transparent" />
+
         <service
             android:name=".KryptosAutofillService"
             android:label="Kryptos"

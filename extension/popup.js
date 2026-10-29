@@ -1,7 +1,8 @@
 // Kryptos popup. Talks to the desktop app only through Native Messaging
 // (browser -> kryptos-native-host over stdio -> app over a Unix socket).
-// No content script runs on pages: a one-shot fill function is injected only
-// when the user picks a login, using the activeTab permission.
+// No content script runs on pages: one-shot functions are injected only when the
+// user picks a login (and confirms it in the app) or asks to save the login
+// typed in the form, using the activeTab permission.
 
 const HOST = "com.kryptos.bridge";
 // Prefer the callback-style `chrome` namespace (also present in Firefox).
@@ -11,6 +12,7 @@ const $content = document.getElementById("content");
 const $site = document.getElementById("site");
 const $searchWrap = document.getElementById("search-wrap");
 const $search = document.getElementById("search");
+const $saveRow = document.getElementById("save-row");
 
 const ICONS = {
   lock: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
@@ -44,6 +46,7 @@ function el(tag, props = {}, ...children) {
 
 function state(icon, title, text, action) {
   $searchWrap.hidden = true;
+  $saveRow.hidden = true;
   const box = el("div", { className: "state" });
   const i = el("div", { className: "state-icon" });
   i.innerHTML = ICONS[icon]; // static, trusted markup
@@ -142,8 +145,13 @@ async function main() {
         return state("key", ext.i18n.getMessage("genericErrorTitle"), res.error);
     }
   }
+  const offerSave = () => {
+    $saveRow.hidden = false;
+    document.getElementById("save-btn").onclick = () => save(tab.id, url);
+  };
   if (res.logins.length === 0) {
-    return state("key", ext.i18n.getMessage("noLoginsTitle"), ext.i18n.getMessage("noLoginsText", [$site.textContent]), openApp);
+    state("key", ext.i18n.getMessage("noLoginsTitle"), ext.i18n.getMessage("noLoginsText", [$site.textContent]), openApp);
+    return offerSave();
   }
 
   const render = (q = "") => {
@@ -161,6 +169,7 @@ async function main() {
     );
   };
   render();
+  offerSave();
   if (res.logins.length > 4) {
     $searchWrap.hidden = false;
     $search.oninput = () => render($search.value.trim().toLowerCase());
@@ -171,38 +180,63 @@ async function main() {
   }
 }
 
+// The fill itself runs in background.js: confirming it in Kryptos takes the
+// focus, which closes this popup.
 async function fill(tabId, url, id) {
-  const res = await send({ type: "credentials", id, url: url.href });
-  if (!res.ok)
-    return state("key", ext.i18n.getMessage("fillFailedTitle"), res.error === "rate_limited" ? ext.i18n.getMessage("rateLimitedText") : res.error);
-  await ext.scripting.executeScript({
-    target: { tabId, allFrames: true },
-    func: injectCredentials,
-    args: [url.origin, res.username, res.password],
+  state("lock", ext.i18n.getMessage("confirmInAppTitle"), ext.i18n.getMessage("confirmInAppText"));
+  // Callback form: works with both Chrome's and Firefox's `chrome` namespace.
+  const res = await new Promise((resolve) =>
+    ext.runtime.sendMessage({ type: "fill", tabId, url: url.href, id }, (r) => resolve(ext.runtime.lastError ? null : r)),
+  );
+  if (res?.ok) return window.close();
+  const known = { rate_limited: "rateLimitedText", denied: "fillDeniedText", timeout: "fillTimeoutText", busy: "fillBusyText" };
+  const text = known[res?.error] ? ext.i18n.getMessage(known[res.error]) : res?.error;
+  state("key", ext.i18n.getMessage("fillFailedTitle"), text);
+}
+
+// "Save login from this page": reads the form only now, when the user asks
+// (no script watches pages), shows what will be saved and waits for an OK.
+async function save(tabId, url) {
+  let typed = null;
+  try {
+    const results = await ext.scripting.executeScript({ target: { tabId, allFrames: true }, func: readCredentials, args: [url.origin] });
+    typed = results.map((r) => r.result).find(Boolean) ?? null;
+  } catch {}
+  if (!typed) return state("key", ext.i18n.getMessage("saveNothingTitle"), ext.i18n.getMessage("saveNothingText"));
+
+  const box = el(
+    "div",
+    { className: "typed" },
+    el("strong", { textContent: typed.username || ext.i18n.getMessage("saveNoUsername") }),
+    el("span", { textContent: "•".repeat(Math.min(typed.password.length, 12)) }),
+  );
+  state("key", ext.i18n.getMessage("saveTitle", [$site.textContent]), box, {
+    label: ext.i18n.getMessage("saveConfirm"),
+    run: async () => {
+      const res = await send({ type: "save", url: url.href, username: typed.username, password: typed.password });
+      typed = null;
+      if (!res.ok) {
+        const known = { locked: "vaultLockedText", rate_limited: "rateLimitedText" };
+        return state("key", ext.i18n.getMessage("saveFailedTitle"), known[res.error] ? ext.i18n.getMessage(known[res.error]) : res.error);
+      }
+      const text = { added: "savedText", updated: "updatedText", unchanged: "unchangedText" }[res.outcome] ?? "savedText";
+      state("key", ext.i18n.getMessage("savedTitle"), ext.i18n.getMessage(text));
+      setTimeout(() => window.close(), 1500);
+    },
   });
-  window.close();
 }
 
 // Runs inside each frame of the page (isolated world). Must be self-contained.
-function injectCredentials(expectedOrigin, username, password) {
-  // Never fill a different origin: covers navigation since the popup opened
-  // and cross-origin iframes (only same-origin frames are filled).
-  if (location.origin !== expectedOrigin) return;
-
+// Returns what the user typed into the login form, or null.
+function readCredentials(expectedOrigin) {
+  if (location.origin !== expectedOrigin) return null;
   const visible = (el) => {
     const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && !el.disabled && !el.readOnly && getComputedStyle(el).visibility !== "hidden";
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
   };
-  const setValue = (el, v) => {
-    el.focus();
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
-    setter.call(el, v); // works with React/Vue/Angular controlled inputs
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-  };
-
-  const pw = [...document.querySelectorAll('input[type="password"]')].find(visible);
-  const scope = pw?.form ?? document;
+  const pw = [...document.querySelectorAll('input[type="password"]')].find((el) => visible(el) && el.value);
+  if (!pw) return null;
+  const scope = pw.form ?? document;
   const candidates = [
     'input[autocomplete~="username"]',
     'input[autocomplete~="email"]',
@@ -214,12 +248,10 @@ function injectCredentials(expectedOrigin, username, password) {
   ];
   let user = null;
   for (const sel of candidates) {
-    user = [...scope.querySelectorAll(sel)].find((el) => visible(el) && el !== pw);
+    user = [...scope.querySelectorAll(sel)].find((el) => visible(el) && el !== pw && el.value);
     if (user) break;
   }
-
-  if (user && username) setValue(user, username);
-  if (pw) setValue(pw, password);
+  return { username: user?.value.trim() ?? "", password: pw.value };
 }
 
 main();

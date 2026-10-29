@@ -6,8 +6,8 @@ Password manager offline e zero-knowledge. Nessun componente apre socket di rete
 
 ```
 ┌──────────── Browser ────────────┐        ┌──────────── App desktop (Tauri) ─────────────┐
-│ extension/popup.js              │ stdio  │                                               │
-│  sendNativeMessage ─────────────┼──────▶ │ kryptos-native-host ──Unix socket 0600──▶ bridge.rs
+│ extension/popup + background.js │ stdio  │                                               │
+│  connectNative ─────────────────┼──────▶ │ kryptos-native-host ──Unix socket 0600──▶ bridge.rs
 │  scripting.executeScript (fill) │        │ (relay, nessun segreto)            │          │
 └─────────────────────────────────┘        │                                    ▼          │
                                            │ React UI ──invoke──▶ commands.rs ▶ AppState   │
@@ -28,6 +28,7 @@ Password manager offline e zero-knowledge. Nessun componente apre socket di rete
 | Integrità | Magic + versione + header JSON sono l'AAD del body: qualsiasi modifica fa fallire la decifratura. |
 | Memoria | Chiavi e voci sono `Zeroize` e vengono azzerate al lock/drop. |
 | Disco | Scrittura atomica (tmp → fsync → rename), permessi 0600, un backup `.bak`. |
+| Codici 2FA | TOTP (RFC 6238, SHA-1/256/512, 6–8 cifre) calcolato in locale in `totp.rs` dal segreto salvato nella voce (chiave base32 o link `otpauth://`), verificato con i vettori della RFC. Importato dai CSV di Bitwarden/1Password/Dashlane. |
 
 Cambiare la master password richiede solo un nuovo wrap della vault key. Lo sblocco biometrico
 salverà la vault key (non la password) nel Keychain / Secure Enclave / Android Keystore:
@@ -50,8 +51,27 @@ l'API è già pronta (`raw_key()` / `unlock_with_key()`).
 
 1. L'utente apre il popup (o preme ⌘⇧L). Nessun content script gira sulle pagine.
 2. Il popup invia `{type:"logins", url}` e l'app risponde con le voci che corrispondono al sito.
-3. Al click, `{type:"credentials", id, url}` restituisce le credenziali **solo se** l'URL corrisponde alla voce.
-4. Una funzione iniettata una sola volta riempie il form e controlla che `location.origin` non sia cambiato nel frattempo.
+3. Al click, il popup passa la compilazione a `background.js` e la finestra dell'app viene in primo piano per
+   **confermare questa compilazione** (`confirm.rs`): Touch ID o la password del Mac (LocalAuthentication,
+   `DeviceOwnerAuthentication`), oppure la master password, verificata sul file del vault con Argon2id.
+   Impostazioni → Browser → *Conferma ogni compilazione* sceglie quale; fuori da macOS è sempre la master
+   password. Nessuna delle due arriva mai al browser. Il popup si chiude appena Kryptos prende il focus, per
+   questo l'attesa avviene nello script in background, su una porta `connectNative` che tiene anche in vita
+   il service worker.
+4. Solo allora `{type:"credentials", id, url}` restituisce le credenziali, e **solo se** l'URL corrisponde
+   alla voce. Il vault non resta occupato mentre l'utente risponde: viene riletto dopo, quindi un blocco nel
+   frattempo vince comunque. Aspetta una richiesta alla volta (una seconda riceve `busy`); dopo 170 s arriva
+   `timeout` (il native host aspetta 180 s per questa richiesta, 10 s per le altre).
+5. Una funzione iniettata una sola volta riempie il form e controlla che `location.origin` non sia cambiato
+   nel frattempo. Se Kryptos era venuto in primo piano solo per chiedere, si nasconde di nuovo e il focus
+   torna al browser.
+
+Anche **il salvataggio di un login** parte dall'utente: *Salva il login di questa pagina* nel popup inietta una
+sola volta una funzione che legge il modulo di accesso (solo stessa origine), mostra username e password
+mascherata e, con *Salva*, invia `{type:"save", url, username, password}`. L'app applica la stessa regola
+di Android (`UnlockedVault::save_login`): nuova password per la voce di quel sito e username, altrimenti una
+voce nuova per l'origine della pagina. I salvataggi rientrano nello stesso limite di 20 al minuto e
+compaiono nell'app.
 
 Corrispondenza URL (`matching.rs`): stesso dominio registrabile (eTLD+1, Public Suffix List inclusa
 nel binario, quindi senza rete). `github.io`, `co.uk` e simili sono trattati come suffissi pubblici. Una voce salvata
@@ -66,7 +86,7 @@ per https non viene mai offerta a una pagina http.
 | Un'altra estensione chiama il native host | `allowed_origins` nel manifest: il browser lo avvia solo per il nostro ID | — |
 | Una pagina ostile, un iframe di un altro sito o una pagina cambiata nel frattempo | La compilazione controlla `location.origin` in ogni frame. Nessuno script gira sulle pagine | — |
 | Siti simili (`example.com.evil.io`, `alice.github.io` rispetto a `mallory.github.io`) | Corrispondenza per eTLD+1 con la Public Suffix List. Https non viene mai offerto a http | test unitari |
-| Estrazione di massa | Al massimo 20 password al minuto, e ogni invio appare come notifica nell'app | — |
+| Estrazione di massa | Ogni compilazione richiede l'OK dell'utente nell'app (Touch ID, password del Mac o master password); al massimo 20 password al minuto, e ogni invio appare come notifica nell'app | — |
 
 **Limiti noti, da dichiarare:**
 - Un malware che gira con il tuo utente può comunque registrare la master password mentre la digiti (keylogger). Vale per qualsiasi password manager.
@@ -87,8 +107,7 @@ stesso `kryptos-core` del desktop. Resta nativo solo ciò che il sistema operati
 
 **Android** (`apps/desktop/src-tauri/gen/android`)
 - `KryptosAutofillService.kt` è il servizio di autofill di sistema. Legge il vault sbloccato **nello stesso
-  processo** tramite JNI (`src-tauri/src/android.rs`). Se il vault è bloccato, propone "Sblocca Kryptos",
-  che apre l'app.
+  processo** tramite JNI (`src-tauri/src/android.rs`). Se il vault è bloccato, propone "Sblocca Kryptos".
 - Il dominio web viene considerato solo se l'app che chiede le credenziali è un browser noto (Chrome,
   Firefox, Brave, Edge, Samsung…). Un'app qualsiasi potrebbe dichiarare `webDomain = banca.it` per rubare
   la password. Le app native ricevono solo le voci collegate esplicitamente a `androidapp://<package>`.
@@ -103,8 +122,24 @@ stesso `kryptos-core` del desktop. Resta nativo solo ciò che il sistema operati
   conosce il PIN non può aggiungere il proprio dito). Si salva solo la vault key cifrata. La master password
   resta obbligatoria dopo ogni riavvio e ogni 7 giorni. Lo sblocco con il volto funziona solo sui telefoni
   dove è certificato come biometria forte (es. Pixel 8 e successivi, non Pixel 7).
-- Con il vault bloccato, il suggerimento "Sblocca Kryptos" mostra l'impronta sopra il browser e compila
-  subito il modulo, senza aprire l'app.
+- **Un'impronta per ogni compilazione.** Con lo sblocco a impronta attivo, i suggerimenti non contengono
+  né username né password: ognuno è un intent di autenticazione (`AutofillUnlockActivity`). Toccandolo
+  compare l'impronta sopra il browser e solo dopo arriva il dataset compilato, quindi Android non tiene
+  mai una password che l'utente non ha scelto. Il prompt usa la stessa chiave del Keystore dello sblocco (la
+  vault key rilasciata viene cancellata senza usarla), quindi il controllo lo impone l'hardware sicuro, non
+  solo una callback. Con il vault bloccato, lo stesso tocco lo sblocca: un solo prompt, non due. L'intent
+  porta solo l'id della voce; la corrispondenza viene rifatta sul modulo stesso, quindi non può tirare fuori
+  una voce di un altro sito. Senza sblocco a impronta, a vault sbloccato i suggerimenti compilano subito,
+  come prima.
+- **Salvataggio dei nuovi login.** Ogni modulo di login riceve un `SaveInfo` (password obbligatoria,
+  username facoltativo, anche quando i campi spariscono senza chiudere la schermata), così dopo aver
+  scritto una password nuova Android chiede "Salvare in Kryptos?". Se sì, `onSaveRequest` la passa a Rust
+  (`UnlockedVault::save_login`): la voce dello stesso sito con lo stesso username riceve la nuova password,
+  altrimenti nasce una voce nuova, legata al dominio della pagina (browser fidati) o ad
+  `androidapp://<pacchetto>` (app), con le stesse regole della compilazione. Con il vault bloccato il login
+  aspetta solo in memoria, per al massimo 5 minuti: `SaveLoginActivity` chiede l'impronta oppure, senza,
+  si apre Kryptos e lo salva subito dopo la master password. I login divisi su due schermate (prima
+  username, poi password) vengono salvati con la sola password.
 
 **iOS** (da fare, serve Xcode): `tauri ios init` più una *Credential Provider Extension* in Swift che
 chiama il core Rust tramite FFI e condivide il vault con l'app tramite App Group. Il limite di memoria
@@ -157,8 +192,11 @@ unisce (`crates/core/src/vault.rs`, `apps/desktop/src-tauri/src/sync.rs`).
 - [x] Android: import CSV e backup cifrato (selettore file di sistema, URI `content://` tramite il plugin fs)
 - [ ] macOS: sblocco con Touch ID, vault key nel Portachiavi (serve l'app firmata)
 - [ ] iOS: Credential Provider Extension (richiede Xcode)
-- [ ] Salvataggio di nuovi login dal browser e dalle app (Android `onSaveRequest`)
-- [ ] TOTP
+- [x] Android: salvataggio dei nuovi login da app e browser (`onSaveRequest`)
+- [x] Salvataggio dei nuovi login dall'estensione del browser su desktop (pulsante nel popup)
+- [x] TOTP: codici 2FA nelle voci (si incolla la chiave o il link `otpauth://`, si copia il codice attuale),
+      più i codici di backup da segnare come usati (il segno si sincronizza come ogni altra modifica)
+- [ ] TOTP: lettura del QR con la fotocamera, compilazione del codice su Android e dall'estensione
 - [ ] Windows: named pipe per il bridge e registrazione del native host nel registro
 - [x] Sincronizzazione senza rete: unione di un backup o trasferimento con i QR, unione per voce con tombstone
 - [ ] Sync LAN opzionale (abbinamento con QR e chiave effimera X25519, canale Noise). Su Android servirebbe il permesso INTERNET, quindi solo su richiesta esplicita

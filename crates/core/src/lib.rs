@@ -14,9 +14,10 @@ pub mod matching;
 pub mod paths;
 pub mod peer;
 pub mod storage;
+pub mod totp;
 pub mod vault;
 
-pub use entry::{Entry, EntryInput, EntrySummary};
+pub use entry::{BackupCode, Entry, EntryInput, EntrySummary};
 pub use error::{Error, Result};
 pub use generator::GeneratorOptions;
-pub use vault::{MergeReport, UnlockedVault};
+pub use vault::{MergeReport, SaveOutcome, UnlockedVault};

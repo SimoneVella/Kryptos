@@ -10,17 +10,24 @@ import androidx.fragment.app.FragmentActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
- * Opened by the "Unlock Kryptos" suggestion while the vault is locked. Invisible:
- * it shows the fingerprint prompt and, on success, fills the form right away
- * (asking which account first if the site has several), without opening Kryptos.
- * Without a usable fingerprint, or when the user picks the master password, it
- * opens Kryptos instead.
+ * Opened by a Kryptos suggestion. Invisible: it shows the fingerprint prompt and,
+ * on success, fills the form right away without opening Kryptos.
+ *
+ * - Vault locked ("Unlock Kryptos", or a suggestion that went stale): the
+ *   fingerprint unlocks it, then fills (asking which account first if the site
+ *   has several). Without a usable fingerprint, or when the user picks the master
+ *   password, it opens Kryptos instead.
+ * - Vault unlocked: the fingerprint confirms this one fill (one prompt per fill).
  */
 class AutofillUnlockActivity : FragmentActivity() {
+  private val entryId get() = intent.getStringExtra(KryptosAutofillService.EXTRA_ENTRY_ID)
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     if (savedInstanceState != null) return // recreated while the prompt is showing: it reattaches itself
-    if (!KryptosBridge.ensureReady(this) || Biometric.status(this) != "on") return openKryptos()
+    if (!KryptosBridge.ensureReady(this)) return openKryptos()
+    if (KryptosBridge.isUnlocked()) return confirm()
+    if (Biometric.status(this) != "on") return openKryptos()
     Biometric.unlock(this) { result ->
       when (result) {
         "ok" -> fill()
@@ -30,15 +37,36 @@ class AutofillUnlockActivity : FragmentActivity() {
     }
   }
 
-  private fun fill() {
+  private fun confirm() {
+    val logins = suggestions()
+    if (logins.isEmpty()) return finish()
+    // Fingerprint unlock off: the unlocked vault is the only gate, as before.
+    if (Biometric.status(this) != "on") return choose(logins)
+    val title = logins.singleOrNull()?.let { getString(R.string.biometric_fill_title, it.title) } ?: getString(R.string.app_name)
+    Biometric.confirm(this, title) { result ->
+      when (result) {
+        "ok" -> fill()
+        "cancelled", "use_master", "lockout" -> finish()
+        else -> openKryptos()
+      }
+    }
+  }
+
+  /** Read again after the prompt: the vault may have locked while it was showing. */
+  private fun fill() = choose(suggestions())
+
+  private fun suggestions(): List<KryptosAutofillService.Suggestion> {
     val structure = IntentCompat.getParcelableExtra(intent, AutofillManager.EXTRA_ASSIST_STRUCTURE, AssistStructure::class.java)
-    val logins = structure?.let { KryptosAutofillService.unlockedDatasets(this, it) }.orEmpty()
+    return structure?.let { KryptosAutofillService.unlockedDatasets(this, it, entryId) }.orEmpty()
+  }
+
+  private fun choose(logins: List<KryptosAutofillService.Suggestion>) {
     when (logins.size) {
       0 -> finish()
-      1 -> reply(logins[0].second)
+      1 -> reply(logins[0].dataset)
       else -> MaterialAlertDialogBuilder(this)
         .setTitle(R.string.autofill_choose_account)
-        .setItems(logins.map { it.first }.toTypedArray()) { _, i -> reply(logins[i].second) }
+        .setItems(logins.map { it.label }.toTypedArray()) { _, i -> reply(logins[i].dataset) }
         .setOnCancelListener { finish() }
         .show()
     }

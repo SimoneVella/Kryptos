@@ -4,6 +4,9 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+/// How each browser fill is confirmed: "system" (Touch ID / Mac password,
+/// master password where unavailable) or "master" (always the master password).
+const FILL_CONFIRM: &[&str] = &["system", "master"];
 const LANGUAGES: &[&str] = &["system", "en", "it", "es", "fr", "de", "pt", "zh", "ru", "uk"];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -14,6 +17,7 @@ pub struct Settings {
     pub clipboard_clear_secs: u64,
     pub browser_integration: bool,
     pub language: String,
+    pub fill_confirm: String,
 }
 
 impl Default for Settings {
@@ -24,6 +28,7 @@ impl Default for Settings {
             clipboard_clear_secs: 30,
             browser_integration: false,
             language: "system".into(),
+            fill_confirm: "system".into(),
         }
     }
 }
@@ -51,6 +56,9 @@ impl Settings {
         }
         if !LANGUAGES.contains(&self.language.as_str()) {
             return Err("invalid_language".into());
+        }
+        if !FILL_CONFIRM.contains(&self.fill_confirm.as_str()) {
+            return Err("invalid_fill_confirm".into());
         }
         Ok(())
     }

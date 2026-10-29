@@ -3,7 +3,7 @@ use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use crate::crypto::{self, KdfParams, SecretKey, SALT_LEN};
-use crate::entry::{now, Entry, EntryInput, EntrySummary};
+use crate::entry::{now, BackupCode, Entry, EntryInput, EntrySummary};
 use crate::error::{Error, Result};
 use crate::format::{self, Header, WRAP_AAD};
 
@@ -125,6 +125,8 @@ impl UnlockedVault {
             urls: clean_urls(&input.urls),
             notes: input.notes.clone(),
             favorite: input.favorite,
+            totp: input.totp.trim().to_owned(),
+            backup_codes: clean_codes(&input.backup_codes),
             created_at: t,
             updated_at: t,
         });
@@ -140,7 +142,66 @@ impl UnlockedVault {
         e.urls = clean_urls(&input.urls);
         e.notes = input.notes.clone();
         e.favorite = input.favorite;
+        e.totp = input.totp.trim().to_owned();
+        e.backup_codes = clean_codes(&input.backup_codes);
         e.updated_at = now();
+        Ok(())
+    }
+
+    /// A login the user typed into a site or app and asked to keep (Android's
+    /// "Save to Kryptos?"). Updates the password of the entry for that site with
+    /// the same username, else adds a new entry titled `title`.
+    pub fn save_login(&mut self, target: &str, title: &str, username: &str, password: &str) -> Result<SaveOutcome> {
+        if password.is_empty() {
+            return Err(Error::InvalidInput("password_required"));
+        }
+        let existing = self
+            .data
+            .entries
+            .iter()
+            .filter(|e| crate::matching::target_matches(e, target) && e.username.eq_ignore_ascii_case(username))
+            .max_by_key(|e| e.updated_at);
+        if let Some(e) = existing {
+            if e.password == password {
+                return Ok(SaveOutcome::Unchanged(e.id));
+            }
+            let id = e.id;
+            let input = EntryInput {
+                title: e.title.clone(),
+                username: e.username.clone(),
+                password: password.to_owned(),
+                urls: e.urls.clone(),
+                notes: e.notes.clone(),
+                favorite: e.favorite,
+                totp: e.totp.clone(),
+                backup_codes: e.backup_codes.clone(),
+            };
+            self.update(id, input)?;
+            return Ok(SaveOutcome::Updated(id));
+        }
+        let title = if title.trim().is_empty() { target } else { title };
+        let id = self.add(EntryInput {
+            title: title.to_owned(),
+            username: username.to_owned(),
+            password: password.to_owned(),
+            urls: vec![target.to_owned()],
+            notes: String::new(),
+            favorite: false,
+            totp: String::new(),
+            backup_codes: Vec::new(),
+        })?;
+        Ok(SaveOutcome::Added(id))
+    }
+
+    /// Marks backup code number `index` of an entry as used (or not). A change
+    /// like any other: it updates the entry's time, so it syncs to other devices.
+    pub fn set_backup_code_used(&mut self, id: Uuid, index: usize, used: bool) -> Result<()> {
+        let e = self.data.entries.iter_mut().find(|e| e.id == id).ok_or(Error::NotFound)?;
+        let c = e.backup_codes.get_mut(index).ok_or(Error::NotFound)?;
+        if c.used != used {
+            c.used = used;
+            e.updated_at = now();
+        }
         Ok(())
     }
 
@@ -248,11 +309,34 @@ fn check_password(pw: &str) -> Result<()> {
     Ok(())
 }
 
+/// What [`UnlockedVault::save_login`] did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SaveOutcome {
+    Added(Uuid),
+    Updated(Uuid),
+    Unchanged(Uuid),
+}
+
 fn validate_input(input: &EntryInput) -> Result<()> {
     if input.title.trim().is_empty() {
         return Err(Error::InvalidInput("title_required"));
     }
+    if !input.totp.trim().is_empty() {
+        crate::totp::Totp::parse(&input.totp)?;
+    }
     Ok(())
+}
+
+/// Trimmed, without blanks or repeats (the first copy keeps its "used" mark).
+fn clean_codes(codes: &[BackupCode]) -> Vec<BackupCode> {
+    let mut out: Vec<BackupCode> = Vec::new();
+    for c in codes {
+        let code = c.code.trim();
+        if !code.is_empty() && !out.iter().any(|o| o.code == code) {
+            out.push(BackupCode { code: code.to_owned(), used: c.used });
+        }
+    }
+    out
 }
 
 fn clean_urls(urls: &[String]) -> Vec<String> {
@@ -271,7 +355,57 @@ mod tests {
             urls: vec!["https://example.com".into(), " ".into()],
             notes: String::new(),
             favorite: false,
+            totp: String::new(),
+            backup_codes: Vec::new(),
         }
+    }
+
+    #[test]
+    fn backup_codes_cleaned_and_marked() {
+        let mut v = UnlockedVault::create("correct horse", KdfParams::TEST).unwrap();
+        let mut i = input("Example");
+        let code = |c: &str| BackupCode { code: c.into(), used: false };
+        i.backup_codes = vec![code(" 1111-2222 "), code(""), code("3333 4444"), code("1111-2222")];
+        let id = v.add(i).unwrap();
+        let codes: Vec<_> = v.get(id).unwrap().backup_codes.iter().map(|c| c.code.clone()).collect();
+        assert_eq!(codes, ["1111-2222", "3333 4444"]);
+
+        let before = v.get(id).unwrap().updated_at;
+        v.set_backup_code_used(id, 1, true).unwrap();
+        assert!(v.get(id).unwrap().backup_codes[1].used);
+        assert!(v.get(id).unwrap().updated_at >= before);
+        assert!(v.set_backup_code_used(id, 5, true).is_err());
+        // Survives a save and reopen.
+        let v2 = UnlockedVault::unlock(&v.to_bytes(), "correct horse").unwrap();
+        assert!(v2.get(id).unwrap().backup_codes[1].used);
+    }
+
+    #[test]
+    fn save_login_adds_updates_or_keeps() {
+        let mut v = UnlockedVault::create("correct horse", KdfParams::TEST).unwrap();
+        let id = v.add(input("Example")).unwrap();
+
+        // Same site and username, new password: updated in place.
+        let out = v.save_login("https://www.example.com", "example.com", "ME@example.com", "n3w!").unwrap();
+        assert_eq!(out, SaveOutcome::Updated(id));
+        assert_eq!(v.get(id).unwrap().password, "n3w!");
+        assert_eq!(v.get(id).unwrap().title, "Example");
+
+        // Same password again: nothing to do.
+        let out = v.save_login("https://example.com/login", "example.com", "me@example.com", "n3w!").unwrap();
+        assert_eq!(out, SaveOutcome::Unchanged(id));
+
+        // Another account on the same site, and an app: new entries.
+        let SaveOutcome::Added(other) = v.save_login("https://example.com", "example.com", "you", "pw").unwrap() else {
+            panic!("expected a new entry")
+        };
+        assert_eq!(v.get(other).unwrap().urls, vec!["https://example.com"]);
+        let SaveOutcome::Added(app) = v.save_login("androidapp://com.example", "Example App", "me@example.com", "pw").unwrap() else {
+            panic!("an app must not update the web entry")
+        };
+        assert_eq!(v.get(app).unwrap().title, "Example App");
+        assert_eq!(v.entries().len(), 3);
+        assert!(v.save_login("https://example.com", "x", "me", "").is_err());
     }
 
     #[test]

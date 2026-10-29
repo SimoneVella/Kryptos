@@ -29,5 +29,24 @@
   },
   "fillLabel": { "message": "填充" },
   "fillFailedTitle": { "message": "无法填充" },
-  "rateLimitedText": { "message": "短时间内请求过多，请一分钟后再试。" }
+  "rateLimitedText": { "message": "短时间内请求过多，请一分钟后再试。" },
+  "confirmInAppTitle": { "message": "在 Kryptos 中确认" },
+  "confirmInAppText": { "message": "Kryptos 需要你确认此次填充。" },
+  "fillDeniedText": { "message": "已在 Kryptos 中取消填充。" },
+  "fillTimeoutText": { "message": "3 分钟内未确认。" },
+  "fillBusyText": { "message": "另一项填充已在 Kryptos 中等待确认。" },
+  "saveLoginButton": { "message": "保存此页面的登录信息" },
+  "saveTitle": {
+    "message": "保存到 Kryptos（$SITE$）？",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "saveConfirm": { "message": "保存" },
+  "saveNoUsername": { "message": "（无用户名）" },
+  "saveNothingTitle": { "message": "没有可保存的内容" },
+  "saveNothingText": { "message": "请先在登录表单中输入密码，然后再保存。" },
+  "savedTitle": { "message": "已保存" },
+  "savedText": { "message": "登录信息已保存到 Kryptos。" },
+  "updatedText": { "message": "已在 Kryptos 中更新密码。" },
+  "unchangedText": { "message": "此登录信息已在 Kryptos 中。" },
+  "saveFailedTitle": { "message": "无法保存" }
 }

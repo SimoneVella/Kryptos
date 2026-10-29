@@ -17,6 +17,9 @@ export type EntrySummary = {
 export type Entry = EntrySummary & {
   password: string;
   notes: string;
+  /** 2FA secret or otpauth:// link ("" when none). */
+  totp: string;
+  backup_codes: BackupCode[];
   created_at: number;
 };
 
@@ -27,7 +30,14 @@ export type EntryInput = {
   urls: string[];
   notes: string;
   favorite: boolean;
+  totp: string;
+  backup_codes: BackupCode[];
 };
+
+/** A 2FA recovery code; each works once. */
+export type BackupCode = { code: string; used: boolean };
+
+export type TotpCode = { code: string; remaining: number; period: number };
 
 export type GeneratorOptions = {
   length: number;
@@ -61,11 +71,16 @@ export type Settings = {
   clipboard_clear_secs: number;
   browser_integration: boolean;
   language: string;
+  /** How each browser fill is confirmed (desktop). */
+  fill_confirm: "system" | "master";
 };
 
 export type MergeReport = { added: number; updated: number; deleted: number };
 /** A copy of a vault waiting for its master password before being merged. */
 export type StagedCopy = { file: string; same_vault: boolean };
+
+/** A browser fill waiting for the user's OK in the app window (desktop). */
+export type FillRequest = { id: number; title: string; username: string; host: string; mode: "system" | "master" };
 
 export type BiometricStatus = "unavailable" | "off" | "on" | "master_required";
 
@@ -84,8 +99,10 @@ export const api = {
   addEntry: (input: EntryInput) => invoke<string>("add_entry", { input }),
   updateEntry: (id: string, input: EntryInput) => invoke<void>("update_entry", { id, input }),
   deleteEntry: (id: string) => invoke<void>("delete_entry", { id }),
+  markBackupCode: (id: string, index: number, used: boolean) => invoke<void>("mark_backup_code", { id, index, used }),
   /** Copied by Rust; passwords are auto-cleared from the clipboard after 30 s. */
-  copyField: (id: string, field: "username" | "password") => invoke<void>("copy_field", { id, field }),
+  copyField: (id: string, field: "username" | "password" | "totp") => invoke<void>("copy_field", { id, field }),
+  totpCode: (id: string) => invoke<TotpCode>("totp_code", { id }),
 
   /** Copies arbitrary text via Rust, auto-cleared after 30 s. */
   copyText: (text: string) => invoke<void>("copy_text", { text }),
@@ -110,6 +127,8 @@ export const api = {
   /** Fingerprint unlock (Android). The prompt calls reject with a code such as
    *  "cancelled", "use_master", "lockout", "invalidated", "master_required". */
   biometricStatus: () => invoke<BiometricStatus>("biometric_status"),
+  /** Android: saves a login the user accepted to keep while the vault was locked. */
+  applyPendingSave: () => invoke<string | null>("apply_pending_save"),
   biometricEnable: () => invoke<void>("biometric_enable"),
   biometricDisable: () => invoke<void>("biometric_disable"),
   biometricUnlock: () => invoke<void>("biometric_unlock"),
@@ -125,9 +144,23 @@ export const api = {
   /** Android: encrypted backup to the system share sheet. */
   shareBackup: () => invoke<void>("share_backup"),
 
+  /** Browser fill confirmation (desktop). `reason` is shown in the Touch ID prompt.
+   *  Rejects with "cancelled", "failed", "wrong_password" or "timeout" (request gone). */
+  fillConfirmSystem: (id: number, reason: string) => invoke<void>("fill_confirm_system", { id, reason }),
+  fillConfirmMaster: (id: number, password: string) => invoke<void>("fill_confirm_master", { id, password }),
+  fillConfirmCancel: (id: number) => invoke<void>("fill_confirm_cancel", { id }),
+  onFillConfirm: (cb: (r: FillRequest) => void): Promise<UnlistenFn> =>
+    listen<FillRequest>("fill-confirm", (e) => cb(e.payload)),
+  /** The request was answered or expired: close its dialog. */
+  onFillConfirmDone: (cb: (id: number) => void): Promise<UnlistenFn> =>
+    listen<number>("fill-confirm-done", (e) => cb(e.payload)),
+
   onLocked: (cb: () => void): Promise<UnlistenFn> => listen("vault-locked", cb),
   /** Unlocked outside the UI (fingerprint from an autofill suggestion). */
   onUnlocked: (cb: () => void): Promise<UnlistenFn> => listen("vault-unlocked", cb),
+  /** A login typed elsewhere was saved: Android's save sheet, or the extension's "Save login" button. */
+  onLoginSaved: (cb: (e: { title: string; outcome: "added" | "updated" | "unchanged" }) => void): Promise<UnlistenFn> =>
+    listen<{ title: string; outcome: "added" | "updated" | "unchanged" }>("login-saved", (e) => cb(e.payload)),
   onBrowserFill: (cb: (e: { title: string; host: string }) => void): Promise<UnlistenFn> =>
     listen<{ title: string; host: string }>("browser-fill", (e) => cb(e.payload)),
 };

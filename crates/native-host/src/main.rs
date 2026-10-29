@@ -93,8 +93,10 @@ fn relay(msg: &Value) -> Result<Value, String> {
 
     let path = kryptos_core::paths::ipc_socket_path();
     let mut stream = UnixStream::connect(&path).map_err(|_| "app_not_running".to_string())?;
-    // Unlock prompts are handled in the popup, so the app should answer quickly.
-    stream.set_read_timeout(Some(Duration::from_secs(10))).ok();
+    // The app answers at once, except for credentials: those wait for the user to
+    // confirm the fill in the app window (it gives up after 170 s, see confirm.rs).
+    let wait = if msg.get("type").and_then(Value::as_str) == Some("credentials") { 180 } else { 10 };
+    stream.set_read_timeout(Some(Duration::from_secs(wait))).ok();
 
     // Re-serialize: compact JSON never contains a raw newline, which frames the socket protocol.
     let mut line = serde_json::to_vec(msg).map_err(|e| e.to_string())?;

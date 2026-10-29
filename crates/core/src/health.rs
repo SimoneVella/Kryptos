@@ -64,6 +64,8 @@ mod tests {
             urls: vec![],
             notes: String::new(),
             favorite: false,
+            totp: String::new(),
+            backup_codes: Vec::new(),
             created_at: updated_at,
             updated_at,
         }

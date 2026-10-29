@@ -50,8 +50,17 @@ object KryptosBridge {
 
   @JvmStatic external fun isUnlocked(): Boolean
 
-  /** JSON array of {title, username, password}, or null if the vault is locked. */
+  /** JSON array of {id, title, username, password}, or null if the vault is locked. */
   @JvmStatic external fun fillData(target: String): String?
+
+  /**
+   * Saves a login the user typed: "added", "updated", "unchanged", "locked" (it now
+   * waits in memory for the vault to open, see applyPendingSave) or "failed".
+   */
+  @JvmStatic external fun saveLogin(target: String, title: String, username: String, password: String): String?
+
+  /** After an unlock: saves the login waiting for it. Its outcome, or "none". */
+  @JvmStatic external fun applyPendingSave(): String?
 
   @JvmStatic external fun setForeground(visible: Boolean)
 

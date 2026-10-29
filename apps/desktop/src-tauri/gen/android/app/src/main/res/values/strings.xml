@@ -7,4 +7,9 @@
     <string name="biometric_subtitle">"Confirm with your fingerprint"</string>
     <string name="biometric_use_master">"Use master password"</string>
     <string name="autofill_choose_account">"Choose an account"</string>
+    <string name="biometric_fill_title">"Fill %1$s"</string>
+    <string name="autofill_saved">"Saved in Kryptos"</string>
+    <string name="autofill_updated">"Password updated in Kryptos"</string>
+    <string name="autofill_save_unlock">"Unlock Kryptos to save this login"</string>
+    <string name="autofill_save_failed">"Kryptos could not save this login"</string>
 </resources>

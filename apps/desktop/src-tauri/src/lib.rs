@@ -4,6 +4,8 @@
 mod bridge;
 mod browser;
 mod commands;
+#[cfg(desktop)]
+mod confirm;
 #[cfg(target_os = "android")]
 mod android;
 mod settings;
@@ -70,6 +72,8 @@ pub fn run() {
             commands::update_entry,
             commands::delete_entry,
             commands::copy_field,
+            commands::totp_code,
+            commands::mark_backup_code,
             commands::copy_text,
             commands::security_report,
             commands::generate_password,
@@ -83,9 +87,13 @@ pub fn run() {
             commands::autofill_status,
             commands::open_autofill_settings,
             commands::biometric_status,
+            commands::apply_pending_save,
             commands::biometric_enable,
             commands::biometric_disable,
             commands::biometric_unlock,
+            commands::fill_confirm_system,
+            commands::fill_confirm_master,
+            commands::fill_confirm_cancel,
             sync::sync_stage_file,
             sync::sync_stage_bytes,
             sync::sync_merge,

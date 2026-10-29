@@ -12,16 +12,21 @@
 //! only works right after a strong biometric check (see Biometric.kt). Rust
 //! hands the key over once, when the user turns the feature on, and gets it
 //! back through `unlockWithKey` after a successful fingerprint.
+//!
+//! Saving: when the user accepts Android's "Save to Kryptos?" sheet, the login
+//! is saved at once if the vault is open. If it is locked, the login waits here,
+//! in memory only and for a few minutes, until the fingerprint or the master
+//! password opens the vault (`apply_pending_save`).
 
 use std::path::PathBuf;
 use std::sync::{mpsc, Mutex, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use jni::objects::{JByteArray, JClass, JObject, JString, JValue};
 use jni::sys::{jboolean, jbyteArray, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
-use kryptos_core::matching::entry_matches;
-use kryptos_core::{storage, Entry, UnlockedVault};
+use kryptos_core::matching::target_matches;
+use kryptos_core::{storage, SaveOutcome, UnlockedVault};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 use zeroize::Zeroizing;
@@ -37,6 +42,18 @@ static PENDING: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
 
 /// How long a biometric prompt may stay open before the command gives up.
 const PROMPT_TIMEOUT: Duration = Duration::from_secs(180);
+
+/// A login the user asked to save while the vault was locked.
+struct PendingSave {
+    target: String,
+    title: String,
+    username: Zeroizing<String>,
+    password: Zeroizing<String>,
+    at: Instant,
+}
+static PENDING_SAVE: Mutex<Option<PendingSave>> = Mutex::new(None);
+/// A pending save is dropped if the vault is not opened within this time.
+const SAVE_TTL: Duration = Duration::from_secs(300);
 
 /// The one vault state of the process, shared by the UI and the autofill side.
 /// Whoever comes first (Tauri setup, or the autofill service on a cold start)
@@ -149,18 +166,38 @@ pub fn master_unlocked(app: &AppHandle) {
     call_void(app, "onMasterUnlock");
 }
 
-// ───────── Kotlin → Rust (KryptosBridge) ─────────
+// ───────── Saving logins ─────────
 
-/// `target` is either a web URL (browsers report the page domain) or
-/// `androidapp://<package>` for native apps, which only match entries the user
-/// explicitly linked to that package (package names are not proof of identity).
-fn matches(e: &Entry, target: &str) -> bool {
-    if target.starts_with("androidapp://") {
-        e.urls.iter().any(|u| u.trim().eq_ignore_ascii_case(target))
-    } else {
-        entry_matches(e, target)
+/// Saves into the open vault and tells the UI. Returns "added", "updated",
+/// "unchanged" or an error code ("locked", ...).
+fn save(state: &AppState, p: &PendingSave) -> Result<&'static str, String> {
+    let outcome = state.mutate(|v| {
+        v.save_login(&p.target, &p.title, &p.username, &p.password).map_err(crate::commands::code)
+    })?;
+    let word = match outcome {
+        SaveOutcome::Added(_) => "added",
+        SaveOutcome::Updated(_) => "updated",
+        SaveOutcome::Unchanged(_) => "unchanged",
+    };
+    emit_json("login-saved", json!({ "title": p.title, "outcome": word }));
+    Ok(word)
+}
+
+/// The vault was just opened: saves the login that was waiting for it, if any
+/// and still fresh. Returns its outcome, or None.
+pub fn apply_pending_save() -> Option<&'static str> {
+    let state = state()?;
+    let p = PENDING_SAVE.lock().unwrap().take().filter(|p| p.at.elapsed() < SAVE_TTL)?;
+    save(state, &p).ok()
+}
+
+fn emit_json(event: &str, payload: serde_json::Value) {
+    if let Some(app) = APP.get() {
+        let _ = app.emit(event, payload);
     }
 }
+
+// ───────── Kotlin → Rust (KryptosBridge) ─────────
 
 /// Called by the Kotlin side before anything else (it may run before Tauri).
 #[no_mangle]
@@ -228,7 +265,7 @@ pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_biometricDone(mut en
     }
 }
 
-/// Returns a JSON array of `{title, username, password}` for entries matching `target`,
+/// Returns a JSON array of `{id, title, username, password}` for entries matching `target`,
 /// or `null` when the vault is locked / the app has not started yet.
 #[no_mangle]
 pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_fillData<'a>(
@@ -242,8 +279,8 @@ pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_fillData<'a>(
         let list: Vec<_> = v
             .entries()
             .iter()
-            .filter(|e| matches(e, &target))
-            .map(|e| json!({ "title": e.title, "username": e.username, "password": e.password }))
+            .filter(|e| target_matches(e, &target))
+            .map(|e| json!({ "id": e.id, "title": e.title, "username": e.username, "password": e.password }))
             .collect();
         Ok(serde_json::Value::Array(list).to_string())
     });
@@ -251,4 +288,47 @@ pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_fillData<'a>(
         Ok(s) => env.new_string(s).map(|j| j.into_raw()).unwrap_or(std::ptr::null_mut()),
         Err(_) => std::ptr::null_mut(),
     }
+}
+
+/// The user accepted Android's save sheet. `target` follows the same rules as
+/// `fillData`. Returns "added" / "updated" / "unchanged", "locked" when the login
+/// now waits for the vault to open (see `applyPendingSave`), or "failed".
+#[no_mangle]
+pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_saveLogin<'a>(
+    mut env: JNIEnv<'a>,
+    _class: JClass<'a>,
+    target: JString<'a>,
+    title: JString<'a>,
+    username: JString<'a>,
+    password: JString<'a>,
+) -> jstring {
+    let mut text = |s: &JString| env.get_string(s).map(String::from).ok();
+    let (Some(target), Some(title), Some(username), Some(password)) = (text(&target), text(&title), text(&username), text(&password))
+    else {
+        return std::ptr::null_mut();
+    };
+    let p = PendingSave {
+        target,
+        title,
+        username: Zeroizing::new(username),
+        password: Zeroizing::new(password),
+        at: Instant::now(),
+    };
+    let result = match state() {
+        Some(s) if s.is_unlocked() => save(s, &p).unwrap_or("failed"),
+        Some(_) => {
+            *PENDING_SAVE.lock().unwrap() = Some(p);
+            "locked"
+        }
+        None => "failed",
+    };
+    env.new_string(result).map(|j| j.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
+/// After the fingerprint opened the vault: saves the waiting login. Returns its
+/// outcome, or "none" when there was nothing (fresh) to save.
+#[no_mangle]
+pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_applyPendingSave(env: JNIEnv, _class: JClass) -> jstring {
+    let result = apply_pending_save().unwrap_or("none");
+    env.new_string(result).map(|j| j.into_raw()).unwrap_or(std::ptr::null_mut())
 }

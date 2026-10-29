@@ -29,5 +29,24 @@
   },
   "fillLabel": { "message": "Заполнить" },
   "fillFailedTitle": { "message": "Не удалось заполнить" },
-  "rateLimitedText": { "message": "Слишком много запросов за короткое время. Повторите попытку через минуту." }
+  "rateLimitedText": { "message": "Слишком много запросов за короткое время. Повторите попытку через минуту." },
+  "confirmInAppTitle": { "message": "Подтвердите в Kryptos" },
+  "confirmInAppText": { "message": "Kryptos просит подтвердить это заполнение." },
+  "fillDeniedText": { "message": "Заполнение отменено в Kryptos." },
+  "fillTimeoutText": { "message": "Нет подтверждения в течение 3 минут." },
+  "fillBusyText": { "message": "Другое заполнение уже ожидает подтверждения в Kryptos." },
+  "saveLoginButton": { "message": "Сохранить вход с этой страницы" },
+  "saveTitle": {
+    "message": "Сохранить в Kryptos для $SITE$?",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "saveConfirm": { "message": "Сохранить" },
+  "saveNoUsername": { "message": "(без имени пользователя)" },
+  "saveNothingTitle": { "message": "Нечего сохранять" },
+  "saveNothingText": { "message": "Сначала введите пароль в форму входа, затем сохраните." },
+  "savedTitle": { "message": "Сохранено" },
+  "savedText": { "message": "Вход сохранён в Kryptos." },
+  "updatedText": { "message": "Пароль обновлён в Kryptos." },
+  "unchangedText": { "message": "Этот вход уже есть в Kryptos." },
+  "saveFailedTitle": { "message": "Не удалось сохранить" }
 }

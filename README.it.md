@@ -141,6 +141,11 @@ cd apps/desktop && python3 brand/make-icons.py /percorso/nuovo-logo.png && npx t
    (l'ID è fisso: `jclbckdbmecjgoopnpchbijihdfeajkb`)
 2. Nell'app: **Impostazioni → Estensione browser → Collega**, poi riavvia il browser
 3. Su una pagina di login: clic sull'icona Kryptos, oppure ⌘⇧L
+4. Scegli il login e conferma in Kryptos: Touch ID o la password del Mac, oppure la master password se
+   preferisci (**Impostazioni → Browser → Conferma ogni compilazione**). Lo chiede a ogni singola
+   compilazione, quindi l'unica password che digiti è la master password, o nessuna.
+5. Nuovo account o password cambiata? Scrivila nel modulo, apri il popup e premi **Salva il login di
+   questa pagina**.
 
 La chiave privata dell'estensione (`secrets/extension-key.pem`) serve solo per pacchettizzare un `.crx`.
 Non va condivisa ed è esclusa da git.
@@ -153,6 +158,22 @@ Oppure, via adb:
 ```bash
 adb shell settings put secure autofill_service com.kryptos.vault/.KryptosAutofillService
 ```
+
+Con lo sblocco a impronta attivo (**Impostazioni → Sblocco con impronta**), ogni suggerimento chiede
+l'impronta prima di compilare.
+
+Quando accedi o ti registri con una password che Kryptos non conosce ancora, Android propone di salvarla
+in Kryptos (o di aggiornare la password di quell'account).
+
+## Codici 2FA
+
+Kryptos può tenere anche il codice della verifica in due passaggi di un sito. Quando il sito mostra il QR,
+scegli "non riesci a scansionarlo?", copia la chiave e incollala nel campo **Codice 2FA** della voce (va
+bene anche un link `otpauth://`). La voce mostra poi il codice a 6 cifre del momento, pronto da copiare.
+Lì puoi incollare anche i **codici di backup** del sito, uno per riga: li copi uno alla volta e segni quelli
+usati.
+Tenere password e codice nello stesso vault è comodo, ma per gli account più importanti (email, banca)
+un'app di autenticazione separata è più sicura.
 
 ## Spostare le password tra dispositivi
 

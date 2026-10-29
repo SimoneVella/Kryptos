@@ -29,5 +29,24 @@
   },
   "fillLabel": { "message": "Fill" },
   "fillFailedTitle": { "message": "Couldn't fill" },
-  "rateLimitedText": { "message": "Too many requests in a short time. Try again in a minute." }
+  "rateLimitedText": { "message": "Too many requests in a short time. Try again in a minute." },
+  "confirmInAppTitle": { "message": "Confirm in Kryptos" },
+  "confirmInAppText": { "message": "Kryptos asks you to confirm this fill." },
+  "fillDeniedText": { "message": "Fill cancelled in Kryptos." },
+  "fillTimeoutText": { "message": "No confirmation within 3 minutes." },
+  "fillBusyText": { "message": "Another fill is already waiting for confirmation in Kryptos." },
+  "saveLoginButton": { "message": "Save login from this page" },
+  "saveTitle": {
+    "message": "Save to Kryptos for $SITE$?",
+    "placeholders": { "site": { "content": "$1" } }
+  },
+  "saveConfirm": { "message": "Save" },
+  "saveNoUsername": { "message": "(no username)" },
+  "saveNothingTitle": { "message": "Nothing to save" },
+  "saveNothingText": { "message": "Type your password in the login form first, then save." },
+  "savedTitle": { "message": "Saved" },
+  "savedText": { "message": "Login saved in Kryptos." },
+  "updatedText": { "message": "Password updated in Kryptos." },
+  "unchangedText": { "message": "This login is already in Kryptos." },
+  "saveFailedTitle": { "message": "Couldn't save" }
 }

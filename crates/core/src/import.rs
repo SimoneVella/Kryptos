@@ -11,6 +11,8 @@ const USER: &[&str] = &["username", "login_username", "login", "user", "email", 
 const PASS: &[&str] = &["password", "login_password", "pass"];
 const NOTES: &[&str] = &["note", "notes", "extra", "comment", "comments"];
 const FAV: &[&str] = &["favorite", "favourite"];
+// Bitwarden, 1Password, Dashlane and generic names for the 2FA secret.
+const TOTP: &[&str] = &["login_totp", "totp", "otpauth", "otp", "otpsecret", "one-time password"];
 
 /// Parses a CSV export into entries ready to add. Rows without a password are skipped.
 pub fn parse_csv(data: &[u8]) -> Result<Vec<EntryInput>> {
@@ -25,6 +27,7 @@ pub fn parse_csv(data: &[u8]) -> Result<Vec<EntryInput>> {
         .collect();
     let col = |names: &[&str]| names.iter().find_map(|n| headers.iter().position(|h| h == n));
     let (title, url, user, pass, notes, fav) = (col(TITLE), col(URL), col(USER), col(PASS), col(NOTES), col(FAV));
+    let totp = col(TOTP);
     let pass = pass.ok_or(Error::InvalidInput("csv_no_password_column"))?;
 
     let mut out = Vec::new();
@@ -47,6 +50,9 @@ pub fn parse_csv(data: &[u8]) -> Result<Vec<EntryInput>> {
             urls: if url.is_empty() { vec![] } else { vec![url] },
             notes: get(notes),
             favorite: matches!(get(fav).as_str(), "1" | "true" | "yes"),
+            // Kept only if Kryptos can use it, so one odd value doesn't skip the login.
+            totp: Some(get(totp)).filter(|t| crate::totp::Totp::parse(t).is_ok()).unwrap_or_default(),
+            backup_codes: Vec::new(),
         });
     }
     Ok(out)
