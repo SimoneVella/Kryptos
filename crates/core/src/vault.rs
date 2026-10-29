@@ -193,6 +193,53 @@ impl UnlockedVault {
         Ok(SaveOutcome::Added(id))
     }
 
+    /// Brings in the 2FA accounts of an authenticator export: each goes to the
+    /// entry of the same service and account that has no 2FA yet, or becomes a
+    /// new entry (no password). Keys Kryptos already has are skipped.
+    pub fn import_otp(&mut self, accounts: &[crate::otp_import::OtpAccount]) -> OtpImportReport {
+        use crate::totp::Totp;
+        let norm = |s: &str| s.chars().filter(char::is_ascii_alphanumeric).collect::<String>().to_ascii_lowercase();
+        let mut report = OtpImportReport::default();
+        for acc in accounts {
+            let Ok(new) = Totp::parse(&acc.uri) else { continue };
+            let known = self.data.entries.iter().any(|e| Totp::parse(&e.totp).is_ok_and(|t| t.same_secret(&new)));
+            if known {
+                report.skipped += 1;
+                continue;
+            }
+            let service = norm(&acc.issuer);
+            // The issuer must be the entry's name or its site's name ("github" for
+            // github.com, "google" for accounts.google.com), exactly: a lookalike or
+            // short issuer must not attach its code to an unrelated login.
+            let same_service = |e: &Entry| {
+                !service.is_empty()
+                    && (norm(&e.title) == service || e.urls.iter().any(|u| site_name(u).is_some_and(|n| norm(&n) == service)))
+            };
+            let same_account = |e: &Entry| acc.account.is_empty() || e.username.is_empty() || e.username.eq_ignore_ascii_case(&acc.account);
+            if let Some(e) = self.data.entries.iter_mut().find(|e| e.totp.is_empty() && same_service(e) && same_account(e)) {
+                e.totp = acc.uri.clone();
+                e.updated_at = now();
+                report.linked += 1;
+                continue;
+            }
+            let title = [acc.issuer.trim(), acc.account.trim()].into_iter().find(|t| !t.is_empty()).unwrap_or("2FA");
+            let added = self.add(EntryInput {
+                title: title.to_owned(),
+                username: acc.account.clone(),
+                password: String::new(),
+                urls: Vec::new(),
+                notes: String::new(),
+                favorite: false,
+                totp: acc.uri.clone(),
+                backup_codes: Vec::new(),
+            });
+            if added.is_ok() {
+                report.added += 1;
+            }
+        }
+        report
+    }
+
     /// Marks backup code number `index` of an entry as used (or not). A change
     /// like any other: it updates the entry's time, so it syncs to other devices.
     pub fn set_backup_code_used(&mut self, id: Uuid, index: usize, used: bool) -> Result<()> {
@@ -309,6 +356,17 @@ fn check_password(pw: &str) -> Result<()> {
     Ok(())
 }
 
+/// What [`UnlockedVault::import_otp`] did.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize)]
+pub struct OtpImportReport {
+    /// Added to an existing entry.
+    pub linked: usize,
+    /// New entries.
+    pub added: usize,
+    /// Already in Kryptos.
+    pub skipped: usize,
+}
+
 /// What [`UnlockedVault::save_login`] did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SaveOutcome {
@@ -325,6 +383,14 @@ fn validate_input(input: &EntryInput) -> Result<()> {
         crate::totp::Totp::parse(&input.totp)?;
     }
     Ok(())
+}
+
+/// The name of a URL's registrable domain: "google" for https://accounts.google.com,
+/// "bbc" for bbc.co.uk.
+fn site_name(url: &str) -> Option<String> {
+    let host = crate::import::host_of(url)?.to_ascii_lowercase();
+    let domain = psl::domain_str(&host)?;
+    domain.split('.').next().map(str::to_owned)
 }
 
 /// Trimmed, without blanks or repeats (the first copy keeps its "used" mark).
@@ -358,6 +424,43 @@ mod tests {
             totp: String::new(),
             backup_codes: Vec::new(),
         }
+    }
+
+    #[test]
+    fn otp_import_links_adds_and_skips() {
+        use crate::otp_import::OtpAccount;
+        let mut v = UnlockedVault::create("correct horse", KdfParams::TEST).unwrap();
+        let mut gh = input("GitHub");
+        gh.urls = vec!["https://github.com".into()];
+        let gh = v.add(gh).unwrap();
+        let acc = |issuer: &str, account: &str, secret: &str| OtpAccount {
+            issuer: issuer.into(),
+            account: account.into(),
+            uri: format!("otpauth://totp/x?secret={secret}"),
+        };
+        let accounts = [
+            acc("GitHub", "me@example.com", "JBSWY3DPEHPK3PXP"),
+            acc("Dropbox", "me@example.com", "GEZDGNBVGY3TQOJQ"),
+            acc("GitHub", "me@example.com", "JBSWY3DPEHPK3PXP"),
+        ];
+        let r = v.import_otp(&accounts);
+        assert_eq!(r, OtpImportReport { linked: 1, added: 1, skipped: 1 });
+        assert!(v.get(gh).unwrap().totp.contains("JBSWY3DPEHPK3PXP"));
+        assert!(v.entries().iter().any(|e| e.title == "Dropbox" && e.password.is_empty()));
+        // Importing again changes nothing.
+        assert_eq!(v.import_otp(&accounts), OtpImportReport { linked: 0, added: 0, skipped: 3 });
+
+        // A short or lookalike issuer gets its own entry, never someone else's login.
+        let mut dropbox = input("My files");
+        dropbox.urls = vec!["https://www.dropbox.com".into()];
+        dropbox.username = String::new();
+        let dropbox = v.add(dropbox).unwrap();
+        let tricky = [acc("X", "", "MFRGGZDFMZTWQ2LK"), acc("box", "", "ONSWG4TFOQYTEMZU"), acc("drop", "", "NBSWY3DPO5XXE3DE")];
+        assert_eq!(v.import_otp(&tricky).linked, 0);
+        assert!(v.get(dropbox).unwrap().totp.is_empty());
+        // The real service still finds it through the site's name.
+        assert_eq!(v.import_otp(&[acc("Dropbox", "", "GEZDGNBVGY3TQOJR")]).linked, 1);
+        assert!(!v.get(dropbox).unwrap().totp.is_empty());
     }
 
     #[test]

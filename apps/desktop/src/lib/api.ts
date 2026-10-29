@@ -115,6 +115,8 @@ export const api = {
   getSettings: () => invoke<Settings>("get_settings"),
   updateSettings: (settings: Settings) => invoke<void>("update_settings", { settings }),
   /** Opens a native file picker; resolves null if cancelled. */
+  importOtp: () => invoke<{ linked: number; added: number; skipped: number; file: string } | null>("import_otp"),
+  readBackupCodes: () => invoke<string[] | null>("read_backup_codes"),
   importCsv: () => invoke<{ added: number; skipped: number; file: string } | null>("import_csv"),
   exportBackup: () => invoke<boolean>("export_backup"),
   connectBrowser: () => invoke<{ browsers: string[] }>("connect_browser"),

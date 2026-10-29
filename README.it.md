@@ -170,8 +170,14 @@ in Kryptos (o di aggiornare la password di quell'account).
 Kryptos può tenere anche il codice della verifica in due passaggi di un sito. Quando il sito mostra il QR,
 scegli "non riesci a scansionarlo?", copia la chiave e incollala nel campo **Codice 2FA** della voce (va
 bene anche un link `otpauth://`). La voce mostra poi il codice a 6 cifre del momento, pronto da copiare.
-Lì puoi incollare anche i **codici di backup** del sito, uno per riga: li copi uno alla volta e segni quelli
-usati.
+Lì puoi incollare anche i **codici di backup** del sito, uno per riga, oppure premere **Da file** e scegliere
+il file che il sito ti ha fatto scaricare: li copi uno alla volta e segni quelli usati.
+
+Sulla pagina che chiede il codice, Kryptos lo compila: su Android con il solito suggerimento, sul computer
+scegliendo il login nell'estensione (username, password e codice insieme). I codici che tieni già in un'app
+di autenticazione si portano con **Impostazioni → Importa codici 2FA**: un'esportazione non cifrata di Aegis
+o 2FAS, un link di trasferimento di Google Authenticator o un elenco di link `otpauth://`. Ogni codice si
+aggiunge al login dello stesso servizio, o diventa una voce nuova. Poi elimina il file esportato.
 Tenere password e codice nello stesso vault è comodo, ma per gli account più importanti (email, banca)
 un'app di autenticazione separata è più sicura.
 

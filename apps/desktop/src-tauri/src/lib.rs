@@ -74,6 +74,8 @@ pub fn run() {
             commands::copy_field,
             commands::totp_code,
             commands::mark_backup_code,
+            commands::import_otp,
+            commands::read_backup_codes,
             commands::copy_text,
             commands::security_report,
             commands::generate_password,

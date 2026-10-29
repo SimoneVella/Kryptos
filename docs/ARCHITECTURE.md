@@ -28,7 +28,7 @@ Offline, zero-knowledge password manager. No component opens a network socket.
 | Integrity | Magic + version + JSON header are the body's AAD: any change makes decryption fail. |
 | Memory | Keys and entries are `Zeroize`d and cleared on lock/drop. |
 | Disk | Atomic write (tmp → fsync → rename), 0600 permissions, one `.bak` backup. |
-| 2FA codes | TOTP (RFC 6238, SHA-1/256/512, 6–8 digits) computed locally in `totp.rs` from the secret stored in the entry (base32 key or `otpauth://` link), tested against the RFC vectors. Imported from Bitwarden/1Password/Dashlane CSVs. |
+| 2FA codes | TOTP (RFC 6238, SHA-1/256/512, 6–8 digits) computed locally in `totp.rs` from the secret stored in the entry (base32 key or `otpauth://` link), tested against the RFC vectors. Imported from Bitwarden/1Password/Dashlane CSVs and from authenticator exports (`otp_import.rs`). |
 
 Changing the master password only requires re-wrapping the vault key. Biometric unlock will store the
 vault key (not the password) in the Keychain / Secure Enclave / Android Keystore: the API is already in
@@ -194,7 +194,10 @@ Devices never connect to each other: a copy of the **encrypted vault file** is c
 - [x] Saving new logins from the desktop browser extension (button in the popup)
 - [x] TOTP: 2FA codes in entries (paste the key or the `otpauth://` link, copy the current code), plus
       backup codes that can be marked as used (the mark syncs like any other change)
-- [ ] TOTP: scan the QR with the camera, fill the code on Android and from the extension
+- [x] TOTP: the code is filled into one-time-code fields on Android and by the extension (with the login,
+      after the same confirmation); import from Aegis/2FAS (unencrypted), Google Authenticator transfer
+      links and otpauth:// lists; backup codes read from the file the site lets you download
+- [ ] TOTP: scan the QR with the camera; encrypted Aegis/2FAS exports
 - [ ] Windows: named pipe for the bridge and native host registration in the registry
 - [x] Sync without network: merge a backup or a QR-code transfer, per-entry merge with tombstones
 - [ ] Optional LAN sync (QR pairing with an ephemeral X25519 key, Noise channel). Would need the INTERNET

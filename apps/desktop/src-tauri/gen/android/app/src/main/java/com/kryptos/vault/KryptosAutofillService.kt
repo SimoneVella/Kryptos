@@ -37,6 +37,9 @@ import org.json.JSONArray
  * known browser: any other app could claim an arbitrary webDomain to phish
  * credentials. Native apps only match entries linked to "androidapp://<package>".
  *
+ * One-time-code fields (the 2FA step) get the current TOTP code of the entries
+ * that have one, through the same suggestions and fingerprint check.
+ *
  * Every login form also gets a SaveInfo, so after the user types a new password
  * Android offers "Save to Kryptos?" (onSaveRequest).
  */
@@ -144,6 +147,9 @@ class KryptosAutofillService : AutofillService() {
       }
 
     private val USER_HINTS = listOf("username", "email", "user", "login", "account", "e-mail")
+    private val OTP_HINTS = listOf("totp", "2fa", "mfa", "one-time", "onetime", "verification code", "verification_code",
+      "authenticator", "auth code", "authcode", "auth_code", "security code", "two-factor", "twofactor", "otp", "code", "codice")
+    private val NOT_OTP = listOf("postal", "zip", "promo", "coupon", "country", "captcha")
 
     /** Browsers whose reported webDomain we trust (they populate it from the real page URL). */
     val TRUSTED_BROWSERS = setOf(
@@ -157,22 +163,26 @@ class KryptosAutofillService : AutofillService() {
 
   class Suggestion(val title: String, val label: String, val dataset: Dataset)
 
-  private class Login(val id: String, val title: String, val username: String, val password: String) {
+  private class Login(val id: String, val title: String, val username: String, val password: String, val totp: String) {
     fun subtitle(form: Form) = username.ifEmpty { form.label }
   }
 
   /** A login form another app or a browser page is showing. */
   private class Form(val ids: List<AutofillId>, val fields: Fields, val target: String, val label: String) {
-    /** Matching logins, or null while the vault is locked. */
+    /** Matching logins, or null while the vault is locked. A 2FA step only offers logins with a code. */
     fun logins(): List<Login>? {
       val json = runCatching { KryptosBridge.fillData(target) }.getOrNull() ?: return null
       val arr = JSONArray(json)
-      return (0 until arr.length()).map { i ->
+      val all = (0 until arr.length()).map { i ->
         arr.getJSONObject(i).let {
-          Login(it.optString("id"), it.optString("title"), it.optString("username"), it.optString("password"))
+          Login(it.optString("id"), it.optString("title"), it.optString("username"), it.optString("password"), it.optString("totp"))
         }
       }
+      return if (onlyOtp) all.filter { it.totp.isNotEmpty() } else all
     }
+
+    /** A screen that asks only for the one-time code. */
+    val onlyOtp get() = fields.otp != null && fields.username == null && fields.password == null
 
     /**
      * A suggestion without values: tapping it opens AutofillUnlockActivity, which asks
@@ -212,6 +222,7 @@ class KryptosAutofillService : AutofillService() {
     fun dataset(ctx: Context, login: Login) = Dataset.Builder(row(ctx, login.title, login.subtitle(this))).apply {
       fields.username?.let { setValue(it, AutofillValue.forText(login.username)) }
       fields.password?.let { setValue(it, AutofillValue.forText(login.password)) }
+      fields.otp?.takeIf { login.totp.isNotEmpty() }?.let { setValue(it, AutofillValue.forText(login.totp)) }
     }
 
     companion object {
@@ -219,7 +230,7 @@ class KryptosAutofillService : AutofillService() {
         val pkg = structure.activityComponent.packageName
         if (pkg == ctx.packageName) return null
         val fields = Fields().also { it.scan(structure) }
-        val ids = listOfNotNull(fields.username, fields.password)
+        val ids = listOfNotNull(fields.username, fields.password, fields.otp)
         if (ids.isEmpty()) return null
         val domain = fields.webDomain?.takeIf { pkg in TRUSTED_BROWSERS }
         return Form(ids, fields, domain?.let { "https://$it" } ?: "androidapp://$pkg", domain ?: pkg)
@@ -289,6 +300,7 @@ class KryptosAutofillService : AutofillService() {
   private class Fields {
     var username: AutofillId? = null
     var password: AutofillId? = null
+    var otp: AutofillId? = null
     var webDomain: String? = null
     /** What the fields contain (only read when saving). */
     var usernameValue: String? = null
@@ -303,6 +315,7 @@ class KryptosAutofillService : AutofillService() {
       val id = n.autofillId
       if (id != null && n.autofillType == View.AUTOFILL_TYPE_TEXT) {
         when {
+          isOtp(n) -> if (otp == null) otp = id
           password == null && isPassword(n) -> {
             password = id
             passwordValue = text(n)
@@ -331,6 +344,15 @@ class KryptosAutofillService : AutofillService() {
           variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
           variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
       return pwType || hints(n).any { it.contains("password") || it == "current-password" }
+    }
+
+    /** The 2FA code field: autofill hints, `autocomplete="one-time-code"` or a telling name. */
+    private fun isOtp(n: AssistStructure.ViewNode): Boolean {
+      val h = hints(n)
+      if (h.any { it == "one-time-code" || it == "2faappotpcode" || it == "smsotpcode" }) return true
+      // Guessing from names: never a password or e-mail field ("passcode", "email_code"...).
+      if (isPassword(n) || isUsername(n)) return false
+      return h.any { hint -> OTP_HINTS.any { hint.contains(it) } } && h.none { hint -> NOT_OTP.any { hint.contains(it) } }
     }
 
     private fun isUsername(n: AssistStructure.ViewNode): Boolean {

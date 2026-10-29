@@ -23,7 +23,7 @@ async function fill(tabId, href, id) {
     await ext.scripting.executeScript({
       target: { tabId, allFrames: true },
       func: injectCredentials,
-      args: [new URL(href).origin, res.username, res.password],
+      args: [new URL(href).origin, res.username, res.password, res.totp ?? ""],
     });
   } catch {
     return { ok: false, error: "page_changed" };
@@ -50,7 +50,7 @@ function ask(msg) {
 }
 
 // Runs inside each frame of the page (isolated world). Must be self-contained.
-function injectCredentials(expectedOrigin, username, password) {
+function injectCredentials(expectedOrigin, username, password, totp) {
   // Never fill a different origin: covers navigation since the popup opened
   // and cross-origin iframes (only same-origin frames are filled).
   if (location.origin !== expectedOrigin) return;
@@ -67,7 +67,19 @@ function injectCredentials(expectedOrigin, username, password) {
     el.dispatchEvent(new Event("change", { bubbles: true }));
   };
 
-  const pw = [...document.querySelectorAll('input[type="password"]')].find(visible);
+  // The 2FA step: autocomplete="one-time-code" or a telling name/id.
+  const otpWords = /one.?time|otp|2fa|mfa|two.?factor|verification|authenticator|auth.?code|security.?code|totp|\bcode\b|\bcodice\b/i;
+  const notOtp = /postal|zip|promo|coupon|country|captcha/i;
+  const otp = [...document.querySelectorAll("input")].find((el) => {
+    if (!visible(el)) return false;
+    if (el.autocomplete === "one-time-code") return true;
+    // Text-like fields only: not "remember this device (mfa)" checkboxes or the password.
+    if (!/^(text|tel|number|search)$/.test(el.type)) return false;
+    const words = `${el.name} ${el.id} ${el.getAttribute("aria-label") ?? ""} ${el.placeholder}`;
+    const digits = el.inputMode === "numeric" && el.maxLength >= 6 && el.maxLength <= 8;
+    return (otpWords.test(words) || digits) && !notOtp.test(words);
+  });
+  const pw = [...document.querySelectorAll('input[type="password"]')].find((el) => visible(el) && el !== otp);
   const scope = pw?.form ?? document;
   const candidates = [
     'input[autocomplete~="username"]',
@@ -79,11 +91,13 @@ function injectCredentials(expectedOrigin, username, password) {
     'input[type="text"], input[type="tel"], input:not([type])',
   ];
   let user = null;
-  for (const sel of candidates) {
-    user = [...scope.querySelectorAll(sel)].find((el) => visible(el) && el !== pw);
+  // A page with only the code field is the 2FA step: no username to put anywhere.
+  for (const sel of pw || !otp ? candidates : []) {
+    user = [...scope.querySelectorAll(sel)].find((el) => visible(el) && el !== pw && el !== otp);
     if (user) break;
   }
 
   if (user && username) setValue(user, username);
   if (pw) setValue(pw, password);
+  if (otp && totp) setValue(otp, totp);
 }

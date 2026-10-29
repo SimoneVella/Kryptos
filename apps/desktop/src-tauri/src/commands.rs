@@ -271,6 +271,41 @@ pub async fn import_csv(app: AppHandle, state: State<'_, AppState>) -> CmdResult
     Ok(Some(ImportResult { added, skipped, file }))
 }
 
+#[derive(Serialize)]
+pub struct OtpImportResult {
+    #[serde(flatten)]
+    report: kryptos_core::OtpImportReport,
+    file: String,
+}
+
+/// Imports the 2FA accounts of an authenticator app's export (Aegis, 2FAS,
+/// Google Authenticator transfer link, otpauth:// lists). None if cancelled.
+#[tauri::command]
+pub async fn import_otp(app: AppHandle, state: State<'_, AppState>) -> CmdResult<Option<OtpImportResult>> {
+    let Some(picked) = app.dialog().file().set_title("Importa codici 2FA").blocking_pick_file() else { return Ok(None) };
+    let file = file_name(&picked);
+    let data = Zeroizing::new(app.fs().read(picked).map_err(|e| e.to_string())?);
+    let accounts = kryptos_core::otp_import::parse_export(&data).map_err(code)?;
+    let report = state.mutate(|v| Ok(v.import_otp(&accounts)))?;
+    Ok(Some(OtpImportResult { report, file }))
+}
+
+/// Reads the backup-code file a site lets you download and returns the codes
+/// in it (the editor adds them to the entry). None if cancelled.
+#[tauri::command]
+pub async fn read_backup_codes(app: AppHandle) -> CmdResult<Option<Vec<String>>> {
+    let Some(picked) = app.dialog().file().set_title("Codici di backup").blocking_pick_file() else { return Ok(None) };
+    let data = Zeroizing::new(app.fs().read(picked).map_err(|e| e.to_string())?);
+    if data.len() > 256 * 1024 {
+        return Err("backup_codes_not_found".into());
+    }
+    let codes = kryptos_core::otp_import::parse_backup_codes(&String::from_utf8_lossy(&data));
+    if codes.is_empty() {
+        return Err("backup_codes_not_found".into());
+    }
+    Ok(Some(codes))
+}
+
 /// Display name of a picked file; Android only gives an opaque, percent-encoded URI.
 pub(crate) fn file_name(picked: &FilePath) -> String {
     match picked {

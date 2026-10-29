@@ -16,7 +16,7 @@
 //! Protocol: one JSON request line -> one JSON response line.
 //!   {"type":"status"}                          -> {"ok":true,"unlocked":bool}
 //!   {"type":"logins","url":U}                  -> {"ok":true,"logins":[{id,title,username}]}
-//!   {"type":"credentials","id":I,"url":U}      -> {"ok":true,"username":..,"password":..}
+//!   {"type":"credentials","id":I,"url":U}      -> {"ok":true,"username":..,"password":..,"totp":..}
 //!                                                 (waits for the user; errors "denied", "timeout", "busy")
 //!   {"type":"save","url":U,"username":..,"password":..}
 //!                                              -> {"ok":true,"outcome":"added"|"updated"|"unchanged"}
@@ -147,7 +147,9 @@ fn credentials(app: &AppHandle, state: &AppState, id: &str, url: &str) -> Result
         return Err("rate_limited".into());
     }
     let _ = app.emit("browser-fill", json!({ "title": e.title, "host": host }));
-    Ok(json!({ "ok": true, "username": e.username, "password": e.password }))
+    // The current 2FA code too, for pages that ask for it ("" when the entry has none).
+    let totp = kryptos_core::totp::Totp::parse(&e.totp).map(|t| t.now().0).unwrap_or_default();
+    Ok(json!({ "ok": true, "username": e.username, "password": e.password, "totp": totp }))
 }
 
 /// Saves the login the user typed on `url` (same rules as Android's save sheet:

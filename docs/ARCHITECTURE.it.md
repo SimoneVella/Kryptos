@@ -28,7 +28,7 @@ Password manager offline e zero-knowledge. Nessun componente apre socket di rete
 | Integrità | Magic + versione + header JSON sono l'AAD del body: qualsiasi modifica fa fallire la decifratura. |
 | Memoria | Chiavi e voci sono `Zeroize` e vengono azzerate al lock/drop. |
 | Disco | Scrittura atomica (tmp → fsync → rename), permessi 0600, un backup `.bak`. |
-| Codici 2FA | TOTP (RFC 6238, SHA-1/256/512, 6–8 cifre) calcolato in locale in `totp.rs` dal segreto salvato nella voce (chiave base32 o link `otpauth://`), verificato con i vettori della RFC. Importato dai CSV di Bitwarden/1Password/Dashlane. |
+| Codici 2FA | TOTP (RFC 6238, SHA-1/256/512, 6–8 cifre) calcolato in locale in `totp.rs` dal segreto salvato nella voce (chiave base32 o link `otpauth://`), verificato con i vettori della RFC. Importato dai CSV di Bitwarden/1Password/Dashlane e dalle esportazioni delle app di autenticazione (`otp_import.rs`). |
 
 Cambiare la master password richiede solo un nuovo wrap della vault key. Lo sblocco biometrico
 salverà la vault key (non la password) nel Keychain / Secure Enclave / Android Keystore:
@@ -196,7 +196,10 @@ unisce (`crates/core/src/vault.rs`, `apps/desktop/src-tauri/src/sync.rs`).
 - [x] Salvataggio dei nuovi login dall'estensione del browser su desktop (pulsante nel popup)
 - [x] TOTP: codici 2FA nelle voci (si incolla la chiave o il link `otpauth://`, si copia il codice attuale),
       più i codici di backup da segnare come usati (il segno si sincronizza come ogni altra modifica)
-- [ ] TOTP: lettura del QR con la fotocamera, compilazione del codice su Android e dall'estensione
+- [x] TOTP: il codice viene compilato nei campi del codice monouso su Android e dall'estensione (insieme al
+      login, dopo la stessa conferma); importazione da Aegis/2FAS (non cifrati), link di trasferimento di
+      Google Authenticator ed elenchi otpauth://; codici di backup letti dal file che il sito fa scaricare
+- [ ] TOTP: lettura del QR con la fotocamera; esportazioni cifrate di Aegis/2FAS
 - [ ] Windows: named pipe per il bridge e registrazione del native host nel registro
 - [x] Sincronizzazione senza rete: unione di un backup o trasferimento con i QR, unione per voce con tombstone
 - [ ] Sync LAN opzionale (abbinamento con QR e chiave effimera X25519, canale Noise). Su Android servirebbe il permesso INTERNET, quindi solo su richiesta esplicita

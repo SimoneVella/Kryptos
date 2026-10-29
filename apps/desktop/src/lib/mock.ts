@@ -61,6 +61,8 @@ async function invoke(cmd: string, a: Any = {}): Promise<unknown> {
     case "autofill_status": return autofill;
     case "open_autofill_settings": autofill = true; return;
     case "biometric_status": return biometric;
+    case "import_otp": await wait(400); return { linked: 3, added: 2, skipped: 1, file: "aegis-export.json" };
+    case "read_backup_codes": return ["1234 5678", "2345 6789", "3456 7890"];
     case "mark_backup_code": entries.find((e) => e.id === a.id)!.backup_codes[a.index].used = a.used; return;
     case "totp_code": { const t = Math.floor(Date.now() / 1000); return { code: String(100000 + (Math.floor(t / 30) * 7919) % 900000), remaining: 30 - (t % 30), period: 30 }; }
     case "apply_pending_save": return null;

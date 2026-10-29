@@ -170,7 +170,14 @@ Kryptos (or to update the password of that account).
 Kryptos can also hold the two-step verification code of a site. When the site shows its QR code, choose
 "can't scan it?", copy the key and paste it in the entry's **2FA code** field (an `otpauth://` link works
 too). The entry then shows the current 6-digit code, ready to copy. Paste the site's **backup codes**
-there as well, one per line: you can copy each one and mark it as used. Keeping password and code in the same
+there as well, one per line, or press **From file** and pick the file the site let you download: you can
+copy each one and mark it as used.
+
+On a page that asks for the code, Kryptos fills it: on Android through the usual suggestion, on the
+computer by picking the login in the extension (username, password and code go in together). Codes you
+already keep in an authenticator app can be brought over with **Settings → Import 2FA codes**: an
+unencrypted export from Aegis or 2FAS, a Google Authenticator transfer link, or a list of `otpauth://`
+links. Each code joins the login of the same service, or becomes a new entry. Delete the export afterwards. Keeping password and code in the same
 vault is convenient, but for your most important accounts (email, bank) a separate authenticator app is
 safer.
 

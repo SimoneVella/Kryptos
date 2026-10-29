@@ -68,6 +68,11 @@ impl Totp {
         Ok(Self { secret, algorithm, digits, period })
     }
 
+    /// Same account key (however it was written down).
+    pub fn same_secret(&self, other: &Totp) -> bool {
+        *self.secret == *other.secret
+    }
+
     /// The code valid at `unix` seconds.
     pub fn code_at(&self, unix: u64) -> String {
         let counter = (unix / self.period).to_be_bytes();
@@ -95,6 +100,25 @@ fn hmac<D: Digest + BlockSizeUser>(key: &[u8], msg: &[u8]) -> Zeroizing<Vec<u8>>
     Zeroizing::new(m.finalize().into_bytes().to_vec())
 }
 
+/// RFC 4648 base32 without padding (how secrets appear in otpauth:// links).
+pub fn base32_encode(bytes: &[u8]) -> String {
+    const A: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let (mut out, mut buf, mut bits) = (String::new(), 0u32, 0);
+    for &b in bytes {
+        buf = (buf << 8) | u32::from(b);
+        bits += 8;
+        while bits >= 5 {
+            bits -= 5;
+            out.push(A[((buf >> bits) & 31) as usize] as char);
+        }
+        buf &= (1 << bits) - 1;
+    }
+    if bits > 0 {
+        out.push(A[((buf << (5 - bits)) & 31) as usize] as char);
+    }
+    out
+}
+
 /// RFC 4648 base32, as used by authenticator apps: padding optional, case,
 /// spaces and dashes ignored.
 fn base32_decode(s: &str) -> Option<Vec<u8>> {
@@ -120,23 +144,6 @@ fn base32_decode(s: &str) -> Option<Vec<u8>> {
 mod tests {
     use super::*;
 
-    fn b32(bytes: &[u8]) -> String {
-        const A: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-        let (mut out, mut buf, mut bits) = (String::new(), 0u32, 0);
-        for &b in bytes {
-            buf = (buf << 8) | b as u32;
-            bits += 8;
-            while bits >= 5 {
-                bits -= 5;
-                out.push(A[((buf >> bits) & 31) as usize] as char);
-            }
-        }
-        if bits > 0 {
-            out.push(A[((buf << (5 - bits)) & 31) as usize] as char);
-        }
-        out
-    }
-
     /// Test vectors from RFC 6238, appendix B (8 digits).
     #[test]
     fn rfc6238_vectors() {
@@ -150,7 +157,7 @@ mod tests {
             ),
         ];
         for (alg, key, vectors) in cases {
-            let t = Totp::parse(&format!("otpauth://totp/Test?secret={}&algorithm={alg}&digits=8", b32(key))).unwrap();
+            let t = Totp::parse(&format!("otpauth://totp/Test?secret={}&algorithm={alg}&digits=8", base32_encode(key))).unwrap();
             for (time, code) in vectors {
                 assert_eq!(t.code_at(time), code, "{alg} at {time}");
             }

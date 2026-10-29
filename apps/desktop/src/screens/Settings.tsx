@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { CheckCircle2, Clipboard, Download, FileInput, Fingerprint, Globe, KeySquare, KeyRound, Languages, Moon, QrCode, ScanLine, ShieldCheck, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
+import { CheckCircle2, Clipboard, Download, FileInput, Fingerprint, Globe, KeySquare, KeyRound, Languages, Moon, QrCode, ScanLine, ShieldCheck, ShieldPlus, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
 import { api, type BiometricStatus, type Settings as SettingsT, type StagedCopy } from "../lib/api";
 import { MergeSheet, ScanQrSheet, SendQrSheet } from "./Sync";
 import { PasswordInput, Sheet, Switch, useToast } from "../components/ui";
@@ -91,6 +91,21 @@ export default function Settings({ onImported }: { onImported: () => void }) {
     } catch (e) {
       setS(s);
       toast(errorMessage(e));
+    }
+  };
+
+  const importOtp = async () => {
+    setBusy(true);
+    try {
+      const r = await api.importOtp();
+      if (r) {
+        onImported();
+        toast(t("settings.importOtpResult", { linked: r.linked, added: r.added, skipped: r.skipped, file: r.file }));
+      }
+    } catch (e) {
+      toast(errorMessage(e));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -234,6 +249,9 @@ export default function Settings({ onImported }: { onImported: () => void }) {
       <Group title={t("settings.groupData")}>
         <Row icon={<Upload size={20} />} title={t("settings.importTitle")} sub={t("settings.importSub")}>
           <button className="btn btn-secondary btn-sm" onClick={importCsv} disabled={busy}>{t("settings.import")}</button>
+        </Row>
+        <Row icon={<ShieldPlus size={20} />} title={t("settings.importOtpTitle")} sub={t("settings.importOtpSub")}>
+          <button className="btn btn-secondary btn-sm" onClick={importOtp} disabled={busy}>{t("settings.import")}</button>
         </Row>
         <Row icon={<Download size={20} />} title={t("settings.backupTitle")} sub={t("settings.backupSub")}>
           <div className="row-buttons">

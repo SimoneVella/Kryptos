@@ -265,7 +265,7 @@ pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_biometricDone(mut en
     }
 }
 
-/// Returns a JSON array of `{id, title, username, password}` for entries matching `target`,
+/// Returns a JSON array of `{id, title, username, password, totp}` for entries matching `target`,
 /// or `null` when the vault is locked / the app has not started yet.
 #[no_mangle]
 pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_fillData<'a>(
@@ -280,7 +280,11 @@ pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_fillData<'a>(
             .entries()
             .iter()
             .filter(|e| target_matches(e, &target))
-            .map(|e| json!({ "id": e.id, "title": e.title, "username": e.username, "password": e.password }))
+            .map(|e| {
+                // The current 2FA code, for one-time-code fields ("" when the entry has none).
+                let totp = kryptos_core::totp::Totp::parse(&e.totp).map(|t| t.now().0).unwrap_or_default();
+                json!({ "id": e.id, "title": e.title, "username": e.username, "password": e.password, "totp": totp })
+            })
             .collect();
         Ok(serde_json::Value::Array(list).to_string())
     });

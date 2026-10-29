@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { RefreshCw } from "lucide-react";
+import { FileText, RefreshCw } from "lucide-react";
 import { api, defaultGenerator, type EntryInput } from "../lib/api";
 import { estimateBits } from "../lib/utils";
 import { PasswordInput, Sheet, StrengthBar, Switch, useToast } from "../components/ui";
@@ -89,7 +89,23 @@ export default function EditorSheet(props: { editing: Editing; onClose: () => vo
           <p className="hint">{t("editor.totpHint")}</p>
         </div>
         <div>
-          <label className="label">{t("editor.backupCodesLabel")}</label>
+          <div className="label-row">
+            <label className="label">{t("editor.backupCodesLabel")}</label>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={async () => {
+                try {
+                  const found = await api.readBackupCodes();
+                  if (found) setCodes((prev) => [prev.trim(), ...found].filter(Boolean).join("\n"));
+                } catch (err) {
+                  setError(errorMessage(err));
+                }
+              }}
+            >
+              <FileText size={15} /> {t("editor.backupCodesFromFile")}
+            </button>
+          </div>
           <textarea
             className="input mono"
             placeholder={t("editor.backupCodesPlaceholder")}
