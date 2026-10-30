@@ -34,6 +34,17 @@ export type EntryInput = {
   backup_codes: BackupCode[];
 };
 
+/** A cloud folder found on this computer (Google Drive, iCloud Drive, Dropbox, OneDrive). */
+export type CloudProvider = { name: string; path: string; has_vault: boolean };
+export type CloudStatus = {
+  /** "" when sync is off. */
+  folder: string;
+  /** The folder's display name on Android ("" elsewhere). */
+  name: string;
+  status: { state: "off" | "ok" | "waiting" | "other_vault" | "error"; last_sync: number };
+};
+export type SyncReport = { added: number; updated: number; deleted: number; password_changed: boolean };
+
 /** A 2FA recovery code; each works once. */
 export type BackupCode = { code: string; used: boolean };
 
@@ -73,6 +84,8 @@ export type Settings = {
   language: string;
   /** How each browser fill is confirmed (desktop). */
   fill_confirm: "system" | "master";
+  /** Set only through cloudEnable / cloudDisable. */
+  cloud_folder: string;
 };
 
 export type MergeReport = { added: number; updated: number; deleted: number };
@@ -115,6 +128,15 @@ export const api = {
   getSettings: () => invoke<Settings>("get_settings"),
   updateSettings: (settings: Settings) => invoke<void>("update_settings", { settings }),
   /** Opens a native file picker; resolves null if cancelled. */
+  cloudProviders: () => invoke<CloudProvider[]>("cloud_providers"),
+  /** Android: the system folder picker. */
+  cloudPickFolder: () => invoke<CloudProvider | null>("cloud_pick_folder"),
+  cloudStatus: () => invoke<CloudStatus>("cloud_status"),
+  cloudEnable: (folder: string, password: string, cloudPassword?: string) =>
+    invoke<{ outcome: "created" | "synced" | "joined"; added: number }>("cloud_enable", { folder, password, cloudPassword }),
+  cloudDisable: () => invoke<void>("cloud_disable"),
+  onVaultSynced: (cb: (r: SyncReport) => void): Promise<UnlistenFn> =>
+    listen<{ report: SyncReport }>("vault-synced", (e) => cb(e.payload.report)),
   importOtp: () => invoke<{ linked: number; added: number; skipped: number; file: string } | null>("import_otp"),
   readBackupCodes: () => invoke<string[] | null>("read_backup_codes"),
   importCsv: () => invoke<{ added: number; skipped: number; file: string } | null>("import_csv"),

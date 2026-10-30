@@ -202,6 +202,14 @@ recente e riporta anche le cancellazioni. Niente viene mai sostituito in blocco.
 Quello che viaggia è il vault cifrato, esattamente come un backup: chi intercetta il file, o filma i QR,
 ha comunque bisogno della master password. Detto questo, non lasciare backup in giro in cartelle condivise.
 
+**In automatico, tramite il tuo cloud.** *Impostazioni → Sincronizza tra dispositivi → Sincronizzazione
+cloud → Attiva*: sul Mac scegli Google Drive, iCloud Drive o Dropbox dall'elenco, su Android tocca *Scegli la
+cartella cloud* e selezionala (una volta sola). Poi inserisci la master password, che deve essere fortissima. Kryptos tiene lì una copia cifrata in una cartella `Kryptos` e da
+quel momento allinea da solo tutti i dispositivi. Kryptos continua a non collegarsi a internet: il file
+lo sposta l'app del cloud. Su un secondo dispositivo che ha già le sue password, inserisci una volta la
+master password dell'altro: le sue voci vengono unite e da lì entrambi usano lo stesso vault e la stessa
+password (su Android, dopo, riattiva lo sblocco con impronta).
+
 ## Loghi dei siti
 
 Le voci mostrano il logo del sito quando è disponibile. I loghi provengono da

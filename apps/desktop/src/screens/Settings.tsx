@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { CheckCircle2, Clipboard, Download, FileInput, Fingerprint, Globe, KeySquare, KeyRound, Languages, Moon, QrCode, ScanLine, ShieldCheck, ShieldPlus, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
-import { api, type BiometricStatus, type Settings as SettingsT, type StagedCopy } from "../lib/api";
+import { CheckCircle2, Clipboard, Cloud, Download, FileInput, Fingerprint, Globe, KeySquare, KeyRound, Languages, Moon, QrCode, ScanLine, ShieldCheck, ShieldPlus, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
+import { api, type BiometricStatus, type CloudProvider, type CloudStatus, type Settings as SettingsT, type StagedCopy } from "../lib/api";
 import { MergeSheet, ScanQrSheet, SendQrSheet } from "./Sync";
 import { PasswordInput, Sheet, Switch, useToast } from "../components/ui";
-import { isMac, isMobile } from "../lib/utils";
+import { estimateBits, isMac, isMobile, strengthOf } from "../lib/utils";
 import { useT, LOCALES, type TKey } from "../i18n";
 
 const LOCK_OPTIONS: [number, TKey][] = [
@@ -266,6 +266,7 @@ export default function Settings({ onImported }: { onImported: () => void }) {
       </Group>
 
       <Group title={t("settings.groupSync")}>
+        <CloudSync onChangeMaster={() => setChanging(true)} onSynced={onImported} />
         <Row icon={<FileInput size={20} />} title={t("settings.syncMergeTitle")} sub={t("settings.syncMergeSub")}>
           <button className="btn btn-secondary btn-sm" onClick={() => attempt(async () => setStaged(await api.syncStageFile()))}>
             {t("settings.syncChooseFile")}
@@ -313,6 +314,192 @@ export default function Settings({ onImported }: { onImported: () => void }) {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Sync through a cloud folder (cloud.rs): the row with its state, and the sheet
+ * that turns it on. The master password must be very strong first, since a copy
+ * of the vault then sits with the cloud provider.
+ */
+function CloudSync({ onChangeMaster, onSynced }: { onChangeMaster: () => void; onSynced: () => void }) {
+  const { t, locale, errorMessage } = useT();
+  const toast = useToast();
+  const [status, setStatus] = useState<CloudStatus | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const load = () => api.cloudStatus().then(setStatus, () => {});
+    load();
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (!status) return null;
+  const on = status.folder !== "";
+  const name = status.name || providerName(status.folder);
+  const time = status.status.last_sync
+    ? new Date(status.status.last_sync * 1000).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
+    : "";
+  const sub = !on
+    ? t("cloud.subOff")
+    : status.status.state === "other_vault"
+      ? t("cloud.subOtherVault")
+      : status.status.state === "error"
+        ? t("cloud.subError", { name })
+        : status.status.state === "waiting" || !time
+          ? t("cloud.subWaiting", { name })
+          : t("cloud.subOn", { name, time });
+
+  return (
+    <>
+      <Row icon={<Cloud size={20} />} title={t("cloud.title")} sub={sub}>
+        {on ? (
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={async () => {
+              try {
+                await api.cloudDisable();
+                setStatus(await api.cloudStatus());
+                toast(t("cloud.disabledToast"));
+              } catch (e) {
+                toast(errorMessage(e));
+              }
+            }}
+          >
+            {t("cloud.disable")}
+          </button>
+        ) : (
+          <button className="btn btn-secondary btn-sm" onClick={() => setOpen(true)}>{t("cloud.enable")}</button>
+        )}
+      </Row>
+      {open && (
+        <CloudSheet
+          onClose={() => setOpen(false)}
+          onChangeMaster={() => (setOpen(false), onChangeMaster())}
+          onDone={async () => {
+            setOpen(false);
+            onSynced();
+            setStatus(await api.cloudStatus());
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/** "Google Drive" for ~/Library/CloudStorage/GoogleDrive-…/My Drive, and so on. */
+function providerName(folder: string) {
+  if (/GoogleDrive/i.test(folder)) return "Google Drive";
+  if (/CloudDocs/i.test(folder)) return "iCloud Drive";
+  if (/Dropbox/i.test(folder)) return "Dropbox";
+  if (/OneDrive/i.test(folder)) return "OneDrive";
+  return folder.split("/").filter(Boolean).pop() ?? folder;
+}
+
+function CloudSheet({ onClose, onChangeMaster, onDone }: { onClose: () => void; onChangeMaster: () => void; onDone: () => void }) {
+  const { t, errorMessage } = useT();
+  const toast = useToast();
+  const [providers, setProviders] = useState<CloudProvider[] | null>(null);
+  const [folder, setFolder] = useState("");
+  const [password, setPassword] = useState("");
+  const [cloudPassword, setCloudPassword] = useState("");
+  const [needsCloudPassword, setNeedsCloudPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // The Mac finds its cloud folders; Android has the user pick one (see pick below).
+  useEffect(() => {
+    if (isMobile()) return setProviders([]);
+    api.cloudProviders().then((p) => {
+      setProviders(p);
+      // A folder that already has Kryptos (set up on another device) is the one to pick.
+      setFolder((p.find((x) => x.has_vault) ?? p[0])?.path ?? "");
+    });
+  }, []);
+  const pick = async () => {
+    const p = await api.cloudPickFolder();
+    if (p) {
+      setProviders([p]);
+      setFolder(p.path);
+    }
+  };
+
+  const strong = strengthOf(estimateBits(password)).key === "excellent";
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!strong) return setError(t("cloud.weakPassword"));
+    setBusy(true);
+    setError("");
+    try {
+      const r = await api.cloudEnable(folder, password, needsCloudPassword ? cloudPassword : undefined);
+      const name = providers?.find((p) => p.path === folder)?.name || providerName(folder);
+      toast(
+        r.outcome === "joined"
+          ? t(isMobile() ? "cloud.joinedToastMobile" : "cloud.joinedToast", { name, added: r.added })
+          : r.outcome === "synced"
+            ? t("cloud.syncedToast", { name, added: r.added })
+            : t("cloud.createdToast", { name }),
+      );
+      onDone();
+    } catch (err) {
+      if (err === "cloud_other_password" && !needsCloudPassword) setNeedsCloudPassword(true);
+      else setError(err === "wrong_password" ? t("settings.currentPasswordWrong") : errorMessage(err));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet onClose={onClose} title={t("cloud.title")}>
+      <p className="muted" style={{ margin: "8px 0 14px" }}>{t("cloud.intro")}</p>
+      {providers?.length === 0 && !isMobile() ? (
+        <p className="error">{t("cloud.noProviders")}</p>
+      ) : (
+        <form className="form" onSubmit={submit}>
+          {isMobile() && (
+            <button type="button" className="btn btn-secondary btn-block" onClick={pick}>
+              <Cloud size={18} /> {folder ? t("cloud.pickOther") : t("cloud.pick")}
+            </button>
+          )}
+          <div className="choice-list">
+            {providers?.map((p) => (
+              <label key={p.path} className={`choice ${folder === p.path ? "on" : ""}`}>
+                <input type="radio" name="cloud" checked={folder === p.path} onChange={() => setFolder(p.path)} />
+                <Cloud size={18} />
+                <span className="row-main">
+                  <span className="row-title">{p.name}</span>
+                  <span className="row-sub">{p.has_vault ? t("cloud.hasVault") : t("cloud.newFolder")}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div>
+            <label className="label">{t("cloud.masterLabel")}</label>
+            <PasswordInput value={password} onChange={(v) => (setPassword(v), setError(""))} placeholder={t("settings.currentPasswordPlaceholder")} autoFocus />
+            {password && !strong && (
+              <p className="hint">
+                {t("cloud.weakPassword")}{" "}
+                <button type="button" className="link-btn" onClick={onChangeMaster}>{t("cloud.changeMaster")}</button>
+              </p>
+            )}
+          </div>
+          {needsCloudPassword && (
+            <div>
+              <label className="label">{t("cloud.otherLabel")}</label>
+              <PasswordInput value={cloudPassword} onChange={setCloudPassword} autoFocus />
+              <p className="hint">{t("cloud.otherHint")}</p>
+            </div>
+          )}
+          {error && <p className="error">{error}</p>}
+          <div className="form-actions">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>{t("common.cancel")}</button>
+            <button className="btn btn-primary" disabled={busy || !folder || !password || (needsCloudPassword && !cloudPassword)}>
+              {busy ? t("cloud.busy") : t("cloud.enable")}
+            </button>
+          </div>
+        </form>
+      )}
+    </Sheet>
   );
 }
 

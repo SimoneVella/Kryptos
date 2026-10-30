@@ -24,6 +24,16 @@ pub fn read(path: &Path) -> Result<Vec<u8>> {
 /// Atomically replaces `path` with `bytes`. The previous version is kept as `<path>.bak`
 /// so a bug or a half-written file can never cost the user their whole vault.
 pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
+    write(path, bytes, true)
+}
+
+/// Like [`write_atomic`] without the `.bak` copy: for the copy in a cloud folder,
+/// where a second file would only be synced around for nothing.
+pub fn write_replace(path: &Path, bytes: &[u8]) -> Result<()> {
+    write(path, bytes, false)
+}
+
+fn write(path: &Path, bytes: &[u8], keep_backup: bool) -> Result<()> {
     if let Some(dir) = path.parent() {
         ensure_private_dir(dir)?;
     }
@@ -40,7 +50,7 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
         f.write_all(bytes)?;
         f.sync_all()?;
     }
-    if path.exists() {
+    if keep_backup && path.exists() {
         fs::copy(path, path.with_extension("kryptos.bak"))?;
     }
     fs::rename(&tmp, path)?;

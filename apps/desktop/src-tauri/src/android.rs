@@ -22,9 +22,9 @@ use std::path::PathBuf;
 use std::sync::{mpsc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use jni::objects::{JByteArray, JClass, JObject, JString, JValue};
+use jni::objects::{GlobalRef, JByteArray, JClass, JObject, JString, JValue};
 use jni::sys::{jboolean, jbyteArray, jstring, JNI_FALSE, JNI_TRUE};
-use jni::JNIEnv;
+use jni::{JNIEnv, JavaVM};
 use kryptos_core::matching::target_matches;
 use kryptos_core::{storage, SaveOutcome, UnlockedVault};
 use serde_json::json;
@@ -36,6 +36,12 @@ use crate::state::AppState;
 use crate::watchdog;
 
 static APP: OnceLock<AppHandle> = OnceLock::new();
+/// For calls into Kotlin from background threads (cloud sync): those threads
+/// can't look up app classes themselves, so CloudFolder is resolved at init.
+static JVM: OnceLock<JavaVM> = OnceLock::new();
+static CLOUD_FOLDER: OnceLock<GlobalRef> = OnceLock::new();
+/// The Tauri command waiting for the cloud folder picker.
+static PICKED: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
 static STATE: OnceLock<AppState> = OnceLock::new();
 /// The Tauri command waiting for the current biometric prompt, if any.
 static PENDING: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
@@ -144,6 +150,106 @@ pub fn biometric_prompt(app: &AppHandle, method: &'static str) -> Result<(), Str
     if result == "ok" { Ok(()) } else { Err(result) }
 }
 
+/// Opens the system folder picker for cloud sync and waits for the choice:
+/// the folder's tree URI, with read/write access kept across restarts.
+pub fn pick_cloud_folder(app: &AppHandle) -> Option<String> {
+    let (tx, rx) = mpsc::channel();
+    *PICKED.lock().unwrap() = Some(tx);
+    call_void(app, "pickCloudFolder");
+    let picked = rx.recv_timeout(PROMPT_TIMEOUT).ok().filter(|t| !t.is_empty());
+    PICKED.lock().unwrap().take();
+    picked
+}
+
+/// The cloud folder (CloudFolder.kt), for cloud.rs. Runs on any thread.
+pub mod saf {
+    use jni::objects::{JByteArray, JClass, JObject, JObjectArray, JString, JValue};
+    use jni::JNIEnv;
+
+    /// Calls `f` with an attached JNI env and the CloudFolder class.
+    fn with<T>(f: impl FnOnce(&mut JNIEnv, &JClass) -> jni::errors::Result<T>) -> Option<T> {
+        let (vm, class) = (super::JVM.get()?, super::CLOUD_FOLDER.get()?);
+        let mut env = vm.attach_current_thread().ok()?;
+        let class: &JClass = class.as_obj().into();
+        let out = f(&mut env, class);
+        if env.exception_check().unwrap_or(false) {
+            let _ = env.exception_clear();
+            return None;
+        }
+        out.ok()
+    }
+
+    fn call<'a>(env: &mut JNIEnv<'a>, class: &JClass, method: &str, sig: &str, args: &[&str]) -> jni::errors::Result<jni::objects::JValueOwned<'a>> {
+        let strings: Vec<JObject> = args.iter().map(|a| env.new_string(a).map(JObject::from)).collect::<Result<_, _>>()?;
+        let values: Vec<JValue> = strings.iter().map(JValue::Object).collect();
+        env.call_static_method(class, method, sig, &values)
+    }
+
+    fn bytes(env: &mut JNIEnv, obj: JObject) -> jni::errors::Result<Option<Vec<u8>>> {
+        if obj.is_null() {
+            return Ok(None);
+        }
+        env.convert_byte_array(JByteArray::from(obj)).map(Some)
+    }
+
+    pub fn usable(tree: &str) -> bool {
+        with(|env, c| call(env, c, "usable", "(Ljava/lang/String;)Z", &[tree])?.z()).unwrap_or(false)
+    }
+
+    pub fn name(tree: &str) -> String {
+        with(|env, c| {
+            let obj = call(env, c, "name", "(Ljava/lang/String;)Ljava/lang/String;", &[tree])?.l()?;
+            env.get_string(&JString::from(obj)).map(String::from)
+        })
+        .unwrap_or_default()
+    }
+
+    pub fn read(tree: &str) -> Option<Vec<u8>> {
+        with(|env, c| {
+            let obj = call(env, c, "read", "(Ljava/lang/String;)[B", &[tree])?.l()?;
+            bytes(env, obj)
+        })
+        .flatten()
+    }
+
+    pub fn write(tree: &str, data: &[u8]) -> bool {
+        with(|env, c| {
+            let (t, b) = (env.new_string(tree)?, env.byte_array_from_slice(data)?);
+            env.call_static_method(c, "write", "(Ljava/lang/String;[B)Z", &[JValue::Object(&t), JValue::Object(&b)])?.z()
+        })
+        .unwrap_or(false)
+    }
+
+    pub fn modified(tree: &str) -> Option<i64> {
+        with(|env, c| call(env, c, "modified", "(Ljava/lang/String;)J", &[tree])?.j()).filter(|&m| m >= 0)
+    }
+
+    pub fn conflicts(tree: &str) -> Vec<String> {
+        with(|env, c| {
+            let arr = JObjectArray::from(call(env, c, "conflicts", "(Ljava/lang/String;)[Ljava/lang/String;", &[tree])?.l()?);
+            let mut out = Vec::new();
+            for i in 0..env.get_array_length(&arr)? {
+                let item = env.get_object_array_element(&arr, i)?;
+                out.push(env.get_string(&JString::from(item))?.into());
+            }
+            Ok(out)
+        })
+        .unwrap_or_default()
+    }
+
+    pub fn read_doc(doc: &str) -> Option<Vec<u8>> {
+        with(|env, c| {
+            let obj = call(env, c, "readDoc", "(Ljava/lang/String;)[B", &[doc])?.l()?;
+            bytes(env, obj)
+        })
+        .flatten()
+    }
+
+    pub fn delete(doc: &str) -> bool {
+        with(|env, c| call(env, c, "delete", "(Ljava/lang/String;)Z", &[doc])?.z()).unwrap_or(false)
+    }
+}
+
 pub fn biometric_disable(app: &AppHandle) {
     call_void(app, "biometricDisable");
 }
@@ -202,6 +308,12 @@ fn emit_json(event: &str, payload: serde_json::Value) {
 /// Called by the Kotlin side before anything else (it may run before Tauri).
 #[no_mangle]
 pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_init(mut env: JNIEnv, _class: JClass, data_dir: JString) {
+    if let Ok(vm) = env.get_java_vm() {
+        let _ = JVM.set(vm);
+    }
+    if let Ok(class) = env.find_class("com/kryptos/vault/CloudFolder").and_then(|c| env.new_global_ref(c)) {
+        let _ = CLOUD_FOLDER.set(class);
+    }
     if let Ok(dir) = env.get_string(&data_dir) {
         shared_state(PathBuf::from(String::from(dir)));
     }
@@ -335,4 +447,13 @@ pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_saveLogin<'a>(
 pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_applyPendingSave(env: JNIEnv, _class: JClass) -> jstring {
     let result = apply_pending_save().unwrap_or("none");
     env.new_string(result).map(|j| j.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
+/// Result of the folder picker started by `pick_cloud_folder` ("" if cancelled).
+#[no_mangle]
+pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_cloudPicked(mut env: JNIEnv, _class: JClass, tree: JString) {
+    let tree = env.get_string(&tree).map(String::from).unwrap_or_default();
+    if let Some(tx) = PICKED.lock().unwrap().as_ref() {
+        let _ = tx.send(tree);
+    }
 }

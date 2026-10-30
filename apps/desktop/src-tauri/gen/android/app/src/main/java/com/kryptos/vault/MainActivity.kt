@@ -95,6 +95,22 @@ class MainActivity : TauriActivity() {
       .onFailure { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) } }
   }
 
+  /**
+   * Cloud sync: the system folder picker (Google Drive, Dropbox... appear there).
+   * Kryptos keeps access to that one folder across restarts and nothing else.
+   */
+  fun pickCloudFolder() {
+    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+    launchActivityForResult(intent) { result ->
+      val uri = result?.data?.data?.takeIf { result.resultCode == RESULT_OK }
+      if (uri != null) {
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        runCatching { contentResolver.takePersistableUriPermission(uri, flags) }
+      }
+      KryptosBridge.cloudPicked(uri?.toString().orEmpty())
+    }
+  }
+
   fun biometricStatus(): String = Biometric.status(this)
 
   fun biometricEnable() = Biometric.enable(this, KryptosBridge::biometricDone)

@@ -36,3 +36,6 @@ objc2-local-authentication = { version = "0.3", default-features = false, featur
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21"
+
+[dev-dependencies]
+tempfile = "3"

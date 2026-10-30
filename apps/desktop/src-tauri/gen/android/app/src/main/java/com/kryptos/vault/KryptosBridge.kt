@@ -26,6 +26,7 @@ object KryptosBridge {
     val app = context.applicationContext
     ready = runCatching {
       System.loadLibrary("kryptos_app_lib")
+      CloudFolder.init(app)
       init(app.dataDir.absolutePath)
     }.isSuccess
     if (ready) watchVisibility(app)
@@ -71,6 +72,9 @@ object KryptosBridge {
 
   /** Opens the vault with a key released by the fingerprint prompt. */
   @JvmStatic external fun unlockWithKey(key: ByteArray): Boolean
+
+  /** The folder picked for cloud sync (a tree URI), or "" if cancelled (see pick_cloud_folder in android.rs). */
+  @JvmStatic external fun cloudPicked(tree: String)
 
   /** Completes a prompt the UI asked for (see biometric_prompt in android.rs). */
   @JvmStatic external fun biometricDone(result: String)

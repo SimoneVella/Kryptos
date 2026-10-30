@@ -180,6 +180,31 @@ unisce (`crates/core/src/vault.rs`, `apps/desktop/src-tauri/src/sync.rs`).
 - **Permessi.** Android chiede la fotocamera solo quando parte la scansione; resta senza permesso INTERNET.
   macOS dichiara `NSCameraUsageDescription` e l'entitlement per la fotocamera.
 
+**Sincronizzazione con una cartella cloud** (`apps/desktop/src-tauri/src/cloud.rs`, macOS e Android).
+Kryptos continua a non collegarsi mai: tiene `<cartella cloud>/Kryptos/vault.kryptos` e il file lo sposta
+l'app del fornitore (Google Drive, iCloud Drive, Dropbox, OneDrive). Le cartelle vengono trovate in
+`~/Library/CloudStorage` e `~/Library/Mobile Documents`, quindi per attivarla basta una scelta, senza
+selezionare file.
+
+- **Un solo vault condiviso.** Tutti i dispositivi usano lo stesso vault (id, chiave, master password),
+  quindi la copia si apre con la chiave già in memoria e si unisce in silenzio (`UnlockedVault::sync_from`).
+  Un dispositivo che parte con un vault suo si unisce una volta (`UnlockedVault::join`): apre la copia
+  condivisa con la password di quel vault, ci porta le proprie voci e da lì usa quel vault e quella password.
+- **Quando.** Un ciclo in background (5 s) unisce la copia quando il fornitore ne porta una più nuova e la
+  riscrive dopo ogni modifica locale (prima legge, poi scrive, così la copia scritta ha entrambe le parti).
+  Le copie in conflitto che il fornitore crea quando due dispositivi scrivono insieme (`vault (1).kryptos`…)
+  vengono unite e rimosse. Anche il cambio di master password viaggia: il corpo registra quando è cambiata e
+  vince l'intestazione più recente (si apre solo con la chiave condivisa, quindi chi non la ha non può
+  piazzarne una).
+- **Requisito.** Per attivarla serve la master password, verificata sul file del vault, e l'interfaccia
+  accetta solo una password "fortissima": la copia ora sta presso terzi, che possono provare password offline.
+- **Android** non ha cartelle cloud su disco né il permesso INTERNET, quindi l'utente sceglie la cartella una
+  volta con il selettore di sistema (`ACTION_OPEN_DOCUMENT_TREE`; Google Drive, Dropbox… compaiono lì) e
+  Kryptos conserva un permesso di lettura e scrittura solo su quella cartella (`CloudFolder.kt`, chiamato da
+  Rust via JNI). La rete la fa l'app del fornitore. Unirsi a un vault cambia la chiave del vault, quindi lo
+  sblocco a impronta si spegne e va riattivato. Il fornitore può mostrare una modifica remota con un po' di
+  ritardo; non si perde niente, si unisce al giro successivo.
+
 ## Roadmap
 
 - [x] Core: vault, KDF, generatore, matching URL, storage atomico, import CSV, analisi sicurezza, unione per la sincronizzazione (30 test)
@@ -202,4 +227,6 @@ unisce (`crates/core/src/vault.rs`, `apps/desktop/src-tauri/src/sync.rs`).
 - [ ] TOTP: lettura del QR con la fotocamera; esportazioni cifrate di Aegis/2FAS
 - [ ] Windows: named pipe per il bridge e registrazione del native host nel registro
 - [x] Sincronizzazione senza rete: unione di un backup o trasferimento con i QR, unione per voce con tombstone
+- [x] Sincronizzazione con cartella cloud, automatica: macOS trova Google Drive, iCloud Drive, Dropbox,
+      OneDrive; Android sceglie la cartella una volta con il selettore di sistema
 - [ ] Sync LAN opzionale (abbinamento con QR e chiave effimera X25519, canale Noise). Su Android servirebbe il permesso INTERNET, quindi solo su richiesta esplicita

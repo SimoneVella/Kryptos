@@ -21,4 +21,4 @@ pub mod vault;
 pub use entry::{BackupCode, Entry, EntryInput, EntrySummary};
 pub use error::{Error, Result};
 pub use generator::GeneratorOptions;
-pub use vault::{MergeReport, OtpImportReport, SaveOutcome, UnlockedVault};
+pub use vault::{MergeReport, OtpImportReport, SaveOutcome, SyncReport, UnlockedVault};

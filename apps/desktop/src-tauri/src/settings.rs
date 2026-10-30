@@ -18,6 +18,8 @@ pub struct Settings {
     pub browser_integration: bool,
     pub language: String,
     pub fill_confirm: String,
+    /// Cloud folder the vault syncs through ("" = off), see cloud.rs.
+    pub cloud_folder: String,
 }
 
 impl Default for Settings {
@@ -29,6 +31,7 @@ impl Default for Settings {
             browser_integration: false,
             language: "system".into(),
             fill_confirm: "system".into(),
+            cloud_folder: String::new(),
         }
     }
 }

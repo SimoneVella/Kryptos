@@ -62,6 +62,16 @@ export default function Shell({ onLock }: { onLock: () => void }) {
     return () => void un.then((f) => f());
   }, [reload, toast, t]);
 
+  // Changes made on another device, brought in through the cloud folder.
+  useEffect(() => {
+    const un = api.onVaultSynced((r) => {
+      reload();
+      if (r.password_changed) toast(t("shell.passwordChangedToast"));
+      else toast(t("shell.syncedToast", { added: r.added, updated: r.updated, deleted: r.deleted }));
+    });
+    return () => void un.then((f) => f());
+  }, [reload, toast, t]);
+
   const startNew = (password = "") => setEditing({ id: null, input: { ...emptyInput, password } });
 
   const nav: { id: Tab; label: string; icon: ReactElement }[] = [

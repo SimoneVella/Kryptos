@@ -3,6 +3,7 @@
 #[cfg(desktop)]
 mod bridge;
 mod browser;
+mod cloud;
 mod commands;
 #[cfg(desktop)]
 mod confirm;
@@ -31,7 +32,9 @@ pub fn run() {
             #[cfg(target_os = "android")]
             {
                 android::set_app(app.handle().clone());
-                app.manage(android::shared_state(app.path().app_data_dir()?));
+                let state = android::shared_state(app.path().app_data_dir()?);
+                cloud::start(app.handle().clone(), state.clone());
+                app.manage(state);
             }
             #[cfg(not(target_os = "android"))]
             {
@@ -47,6 +50,7 @@ pub fn run() {
             #[cfg(desktop)]
             {
                 bridge::start(app.handle().clone());
+                cloud::start(app.handle().clone(), app.state::<AppState>().inner().clone());
                 // Keep browser manifests pointing at this copy of the app (it may have moved).
                 if app.state::<AppState>().settings().browser_integration {
                     let _ = browser::register();
@@ -75,6 +79,11 @@ pub fn run() {
             commands::totp_code,
             commands::mark_backup_code,
             commands::import_otp,
+            commands::cloud_providers,
+            commands::cloud_pick_folder,
+            commands::cloud_status,
+            commands::cloud_enable,
+            commands::cloud_disable,
             commands::read_backup_codes,
             commands::copy_text,
             commands::security_report,

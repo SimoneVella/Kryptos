@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
-use kryptos_core::{storage, UnlockedVault};
+use kryptos_core::{storage, MergeReport, SyncReport, UnlockedVault};
 use zeroize::Zeroizing;
 
 use crate::settings::Settings;
@@ -132,6 +132,31 @@ impl AppState {
         let v = g.vault.as_mut().ok_or("locked")?;
         let out = f(v)?;
         storage::write_atomic(&self.vault_path, &v.to_bytes()).map_err(|e| e.to_string())?;
+        crate::cloud::mark_dirty();
         Ok(out)
+    }
+
+    /// Merges a cloud copy of this vault (see cloud.rs); saved only if it changed
+    /// something. Not user activity: it runs in the background.
+    pub fn sync_from(&self, bytes: &[u8]) -> Result<SyncReport, String> {
+        let mut g = self.inner.lock().unwrap();
+        let v = g.vault.as_mut().ok_or("locked")?;
+        let r = v.sync_from(bytes).map_err(crate::commands::code)?;
+        if r.merge != MergeReport::default() || r.password_changed {
+            storage::write_atomic(&self.vault_path, &v.to_bytes()).map_err(|e| e.to_string())?;
+        }
+        Ok(r)
+    }
+
+    /// Replaces this vault with the shared one in the cloud folder, after moving
+    /// this vault's entries into it (see `UnlockedVault::join`). From then on this
+    /// device's master password is the shared vault's.
+    pub fn join_cloud(&self, bytes: &[u8], password: &str) -> Result<MergeReport, kryptos_core::Error> {
+        let mut g = self.inner.lock().unwrap();
+        let v = g.vault.as_ref().ok_or(kryptos_core::Error::InvalidInput("locked"))?;
+        let (shared, report) = v.join(bytes, password)?;
+        storage::write_atomic(&self.vault_path, &shared.to_bytes())?;
+        g.vault = Some(shared);
+        Ok(report)
     }
 }

@@ -240,8 +240,11 @@ pub fn get_settings(state: State<'_, AppState>) -> Settings {
 }
 
 #[tauri::command]
-pub fn update_settings(state: State<'_, AppState>, settings: Settings) -> CmdResult<()> {
+pub fn update_settings(state: State<'_, AppState>, mut settings: Settings) -> CmdResult<()> {
     state.touch();
+    // Only cloud_enable / cloud_disable change the sync folder: a settings screen
+    // loaded before sync was turned on must not turn it off again.
+    settings.cloud_folder = state.settings().cloud_folder;
     state.set_settings(settings)
 }
 
@@ -269,6 +272,91 @@ pub async fn import_csv(app: AppHandle, state: State<'_, AppState>) -> CmdResult
     let inputs = kryptos_core::import::parse_csv(&data).map_err(code)?;
     let (added, skipped) = state.mutate(|v| Ok(v.import(inputs)))?;
     Ok(Some(ImportResult { added, skipped, file }))
+}
+
+// ───────── Cloud folder sync (cloud.rs) ─────────
+
+/// Cloud folders found on this device (none on mobile: there the folder is picked).
+#[tauri::command]
+pub fn cloud_providers() -> Vec<crate::cloud::Provider> {
+    #[cfg(desktop)]
+    return crate::cloud::providers();
+    #[cfg(mobile)]
+    Vec::new()
+}
+
+/// Android: the system folder picker (Google Drive, Dropbox... appear there).
+/// The picked folder, or None if cancelled.
+#[tauri::command]
+pub async fn cloud_pick_folder(app: AppHandle) -> Option<crate::cloud::Provider> {
+    #[cfg(target_os = "android")]
+    return tauri::async_runtime::spawn_blocking(move || {
+        let tree = crate::android::pick_cloud_folder(&app)?;
+        let name = crate::android::saf::name(&tree);
+        Some(crate::cloud::Provider { has_vault: crate::cloud::has_vault(&tree), name, path: tree })
+    })
+    .await
+    .ok()
+    .flatten();
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        None
+    }
+}
+
+#[tauri::command]
+pub fn cloud_status(state: State<'_, AppState>) -> serde_json::Value {
+    let folder = state.settings().cloud_folder;
+    // Android folders are opaque URIs: their display name comes from the provider.
+    #[cfg(target_os = "android")]
+    let name = if folder.is_empty() { String::new() } else { crate::android::saf::name(&folder) };
+    #[cfg(not(target_os = "android"))]
+    let name = String::new();
+    serde_json::json!({ "folder": folder, "name": name, "status": crate::cloud::status() })
+}
+
+/// Turns on sync through `folder`. `password` is this vault's master password,
+/// verified here (the UI also requires it to be very strong). If the folder
+/// already holds a different vault with another password, fails with
+/// "cloud_other_password": call again with `cloud_password`.
+#[tauri::command]
+pub async fn cloud_enable(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    folder: String,
+    password: String,
+    cloud_password: Option<String>,
+) -> CmdResult<crate::cloud::Enabled> {
+    let (password, cloud_password) = (Zeroizing::new(password), cloud_password.map(Zeroizing::new));
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || -> CmdResult<crate::cloud::Enabled> {
+        let bytes = storage::read(&st.vault_path).map_err(code)?;
+        UnlockedVault::unlock(&bytes, &password).map(drop).map_err(code)?;
+        let done = crate::cloud::enable(&st, &folder, &password, cloud_password.as_deref().map(String::as_str))?;
+        let mut s = st.settings();
+        s.cloud_folder = folder.clone();
+        st.set_settings(s)?;
+        crate::cloud::push_now(&st, &folder)?;
+        // Joining replaced the vault key: the fingerprint sealed the old one.
+        #[cfg(target_os = "android")]
+        if done.outcome == "joined" {
+            crate::android::biometric_disable(&app);
+        }
+        #[cfg(not(target_os = "android"))]
+        let _ = app;
+        Ok(done)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Stops syncing. The copy in the cloud folder stays where it is.
+#[tauri::command]
+pub fn cloud_disable(state: State<'_, AppState>) -> CmdResult<()> {
+    let mut s = state.settings();
+    s.cloud_folder.clear();
+    state.set_settings(s)
 }
 
 #[derive(Serialize)]

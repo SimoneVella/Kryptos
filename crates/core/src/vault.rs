@@ -15,6 +15,10 @@ struct VaultData {
     /// the vault does not bring them back. Missing in vaults written before sync.
     #[serde(default)]
     tombstones: Vec<Tombstone>,
+    /// When the master password last changed (Unix seconds), so that copies of
+    /// the same vault synced through a cloud folder adopt the newest password.
+    #[serde(default)]
+    password_changed_at: u64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -32,6 +36,15 @@ pub struct MergeReport {
     pub updated: usize,
     /// Entries the other copy had deleted after their last edit here.
     pub deleted: usize,
+}
+
+/// What [`UnlockedVault::sync_from`] did.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct SyncReport {
+    #[serde(flatten)]
+    pub merge: MergeReport,
+    /// The other copy had a newer master password, now used here too.
+    pub password_changed: bool,
 }
 
 /// A decrypted vault held in RAM. Dropping it wipes keys and entries.
@@ -85,6 +98,7 @@ impl UnlockedVault {
     pub fn change_password(&mut self, new_password: &str, kdf: KdfParams) -> Result<()> {
         check_password(new_password)?;
         self.header = wrap_header(self.header.vault_id, &self.key, new_password, kdf)?;
+        self.data.password_changed_at = now();
         Ok(())
     }
 
@@ -95,6 +109,39 @@ impl UnlockedVault {
 
     pub fn vault_id(&self) -> Uuid {
         self.header.vault_id
+    }
+
+    /// Whether `bytes` are a copy of this same vault (same id), which then opens
+    /// with this vault's key, without the password.
+    pub fn is_copy(&self, bytes: &[u8]) -> bool {
+        format::decode(bytes).is_ok_and(|p| p.header.vault_id == self.header.vault_id)
+    }
+
+    /// Merges another copy of this same vault (cloud sync): no password needed,
+    /// both share the vault key. If that copy got a newer master password, this
+    /// one adopts it. Fails with `OtherVault` for a different vault (see `join`).
+    pub fn sync_from(&mut self, bytes: &[u8]) -> Result<SyncReport> {
+        if !self.is_copy(bytes) {
+            return Err(Error::InvalidInput("other_vault"));
+        }
+        let other = Self::unlock_with_key(bytes, self.key.as_bytes())?;
+        let merge = self.merge_from(&other);
+        let password_changed = other.data.password_changed_at > self.data.password_changed_at;
+        if password_changed {
+            self.header = other.header.clone();
+            self.data.password_changed_at = other.data.password_changed_at;
+        }
+        Ok(SyncReport { merge, password_changed })
+    }
+
+    /// Joins a different vault (the one already in the cloud folder): opens it with
+    /// its own master password and brings this vault's entries into it. The result
+    /// replaces this vault, so from then on both devices share one vault, one key
+    /// and one master password. The report counts what this vault brought in.
+    pub fn join(&self, bytes: &[u8], password: &str) -> Result<(UnlockedVault, MergeReport)> {
+        let mut shared = Self::unlock(bytes, password)?;
+        let report = shared.merge_from(self);
+        Ok((shared, report))
     }
 
     // ---- entries ----
@@ -424,6 +471,40 @@ mod tests {
             totp: String::new(),
             backup_codes: Vec::new(),
         }
+    }
+
+    #[test]
+    fn cloud_sync_same_vault_and_join() {
+        // Phone and computer share one vault through the cloud folder.
+        let mut phone = UnlockedVault::create("correct horse", KdfParams::TEST).unwrap();
+        let mut computer = UnlockedVault::unlock(&phone.to_bytes(), "correct horse").unwrap();
+        let a = phone.add(input("From phone")).unwrap();
+        let mut b = input("From computer");
+        b.urls = vec!["https://other.test".into()];
+        computer.add(b).unwrap();
+        let r = computer.sync_from(&phone.to_bytes()).unwrap();
+        assert_eq!((r.merge.added, r.password_changed), (1, false));
+        assert!(computer.get(a).is_ok());
+
+        // A password change on the phone reaches the computer with the next sync.
+        phone.change_password("battery staple", KdfParams::TEST).unwrap();
+        assert!(computer.sync_from(&phone.to_bytes()).unwrap().password_changed);
+        assert!(UnlockedVault::unlock(&computer.to_bytes(), "battery staple").is_ok());
+        assert!(UnlockedVault::unlock(&computer.to_bytes(), "correct horse").is_err());
+
+        // A separate vault can't be synced silently: it must join with its password.
+        let mut laptop = UnlockedVault::create("laptop pass", KdfParams::TEST).unwrap();
+        let mut c = input("From laptop");
+        c.urls = vec!["https://laptop.test".into()];
+        laptop.add(c).unwrap();
+        assert!(matches!(laptop.sync_from(&phone.to_bytes()), Err(Error::InvalidInput("other_vault"))));
+        let cloud = phone.to_bytes();
+        assert!(laptop.join(&cloud, "wrong").is_err());
+        let (joined, r) = laptop.join(&cloud, "battery staple").unwrap();
+        assert_eq!(joined.vault_id(), phone.vault_id());
+        assert_eq!(r.added, 1); // the laptop's own entry came along
+        // The joined device now syncs silently with the others.
+        assert!(phone.sync_from(&joined.to_bytes()).is_ok());
     }
 
     #[test]

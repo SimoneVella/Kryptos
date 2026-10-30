@@ -178,6 +178,29 @@ Devices never connect to each other: a copy of the **encrypted vault file** is c
 - **Permissions.** Android asks for the camera only when scanning starts; it still has no INTERNET
   permission. macOS declares `NSCameraUsageDescription` and the camera entitlement.
 
+**Cloud folder sync** (`apps/desktop/src-tauri/src/cloud.rs`, macOS and Android). Kryptos still never connects:
+it keeps `<cloud folder>/Kryptos/vault.kryptos` and the provider's app (Google Drive, iCloud Drive,
+Dropbox, OneDrive) moves it. The folders are found under `~/Library/CloudStorage` and
+`~/Library/Mobile Documents`, so turning it on is one choice, no file picking.
+
+- **One shared vault.** Every device uses the same vault (id, key, master password), so the copy opens
+  with the key already in memory and merges silently (`UnlockedVault::sync_from`). A device that starts
+  with its own vault joins once (`UnlockedVault::join`): it opens the shared copy with that vault's
+  password, moves its own entries in, and from then on uses that vault and password.
+- **When.** A background loop (5 s) merges the copy when the provider brings a newer one, and writes it
+  after every local change (pull first, then push, so the written copy has both sides). Conflict copies
+  the provider makes when two devices write at once (`vault (1).kryptos`…) are merged and removed. A
+  master password change travels too: the body records when it changed and the newer header wins (it
+  only opens with the shared key, so nobody without it can plant one).
+- **Gate.** Turning it on requires the master password, verified against the vault file, and the UI
+  accepts only a "very strong" one: the copy now sits with a third party, who can try passwords offline.
+- **Android** has no cloud folders on disk and no INTERNET permission, so the user picks the folder once
+  with the system picker (`ACTION_OPEN_DOCUMENT_TREE`; Google Drive, Dropbox… are listed there) and
+  Kryptos keeps a persisted read/write grant on that one folder (`CloudFolder.kt`, called from Rust
+  through JNI). The provider's app does the network. Joining a vault replaces the vault key, so
+  fingerprint unlock is turned off and must be turned on again. The provider may show a remote change
+  a little late; nothing is lost, it merges on the next round.
+
 ## Roadmap
 
 - [x] Core: vault, KDF, generator, URL matching, atomic storage, CSV import, security analysis, sync merge (30 tests)
@@ -200,5 +223,7 @@ Devices never connect to each other: a copy of the **encrypted vault file** is c
 - [ ] TOTP: scan the QR with the camera; encrypted Aegis/2FAS exports
 - [ ] Windows: named pipe for the bridge and native host registration in the registry
 - [x] Sync without network: merge a backup or a QR-code transfer, per-entry merge with tombstones
+- [x] Cloud folder sync, automatic: macOS finds Google Drive, iCloud Drive, Dropbox, OneDrive; Android
+      picks the folder once through the system picker
 - [ ] Optional LAN sync (QR pairing with an ephemeral X25519 key, Noise channel). Would need the INTERNET
   permission on Android, so only as an opt-in

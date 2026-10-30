@@ -9,7 +9,7 @@ let exists = true;
 let seq = 100;
 let autofill = false;
 let biometric = "off";
-const settings = { auto_lock_minutes: 5, lock_on_sleep: true, clipboard_clear_secs: 30, browser_integration: false, language: "system", fill_confirm: "system" };
+const settings = { auto_lock_minutes: 5, lock_on_sleep: true, clipboard_clear_secs: 30, browser_integration: false, language: "system", fill_confirm: "system", cloud_folder: "" };
 const entries: Any[] = [
   { title: "Google", username: "mario.rossi@example.com", password: "Xk9#mP2$vL8@qR4!wT", urls: ["google.com"], favorite: true, age: 20 },
   { title: "Netflix", username: "mario.rossi@example.com", password: "netflix2021", urls: ["netflix.com"], favorite: false, age: 400 },
@@ -61,6 +61,11 @@ async function invoke(cmd: string, a: Any = {}): Promise<unknown> {
     case "autofill_status": return autofill;
     case "open_autofill_settings": autofill = true; return;
     case "biometric_status": return biometric;
+    case "cloud_providers": return [{ name: "Google Drive", path: "/Users/me/Library/CloudStorage/GoogleDrive-me@gmail.com/Il mio Drive", has_vault: true }, { name: "iCloud Drive", path: "/Users/me/Library/Mobile Documents/com~apple~CloudDocs", has_vault: false }];
+    case "cloud_pick_folder": await wait(300); return { name: "Il mio Drive", path: "content://com.google.android.apps.docs.storage/tree/abc", has_vault: true };
+    case "cloud_status": return { folder: settings.cloud_folder, name: "", status: { state: settings.cloud_folder ? "ok" : "off", last_sync: settings.cloud_folder ? Math.floor(Date.now() / 1000) : 0 } };
+    case "cloud_enable": await wait(700); if (a.password !== "password" && a.password !== "tavolo-nuvola-ferro-salto-viola") throw "wrong_password"; if (!a.cloudPassword) throw "cloud_other_password"; settings.cloud_folder = a.folder; return { outcome: "joined", added: 3 };
+    case "cloud_disable": settings.cloud_folder = ""; return;
     case "import_otp": await wait(400); return { linked: 3, added: 2, skipped: 1, file: "aegis-export.json" };
     case "read_backup_codes": return ["1234 5678", "2345 6789", "3456 7890"];
     case "mark_backup_code": entries.find((e) => e.id === a.id)!.backup_codes[a.index].used = a.used; return;

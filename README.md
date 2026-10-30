@@ -202,6 +202,15 @@ deletions are carried over too. Nothing is ever replaced wholesale.
 What travels is the encrypted vault, exactly like a backup: whoever intercepts the file, or films the
 QR codes, still needs the master password. Even so, don't leave backups lying around in shared folders.
 
+**Automatic, through your cloud.** *Settings → Sync between devices → Cloud sync → Turn on*: on the Mac
+pick Google Drive, iCloud Drive or Dropbox from the list, on Android tap *Choose the cloud folder* and pick
+one (once). Then enter your master password, which must be very strong. Kryptos
+keeps an encrypted copy in a `Kryptos` folder there and from then on keeps every device in step by
+itself. Kryptos still never connects to the internet: the cloud app moves the file. On a second device
+that already has its own passwords, you enter the other device's master password once: its entries are
+merged in and from then on both use the same vault and password (on Android, turn fingerprint unlock on
+again afterwards).
+
 ## Site logos
 
 Entries show the logo of their website when one is available. Logos come from
