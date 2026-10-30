@@ -1,7 +1,7 @@
 {
   "extName": { "message": "Kryptos" },
   "extDescription": { "message": "Fills in credentials from your local Kryptos vault. No server, no network." },
-  "searchPlaceholder": { "message": "Filter" },
+  "inlineToggle": { "message": "Suggest logins under login fields" },
   "footerText": { "message": "Offline · your data never leaves the computer" },
   "openApp": { "message": "Open Kryptos" },
   "noSite": { "message": "No site" },
@@ -35,6 +35,7 @@
   "fillDeniedText": { "message": "Fill cancelled in Kryptos." },
   "fillTimeoutText": { "message": "No confirmation within 3 minutes." },
   "fillBusyText": { "message": "Another fill is already waiting for confirmation in Kryptos." },
+  "saveShort": { "message": "Save login" },
   "saveLoginButton": { "message": "Save login from this page" },
   "saveTitle": {
     "message": "Save to Kryptos for $SITE$?",
@@ -48,5 +49,51 @@
   "savedText": { "message": "Login saved in Kryptos." },
   "updatedText": { "message": "Password updated in Kryptos." },
   "unchangedText": { "message": "This login is already in Kryptos." },
-  "saveFailedTitle": { "message": "Couldn't save" }
+  "saveFailedTitle": { "message": "Couldn't save" },
+  "tabSite": { "message": "This site" },
+  "tabSearch": { "message": "Search" },
+  "tabGenerate": { "message": "Generate" },
+  "qrButton": { "message": "2FA code from QR" },
+  "lookalikeTitle": { "message": "Watch out: this isn't the site you think" },
+  "lookalikeText": {
+    "message": "It looks like $TITLE$ ($DOMAIN$) but it's a different address. Don't type your password here.",
+    "placeholders": { "title": { "content": "$1" }, "domain": { "content": "$2" } }
+  },
+  "tagReused": { "message": "Reused" },
+  "tagWeak": { "message": "Weak" },
+  "tag2fa": { "message": "2FA" },
+  "qrReadingTitle": { "message": "Looking for the QR code…" },
+  "qrReadingText": { "message": "Reading the visible page, nothing is saved." },
+  "qrNoneTitle": { "message": "No 2FA QR code found" },
+  "qrNoneText": {
+    "message": "Open the page where the site shows the QR code to turn on two-step verification, make sure it's fully visible, and try again."
+  },
+  "qrCaptureFailed": { "message": "The browser didn't allow reading this page." },
+  "qrConfirmText": { "message": "Choose in Kryptos which entry gets the 2FA code." },
+  "qrAddedTitle": { "message": "2FA code added" },
+  "qrAddedText": {
+    "message": "Saved in $TITLE$. Kryptos will now fill it on this site.",
+    "placeholders": { "title": { "content": "$1" } }
+  },
+  "qrDeniedText": { "message": "Cancelled in Kryptos: nothing was saved." },
+  "qrInvalidText": { "message": "That QR code doesn't contain a valid 2FA key." },
+  "qrFailedTitle": { "message": "Couldn't add the code" },
+  "searchAllPlaceholder": { "message": "Search the whole vault" },
+  "searchAllHint": { "message": "Type at least two letters. Results open in Kryptos; filling stays limited to each login's own site." },
+  "searchNone": { "message": "Nothing found" },
+  "openShort": { "message": "Open" },
+  "genAgain": { "message": "New one" },
+  "genCopy": { "message": "Copy" },
+  "genCopied": { "message": "Copied" },
+  "genInsert": { "message": "Put in the form" },
+  "genInsertSave": { "message": "Put in the form and save" },
+  "genLength": { "message": "Length" },
+  "genSymbols": { "message": "Symbols (!@#…)" },
+  "genNoFieldTitle": { "message": "No password field to fill" },
+  "genNoFieldText": { "message": "Open the sign-up or change-password form first." },
+  "genInsertedTitle": { "message": "Password in the form" },
+  "genInsertedText": { "message": "Submit the form, then save it with 'Save login'." },
+  "menuFill": { "message": "Fill with Kryptos" },
+  "menuGenerate": { "message": "Generate a strong password here" },
+  "commandFill": { "message": "Fill this site's most recent login" }
 }

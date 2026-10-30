@@ -7,8 +7,15 @@ mod cloud;
 mod commands;
 #[cfg(desktop)]
 mod confirm;
+#[cfg(desktop)]
+mod otp_add;
+#[cfg(desktop)]
+mod projects;
+#[cfg(desktop)]
+mod ai;
 #[cfg(target_os = "android")]
 mod android;
+mod profiles;
 mod settings;
 mod state;
 mod sync;
@@ -26,6 +33,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(sync::Staged::default())
         .setup(|app| {
             // Android shares the state (and its watchdog) with the autofill side.
@@ -40,7 +48,8 @@ pub fn run() {
             {
                 #[cfg(mobile)]
                 kryptos_core::paths::set_data_dir(app.path().app_data_dir()?);
-                let state = AppState::new(kryptos_core::paths::vault_path(), settings::Settings::path());
+                let (vault, settings) = profiles::active_files();
+                let state = AppState::new(vault, settings);
                 let handle = app.handle().clone();
                 watchdog::start(state.clone(), move |reason| {
                     let _ = handle.emit("vault-locked", reason);
@@ -79,6 +88,52 @@ pub fn run() {
             commands::totp_code,
             commands::mark_backup_code,
             commands::import_otp,
+            commands::otp_add_answer,
+            commands::ai_status,
+            commands::ai_set_enabled,
+            commands::ai_new_code,
+            commands::ai_revoke,
+            commands::copy_history,
+            commands::team_status,
+            commands::team_code_safety,
+            commands::team_pick_folder,
+            commands::team_create,
+            commands::team_invite,
+            commands::team_remove,
+            commands::team_peek,
+            commands::team_join,
+            commands::team_leave,
+            commands::profile_list,
+            commands::profile_switch,
+            commands::profile_create,
+            commands::profile_rename,
+            commands::profile_delete,
+            commands::env_list,
+            commands::env_get,
+            commands::env_put,
+            commands::env_update,
+            commands::env_rename,
+            commands::env_rename_project,
+            commands::env_set_ai,
+            commands::env_delete,
+            commands::env_restore,
+            commands::env_diff,
+            commands::env_example,
+            commands::env_pick_file,
+            commands::env_export,
+            commands::env_scan,
+            commands::env_import_found,
+            commands::cli_status,
+            commands::cli_install,
+            commands::trash_list,
+            commands::trash_restore,
+            commands::trash_purge,
+            commands::trash_empty,
+            commands::smart_suggestions,
+            commands::apply_titles,
+            commands::merge_duplicates,
+            commands::generate_passphrase,
+            commands::open_change_password,
             commands::cloud_providers,
             commands::cloud_pick_folder,
             commands::cloud_status,
@@ -103,6 +158,7 @@ pub fn run() {
             commands::biometric_disable,
             commands::biometric_unlock,
             commands::fill_confirm_system,
+            commands::fill_reason_template,
             commands::fill_confirm_master,
             commands::fill_confirm_cancel,
             sync::sync_stage_file,

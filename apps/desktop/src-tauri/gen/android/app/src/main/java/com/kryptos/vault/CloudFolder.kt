@@ -42,12 +42,24 @@ object CloudFolder {
 
   /** Replaces (or creates) the vault copy. */
   @JvmStatic
-  fun write(tree: String, bytes: ByteArray): Boolean = runCatching {
+  fun write(tree: String, bytes: ByteArray): Boolean = writeNamed(tree, FILE, bytes)
+
+  /** A team's sealed key file next to the vault copy, or null if there is none. */
+  @JvmStatic
+  fun readNamed(tree: String, name: String): ByteArray? = runCatching { find(tree, name)?.let(::readDoc) }.getOrNull()
+
+  @JvmStatic
+  fun writeNamed(tree: String, name: String, bytes: ByteArray): Boolean = runCatching {
     val dir = dir(tree, create = true) ?: return false
-    val doc = child(dir, FILE) ?: DocumentsContract.createDocument(app.contentResolver, dir, "application/octet-stream", FILE)
+    val doc = child(dir, name) ?: DocumentsContract.createDocument(app.contentResolver, dir, "application/octet-stream", name)
       ?: return false
     app.contentResolver.openOutputStream(doc, "wt")?.use { it.write(bytes) } ?: return false
     true
+  }.getOrDefault(false)
+
+  @JvmStatic
+  fun deleteNamed(tree: String, name: String): Boolean = runCatching {
+    find(tree, name)?.let { DocumentsContract.deleteDocument(app.contentResolver, it) } ?: false
   }.getOrDefault(false)
 
   /** Last-modified time of the vault copy in ms, or -1 if there is none. */
@@ -74,10 +86,16 @@ object CloudFolder {
 
   private fun find(tree: String, name: String): Uri? = dir(tree, create = false)?.let { child(it, name) }
 
-  /** `<picked folder>/Kryptos`, created on first write. */
+  /**
+   * `<picked folder>/Kryptos`, created on first write. If the user picked the
+   * Kryptos folder itself (made by another device), that folder is used as is:
+   * nesting a second one there would leave each device with its own vault.
+   */
   private fun dir(tree: String, create: Boolean): Uri? {
     val treeUri = Uri.parse(tree)
     val root = DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri))
+    val names = children(root).map { it.first }
+    if (FILE in names || (DIR !in names && query(root, Document.COLUMN_DISPLAY_NAME) { it.getString(0) } == DIR)) return root
     return child(root, DIR) ?: if (create) DocumentsContract.createDocument(app.contentResolver, root, Document.MIME_TYPE_DIR, DIR) else null
   }
 

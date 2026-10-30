@@ -1,15 +1,17 @@
 import { useState, type FormEvent } from "react";
-import { FileText, RefreshCw } from "lucide-react";
+import { Icon } from "../components/Icon";
 import { api, defaultGenerator, type EntryInput } from "../lib/api";
 import { estimateBits } from "../lib/utils";
 import { PasswordInput, Sheet, StrengthBar, Switch, useToast } from "../components/ui";
 import { useT } from "../i18n";
 import type { Editing } from "./Shell";
+import { ScanOtpSheet } from "./Sync";
 
 export default function EditorSheet(props: { editing: Editing; onClose: () => void; onSaved: (id: string) => void }) {
   const { t, errorMessage } = useT();
   const [v, setV] = useState<EntryInput>(props.editing.input);
   const [urls, setUrls] = useState(props.editing.input.urls.join(", "));
+  const [scanning, setScanning] = useState(false);
   const [codes, setCodes] = useState(props.editing.input.backup_codes.map((c) => c.code).join("\n"));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -65,7 +67,7 @@ export default function EditorSheet(props: { editing: Editing; onClose: () => vo
                 title={t("common.generate")}
                 onClick={async () => set("password", (await api.generatePassword(defaultGenerator)).password)}
               >
-                <RefreshCw size={18} />
+                <Icon name="refresh" size={18} />
               </button>
             }
           />
@@ -76,7 +78,12 @@ export default function EditorSheet(props: { editing: Editing; onClose: () => vo
           )}
         </div>
         <div>
-          <label className="label">{t("editor.totpLabel")}</label>
+          <div className="label-row">
+            <label className="label">{t("editor.totpLabel")}</label>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setScanning(true)}>
+              <Icon name="qr_code_scanner" size={15} /> {t("otpScan.button")}
+            </button>
+          </div>
           <input
             className="input mono"
             placeholder={t("editor.totpPlaceholder")}
@@ -103,7 +110,7 @@ export default function EditorSheet(props: { editing: Editing; onClose: () => vo
                 }
               }}
             >
-              <FileText size={15} /> {t("editor.backupCodesFromFile")}
+              <Icon name="description" size={15} /> {t("editor.backupCodesFromFile")}
             </button>
           </div>
           <textarea
@@ -125,12 +132,29 @@ export default function EditorSheet(props: { editing: Editing; onClose: () => vo
           <span>{t("editor.favoriteToggle")}</span>
           <Switch checked={v.favorite} onChange={(b) => set("favorite", b)} />
         </div>
+        <div className="toggle-row" style={{ padding: "4px 4px" }}>
+          <span>
+            {t("editor.aiToggle")}
+            <span className="hint" style={{ display: "block", margin: "2px 0 0" }}>{t("editor.aiHint")}</span>
+          </span>
+          <Switch checked={v.ai_access} onChange={(b) => set("ai_access", b)} />
+        </div>
         {error && <p className="error">{error}</p>}
         <div className="form-actions">
           <button type="button" className="btn btn-secondary" onClick={props.onClose}>{t("common.cancel")}</button>
           <button className="btn btn-primary" disabled={busy || !v.title.trim()}>{isNew ? t("editor.saveNew") : t("editor.saveEdit")}</button>
         </div>
       </form>
+      {scanning && (
+        <ScanOtpSheet
+          onClose={() => setScanning(false)}
+          onFound={(uri) => {
+            setScanning(false);
+            set("totp", uri);
+            toast(t("otpScan.found"));
+          }}
+        />
+      )}
     </Sheet>
   );
 }

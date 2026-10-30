@@ -1,17 +1,24 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { Fingerprint } from "lucide-react";
+import { Icon } from "../components/Icon";
 import { api, type FillRequest } from "../lib/api";
 import { Avatar, PasswordInput, Sheet } from "../components/ui";
 import { useT } from "../i18n";
 
 /**
- * Desktop: the browser extension asked for a password and the app waits for the
- * user's OK before releasing it. Shown over whatever screen is open. In "system"
- * mode the Touch ID / Mac password prompt starts right away; the master password
- * is always available as an alternative.
+ * Desktop: a request that needs the app window before a password or `.env` is
+ * released (master password mode, AI and command line requests, or a browser fill
+ * whose system prompt couldn't be shown). Shown over whatever screen is open. In
+ * "system" mode the Touch ID / Mac password prompt starts right away; the master
+ * password is always available as an alternative.
  */
 export default function FillConfirm() {
+  const { t } = useT();
   const [req, setReq] = useState<FillRequest | null>(null);
+
+  // Browser fills ask from Rust, without this window: it needs the words.
+  useEffect(() => {
+    api.fillReasonTemplate(t("fill.reason", { host: "{host}" }));
+  }, [t]);
 
   useEffect(() => {
     const un = api.onFillConfirm(setReq);
@@ -43,15 +50,18 @@ function Dialog({ req, onClose }: { req: FillRequest; onClose: () => void }) {
     setBusy(true);
     setError("");
     try {
-      await api.fillConfirmSystem(req.id, t("fill.reason", { host: req.host }));
+      await api.fillConfirmSystem(
+        req.id,
+        req.source === "ai" ? t("ai.reason", { client: req.client, title: req.title }) : req.source === "env" ? t("projects.confirmReason", { title: req.title }) : t("fill.reason", { host: req.host }),
+      );
       onClose();
     } catch (err) {
       if (err === "timeout") onClose();
-      else if (err !== "cancelled") setError(t("fill.systemFailed"));
+      else if (err !== "cancelled" && err !== "interrupted") setError(t("fill.systemFailed"));
     } finally {
       setBusy(false);
     }
-  }, [req.id, req.host, onClose, t]);
+  }, [req.id, req.host, req.source, req.client, req.title, onClose, t]);
 
   const asked = useRef(false);
   useEffect(() => {
@@ -81,9 +91,13 @@ function Dialog({ req, onClose }: { req: FillRequest; onClose: () => void }) {
       <div className="sheet-hero">
         <Avatar name={req.title} urls={[req.host]} size="lg" />
         <div>
-          <h2>{t("fill.title")}</h2>
+          <h2>{req.source === "ai" ? t("ai.confirmTitle") : req.source === "env" ? t("projects.confirmTitle") : t("fill.title")}</h2>
           <p className="muted" style={{ marginTop: 6 }}>
-            {t("fill.subtitle", { title: req.title, host: req.host })}
+            {req.source === "ai"
+              ? t("ai.confirmSubtitle", { client: req.client, title: req.title })
+              : req.source === "env"
+              ? t(req.client === "write" ? "projects.confirmWrite" : "projects.confirmRead", { title: req.title })
+              : t("fill.subtitle", { title: req.title, host: req.host })}
             {req.username && (
               <>
                 <br />
@@ -97,7 +111,7 @@ function Dialog({ req, onClose }: { req: FillRequest; onClose: () => void }) {
         <div className="form">
           {error && <p className="error">{error}</p>}
           <button className="btn btn-primary btn-block" disabled={busy} onClick={askSystem}>
-            <Fingerprint size={20} />
+            <Icon name="fingerprint" size={20} />
             {busy ? t("fill.waiting") : t("fill.confirmSystem")}
           </button>
           <button className="btn btn-secondary btn-block" disabled={busy} onClick={() => (setError(""), setMode("master"))}>

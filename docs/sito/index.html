@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="it" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kryptos — Il password manager che non si collega a internet</title>
+<meta name="description" content="Kryptos è un password manager 100% offline per Mac e Android. Nessun server, nessun account, nessuna rete: il vault cifrato resta sui tuoi dispositivi. Gratis e open source.">
+<meta name="theme-color" content="#0b0c0e">
+<meta property="og:title" content="Kryptos — Le tue password, solo sui tuoi dispositivi">
+<meta property="og:description" content="Il password manager che non si collega a internet. Nessun server, nessun account, gratis e open source.">
+<meta property="og:image" content="img/og.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="img/mark.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/material-symbols.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.classList.remove("no-js");try{var t=localStorage.getItem("k-theme");if(t)document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light"}catch(e){}</script>
+</head>
+<body>
+<div class="aurora"></div><div class="grain"></div>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="img/dial.svg" alt="" width="34" height="34">Kryptos</a>
+    <nav class="links" aria-label="Principale">
+      <a href="#sicurezza" data-i="nav.sec">Sicurezza</a>
+      <a href="#funzioni" data-i="nav.feat">Funzioni</a>
+      <a href="#dev" data-i="nav.dev">Sviluppatori</a>
+      <a href="#team" data-i="nav.team">Team</a>
+      <a href="#sync" data-i="nav.sync">Sync</a>
+      <a href="#confronto" data-i="nav.cmp">Confronto</a>
+    </nav>
+    <span class="spacer"></span>
+    <button class="chip" id="theme" aria-label="Tema"><span class="ms">contrast</span></button>
+    <div class="langbox"><button class="chip" id="lang" aria-label="Language" aria-haspopup="listbox" aria-expanded="false"><span class="ms">language</span><span id="lang-l">IT</span><span class="ms" style="font-size:18px">expand_more</span></button><ul class="langmenu" id="langmenu" role="listbox" hidden></ul></div>
+    <a class="btn btn-gold btn-sm hide-m" href="https://github.com/SimoneVella/Kryptos/releases"><span class="ms">download</span><span data-i="nav.dl">Scarica</span></a>
+    <button class="chip menu-btn" id="menu" aria-label="Menu"><span class="ms">menu</span></button>
+  </div>
+</header>
+
+<main id="top">
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="pill rv"><b><i></i>v0.1</b><span data-i="hero.pill">100% offline · gratis · open source</span></div>
+    <h1 class="rv" style="--d:.08s"><span data-i="hero.h1a">Le tue password.</span><br><span class="grad" data-i="hero.h1b">Solo sui tuoi dispositivi.</span></h1>
+    <p class="lead rv" style="--d:.16s" data-i="hero.lead">Il password manager che non si collega a internet. Nessun server, nessun account, nessun abbonamento: il vault resta cifrato sul tuo dispositivo e solo tu hai la chiave.</p>
+    <div class="cta rv" style="--d:.24s">
+      <a class="btn btn-gold" href="https://github.com/SimoneVella/Kryptos/releases"><span class="ms">download</span><span data-i="hero.cta1">Scarica Kryptos</span></a>
+      <a class="btn btn-ghost" href="#sicurezza"><span data-i="hero.cta2">Come ti protegge</span><span class="ms go">arrow_forward</span></a>
+    </div>
+    <div class="hero-note rv" style="--d:.3s">
+      <span><span class="ms">laptop_mac</span>macOS</span>
+      <span><span class="ms">phone_android</span>Android</span>
+      <span><span class="ms">extension</span>Chrome · Arc · Brave · Edge · Firefox</span>
+    </div>
+
+    <div class="stage rv" style="--d:.34s">
+      <div class="dial-wrap"><img src="img/dial.svg" alt="" style="border-radius:50%;animation:spin 90s linear infinite"></div>
+      <div class="float f1"><div class="ic"><span class="ms fill">fingerprint</span></div><div><b data-i="hero.f1">Conferma con Touch ID</b><small data-i="hero.f1s">Una richiesta, una password</small></div></div>
+      <div class="float f2"><div class="ic"><span class="ms fill">wifi_off</span></div><div><b data-i="hero.f2">0 byte inviati</b><small data-i="hero.f2s">Nessuna connessione di rete</small></div></div>
+      <div class="app" id="tilt">
+        <img class="s-it t-dark" src="img/shots/home-dark-it.png" alt="Kryptos: elenco delle password e dettaglio di una voce, con dati di esempio" loading="lazy"><img class="s-en t-dark" src="img/shots/home-dark-en.png" alt="Kryptos: elenco delle password e dettaglio di una voce, con dati di esempio" loading="lazy"><img class="s-it t-light" src="img/shots/home-light-it.png" alt="Kryptos in tema chiaro, con dati di esempio" loading="lazy"><img class="s-en t-light" src="img/shots/home-light-en.png" alt="Kryptos in tema chiaro, con dati di esempio" loading="lazy">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ZERI -->
+<section class="sec" style="padding-top:60px">
+  <div class="wrap">
+    <div class="zeros">
+      <div class="zero rv"><div class="n grad" data-count="0">0</div><h3><span class="ms">dns</span><span data-i="z1.h">Server</span></h3><p data-i="z1.p">Non esiste un “cloud di Kryptos” da violare. Niente database con milioni di vault da rubare in un colpo solo.</p></div>
+      <div class="zero rv" style="--d:.08s"><div class="n grad">0</div><h3><span class="ms">person_off</span><span data-i="z2.h">Account</span></h3><p data-i="z2.p">Niente registrazione, niente email da confermare, niente account da farsi rubare con il phishing.</p></div>
+      <div class="zero rv" style="--d:.16s"><div class="n grad">0</div><h3><span class="ms">wifi_off</span><span data-i="z3.h">Rete</span></h3><p data-i="z3.p">Su Android l’app non ha nemmeno il permesso di accedere a internet: non può inviare niente, neanche volendo.</p></div>
+      <div class="zero rv" style="--d:.24s"><div class="n grad">0</div><h3><span class="ms">money_off</span><span data-i="z4.h">Euro</span></h3><p data-i="z4.p">Gratis, senza abbonamenti né funzioni a pagamento. Licenza GPL-3.0: il codice è pubblico e verificabile.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO CIFRATURA -->
+<section class="sec" id="sicurezza">
+  <div class="wrap demo">
+    <div class="rv">
+      <div class="eyebrow" data-i="sec.eye">Sicurezza</div>
+      <h2><span data-i="sec.h2a">Senza la tua chiave,</span> <span class="grad" data-i="sec.h2b">solo rumore.</span></h2>
+      <p class="lead" style="margin-top:22px" data-i="sec.lead">Il vault è un file cifrato. Tocca “Sblocca” e guarda cosa cambia: la chiave non lascia mai il tuo dispositivo, e quando blocchi tutto torna illeggibile.</p>
+      <ul class="checks">
+        <li><span class="ms">key</span><div><b data-i="sec.c1b">Chiave casuale a 256 bit.</b> <span data-i="sec.c1">Separata dalla master password: la sicurezza non dipende da quanto è “indovinabile”.</span></div></li>
+        <li><span class="ms">shield_lock</span><div><b data-i="sec.c2b">Ogni modifica viene rilevata.</b> <span data-i="sec.c2">Se qualcuno modifica anche un solo byte, il vault non si apre.</span></div></li>
+        <li><span class="ms">memory</span><div><b data-i="sec.c3b">Memoria ripulita.</b> <span data-i="sec.c3">Chiavi e password vengono cancellate dalla RAM quando il vault si blocca.</span></div></li>
+      </ul>
+    </div>
+    <div class="vault-demo rv" id="vd" style="--d:.1s">
+      <div class="vd-head"><h4><span class="ms fill">lock</span><span id="vd-state" data-i="vd.locked">Vault bloccato</span></h4>
+        <button class="lock" id="vd-btn"><span class="ms" id="vd-ic">lock_open</span><span id="vd-lbl" data-i="vd.unlock">Sblocca</span></button></div>
+      <div class="pw-field"><span class="ms">key</span><span class="typed" id="vd-typed"></span><span class="caret"></span></div>
+      <div class="meter" id="vd-meter"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="entries">
+        <div class="entry"><div class="av" style="background:#4285f4">G</div><div><b>Google</b><code class="cipher" data-plain="Tr0ub4dor&amp;3-correct-horse">—</code></div><span class="ms ok">check_circle</span></div>
+        <div class="entry"><div class="av" style="background:#1fb89a">I</div><div><b>Intesa Sanpaolo</b><code class="cipher" data-plain="Lk9#vQ2!mXw7pT4z">—</code></div><span class="ms ok">check_circle</span></div>
+        <div class="entry"><div class="av" style="background:#2b2f36">G</div><div><b>GitHub</b><code class="cipher" data-plain="blu-fiume-9-nuvola-Delta">—</code></div><span class="ms ok">check_circle</span></div>
+      </div>
+      <div class="demo-foot"><span class="ms">info</span><span data-i="vd.foot">Dimostrazione: la tua master password non viene mai inviata o salvata da questa pagina.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- PIPELINE CRITTOGRAFICA -->
+<section class="sec" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head center rv">
+      <div class="eyebrow" data-i="cr.eye">Crittografia</div>
+      <h2><span data-i="cr.h2a">Algoritmi pubblici.</span> <span class="grad" data-i="cr.h2b">Nessun segreto nel codice.</span></h2>
+      <p class="lead" data-i="cr.lead">Scelti per resistere agli attacchi offline, anche a chi usa schede grafiche. La sicurezza dipende solo dalla tua master password.</p>
+    </div>
+    <div class="pipe rv">
+      <div class="step"><div class="num">01</div><div class="big">••••••••</div><h3 data-i="cr.s1h">Master password</h3><p data-i="cr.s1p">L’unica cosa che devi ricordare. Non viene mai salvata.</p></div>
+      <div class="step"><div class="num">02</div><div class="big">Argon2id</div><h3 data-i="cr.s2h">Derivazione lenta</h3><p data-i="cr.s2p">Vincitore della Password Hashing Competition: volutamente lento e affamato di memoria.</p></div>
+      <div class="step"><div class="num">03</div><div class="big">256-bit</div><h3 data-i="cr.s3h">Chiave del vault</h3><p data-i="cr.s3p">Casuale, protetta dalla master password. Cambiarla non ricifra tutto.</p></div>
+      <div class="step"><div class="num">04</div><div class="big">XChaCha20</div><h3 data-i="cr.s4h">Cifratura autenticata</h3><p data-i="cr.s4p">XChaCha20-Poly1305: moderna, veloce, rileva ogni modifica.</p></div>
+    </div>
+    <div class="cost">
+      <div class="rv">
+        <h3 style="font-size:28px;letter-spacing:-.025em" data-i="cr.cost">Ogni tentativo costa tempo e RAM.</h3>
+        <p style="color:var(--text-2);margin-top:12px" data-i="cr.costp">Argon2id obbliga chi prova a indovinare la tua password a dedicare memoria a ogni singolo tentativo.</p>
+        <div class="bars" style="margin-top:28px" id="bars">
+          <div class="bar-row"><div><span data-i="cr.b1">Kryptos su computer</span><span>256 MiB</span></div><div class="track"><i data-w="100"></i></div></div>
+          <div class="bar-row"><div><span data-i="cr.b2">Kryptos su telefono</span><span>64 MiB</span></div><div class="track"><i data-w="25"></i></div></div>
+          <div class="bar-row"><div><span data-i="cr.b3">Hash veloce tradizionale</span><span>~ 0,001 MiB</span></div><div class="track"><i class="dim" data-w="1.2"></i></div></div>
+        </div>
+      </div>
+      <div class="facts rv" style="--d:.1s">
+        <div class="fact"><span class="ms">verified_user</span><b data-i="cr.f1">Backup atomico</b><span data-i="cr.f1p">A ogni salvataggio, con scrittura atomica: un’interruzione a metà non lascia un vault rovinato.</span></div>
+        <div class="fact"><span class="ms">schedule</span><b data-i="cr.f2">Blocco automatico</b><span data-i="cr.f2p">Per inattività, stop del computer, schermo bloccato o uscita dall’app.</span></div>
+        <div class="fact"><span class="ms">content_paste_off</span><b data-i="cr.f3">Appunti che si puliscono</b><span data-i="cr.f3p">Una password copiata sparisce dopo il tempo che scegli.</span></div>
+        <div class="fact"><span class="ms">no_photography</span><b data-i="cr.f4">Niente screenshot</b><span data-i="cr.f4p">Sul telefono le password non finiscono nelle schermate o nelle app recenti.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPILAZIONE -->
+<section class="sec">
+  <div class="wrap fillgrid">
+    <div class="devs rv">
+      <div class="phone"><div class="scr"><img class="s-it " src="img/shots/phone-it.png" alt="Kryptos sul telefono" loading="lazy"><img class="s-en " src="img/shots/phone-en.png" alt="Kryptos sul telefono" loading="lazy"></div></div>
+      <div class="ext"><img class="s-it " src="img/shots/popup-it.png" alt="Popup dell’estensione Kryptos su github.com" loading="lazy"><img class="s-en " src="img/shots/popup-en.png" alt="Popup dell’estensione Kryptos su github.com" loading="lazy"></div>
+    </div>
+    <div class="rv" style="--d:.1s">
+      <div class="eyebrow" data-i="fill.eye">Compilazione</div>
+      <h2><span data-i="fill.h2a">Una conferma</span> <span class="grad" data-i="fill.h2b">per ogni password.</span></h2>
+      <p class="lead" style="margin-top:22px" data-i="fill.lead">Ogni compilazione chiede la tua impronta o Touch ID. Una password non esce mai senza che tu lo sappia.</p>
+      <div class="fill-points">
+        <div class="pt"><div class="ico"><span class="ms">fingerprint</span></div><div><h3 data-i="fill.p1h">Imposto dall’hardware</h3><p data-i="fill.p1">Su Android il controllo lo impone il Keystore del telefono, non un semplice pulsante “OK”. Su Mac, Touch ID o password di sistema, ogni volta.</p></div></div>
+        <div class="pt"><div class="ico"><span class="ms">travel_explore</span></div><div><h3 data-i="fill.p2h">Anti-phishing</h3><p data-i="fill.p2">Le password vengono offerte solo sul dominio giusto, con la Public Suffix List inclusa: <span class="mono" style="color:var(--bad);font-size:.9em">paypal.com.sito-falso.io</span> non riceve niente.</p></div></div>
+        <div class="pt"><div class="ico"><span class="ms">visibility_off</span></div><div><h3 data-i="fill.p3h">Estensione discreta</h3><p data-i="fill.p3">Sulle pagine c’è solo un piccolo script che nota il clic su un campo di accesso e apre la tendina: non legge cosa scrivi, e puoi spegnerlo dal popup. La tendina è isolata dal sito. Nessuna porta di rete aperta sul computer.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FUNZIONI -->
+<section class="sec" id="funzioni" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head center rv">
+      <div class="eyebrow" data-i="ft.eye">Tutto incluso</div>
+      <h2><span data-i="ft.h2a">Tutto quello che serve,</span> <span class="grad" data-i="ft.h2b">già dentro.</span></h2>
+    </div>
+    <div class="bento">
+      <div class="card s4 rv"><div class="ico"><span class="ms">pin</span></div><h3 data-i="ft1h">Codici 2FA integrati</h3><p data-i="ft1p">Il codice a 6 cifre viene compilato insieme a username e password. Niente più app separata da aprire a ogni accesso. I codici di backup stanno nella stessa voce: copiali con un tocco e segna quelli già usati.</p>
+        <div class="otp"><div class="code" id="otp">482 176</div><svg viewBox="0 0 46 46"><circle class="bg" cx="23" cy="23" r="19"/><circle class="fg" id="otp-r" cx="23" cy="23" r="19" stroke-dasharray="119.4" stroke-dashoffset="0"/></svg><span class="mono" style="color:var(--muted);font-size:14px" id="otp-s">30s</span></div></div>
+      <div class="card s2 rv" style="--d:.06s"><div class="ico"><span class="ms">upload_file</span></div><h3 data-i="ft2h">Importa in un attimo</h3><p data-i="ft2p">Password e codici 2FA dai tuoi vecchi strumenti.</p>
+        <div class="imports"><span>Google/Chrome</span><span>Bitwarden</span><span>1Password</span><span>Firefox</span><span>Dashlane</span><span>Aegis</span><span>2FAS</span><span>otpauth://</span></div></div>
+      <div class="card s3 rv"><div class="ico"><span class="ms">shuffle</span></div><h3 data-i="ft3h">Generatore con stima della robustezza</h3>
+        <div class="gen-out"><span id="gen-pw">—</span><button id="gen-btn" aria-label="Genera"><span class="ms">shuffle</span></button></div>
+        <div class="gen-bar"><i id="gen-bar"></i></div><div class="gen-meta"><span id="gen-ent">0 bit</span><span data-i="ft3m">entropia</span></div>
+        <div class="gen-ctl"><span data-i="ft3l">Lunghezza</span><input type="range" id="gen-len" min="10" max="40" value="20"><span class="mono" id="gen-n">20</span></div></div>
+      <div class="card s3 rv" style="--d:.06s"><div class="ico"><span class="ms">bar_chart</span></div><h3 data-i="ft4h">Analisi della sicurezza, offline</h3><p data-i="ft4p">Trova password deboli, riutilizzate e vecchie, con un punteggio complessivo.</p>
+        <div class="score-ring" style="position:relative"><svg viewBox="0 0 108 108"><circle class="bg" cx="54" cy="54" r="46"/><circle class="fg" id="ring" cx="54" cy="54" r="46"/></svg><div class="score-num" id="ring-n">0</div>
+          <ul><li><span class="ms">block</span><span data-i="ft4a">2 password deboli</span></li><li><span class="ms">sync_alt</span><span data-i="ft4b">1 riutilizzata su 3 siti</span></li><li><span class="ms">history</span><span data-i="ft4c">4 più vecchie di un anno</span></li></ul></div></div>
+      <div class="card s2 rv"><div class="ico"><span class="ms">password</span></div><h3 data-i="ft5h">Salva i nuovi login</h3><p data-i="ft5p">Quando ti registri o cambi password, Kryptos propone di salvarla o aggiornare la vecchia, su Android e dal browser.</p></div>
+      <div class="card s2 rv" style="--d:.06s"><div class="ico"><span class="ms">folder_zip</span></div><h3 data-i="ft6h">Backup cifrato</h3><p data-i="ft6p">Un file cifrato da conservare dove vuoi. Visibile solo a chi ha la master password.</p></div>
+      <div class="card s2 rv" style="--d:.12s"><div class="ico"><span class="ms">language</span></div><h3 data-i="ft7h">9 lingue</h3><p data-i="ft7p">Dai l’app nella tua lingua.</p>
+        <div class="langs"><span>Italiano</span><span>English</span><span>Español</span><span>Français</span><span>Deutsch</span><span>Português</span><span>Русский</span><span>Українська</span><span>中文</span></div></div>
+
+      <div class="card s2 rv"><div class="ico"><span class="ms">auto_fix_high</span></div><h3 data-i="sm1h">Pulizia intelligente</h3><p data-i="sm1p">Titoli leggibili al posto degli indirizzi dei siti, e unione dei duplicati con un tocco. Solo suggerimenti: applichi tu.</p>
+        <div class="clean"><div class="cl-row"><s class="mono">account.live.com</s><span class="ms">arrow_forward</span><b>Microsoft</b></div><div class="cl-row"><s class="mono">www.amazon.it</s><span class="ms">arrow_forward</span><b>Amazon</b></div><div class="cl-row dup"><span class="ms">merge</span><span data-i="sm1d">2 copie unite in 1</span></div></div></div>
+      <div class="card s2 rv" style="--d:.06s"><div class="ico"><span class="ms">history</span></div><h3 data-i="sm2h">Cestino e cronologia</h3><p data-i="sm2p">Le voci eliminate restano 30 giorni nel cestino, e di ogni password conservi le ultime 10 versioni.</p>
+        <div class="hist"><div><i></i><span class="mono">Tr0ub4dor&amp;3</span><em data-i="sm2a">attuale</em></div><div><i></i><span class="mono">horse-battery-7</span><em>03/2026</em></div><div><i></i><span class="mono">qwerty2024!</span><em>11/2025</em></div></div></div>
+      <div class="card s2 rv" style="--d:.12s"><div class="ico"><span class="ms">keyboard_command_key</span></div><h3 data-i="sm3h">Cerca e copia da tastiera</h3><p data-i="sm3p">Una palette per trovare una voce o lanciare un’azione senza staccare le mani dalla tastiera.</p>
+        <div class="kbd-row"><span><kbd>⌘</kbd><kbd>K</kbd><em data-i="sm3a">cerca</em></span><span><kbd>⇧</kbd><kbd>⌘</kbd><kbd>C</kbd><em data-i="sm3b">password</em></span><span><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd><em>2FA</em></span></div></div>
+      <div class="card s3 rv"><div class="ico"><span class="ms">gpp_maybe</span></div><h3 data-i="sm4h">Ti avvisa dei siti che imitano quelli salvati</h3><p data-i="sm4p">Se una pagina somiglia a un sito che conosci (una lettera diversa, caratteri simili, il tuo dominio usato come esca) l’estensione lo segnala in rosso e non compila.</p>
+        <div class="warnbox"><span class="ms fill">warning</span><div><b data-i="sm4w">Sito sospetto: imita paypal.com</b><span class="mono">paypa1.com</span></div></div></div>
+      <div class="card s3 rv" style="--d:.06s"><div class="ico"><span class="ms">qr_code_scanner</span></div><h3 data-i="sm5h">Attiva la 2FA con un clic</h3><p data-i="sm5p">Il sito mostra il QR della verifica in due passaggi: l’estensione lo legge (o la fotocamera, sul telefono) e Kryptos lo aggiunge alla voce giusta. Mai nulla di salvato senza la tua scelta.</p>
+        <div class="qrflow"><div class="qr" aria-hidden="true"></div><span class="ms">arrow_forward</span><div class="mini"><span class="ms fill">pin</span><b>GitHub</b><em data-i="sm5a">2FA aggiunta</em></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- SCHERMATE -->
+<section class="sec" id="schermate" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head center rv">
+      <div class="eyebrow" data-i="gl.eye">Schermate</div>
+      <h2><span data-i="gl.h2a">L’app,</span> <span class="grad" data-i="gl.h2b">così com’è.</span></h2>
+      <p class="lead" data-i="gl.p">Schermate reali di Kryptos, con dati di esempio.</p>
+    </div>
+    <div class="gallery">
+      <figure class="rv"><img class="s-it " src="img/shots/projects-it.png" alt="Progetti e ambienti .env" loading="lazy"><img class="s-en " src="img/shots/projects-en.png" alt="Progetti e ambienti .env" loading="lazy"><figcaption data-i="gl1">Progetti e ambienti .env</figcaption></figure>
+      <figure class="rv"><img class="s-it " src="img/shots/guide-terminal-it.png" alt="La guida al terminale" loading="lazy"><img class="s-en " src="img/shots/guide-terminal-en.png" alt="La guida al terminale" loading="lazy"><figcaption data-i="gl2">La guida al terminale</figcaption></figure>
+      <figure class="rv"><img class="s-it " src="img/shots/fill-confirm-it.png" alt="Conferma di ogni compilazione" loading="lazy"><img class="s-en " src="img/shots/fill-confirm-en.png" alt="Conferma di ogni compilazione" loading="lazy"><figcaption data-i="gl3">Conferma di ogni compilazione</figcaption></figure>
+      <figure class="rv"><img class="s-it " src="img/shots/inline-it.png" alt="La tendina sotto il campo di accesso" loading="lazy"><img class="s-en " src="img/shots/inline-en.png" alt="La tendina sotto il campo di accesso" loading="lazy"><figcaption data-i="gl4">La tendina sotto il campo di accesso</figcaption></figure>
+      <figure class="rv"><img class="s-it " src="img/shots/security-it.png" alt="Analisi della sicurezza" loading="lazy"><img class="s-en " src="img/shots/security-en.png" alt="Analisi della sicurezza" loading="lazy"><figcaption data-i="gl5">Analisi della sicurezza</figcaption></figure>
+      <figure class="rv"><img class="s-it " src="img/shots/team-it.png" alt="Team con inviti personali (Beta)" loading="lazy"><img class="s-en " src="img/shots/team-en.png" alt="Team con inviti personali (Beta)" loading="lazy"><figcaption data-i="gl6">Team con inviti personali (Beta)</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- SVILUPPATORI + AI -->
+<section class="sec" id="dev" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow" data-i="dv.eye">Per chi sviluppa</div>
+      <h2><span data-i="dv.h2a">Anche i segreti</span> <span class="grad" data-i="dv.h2b">dei tuoi progetti.</span></h2>
+      <p class="lead" data-i="dv.lead">I file .env vivono nel vault, divisi per progetto e ambiente, cifrati come le password. E arrivano al tuo comando senza mai toccare il disco.</p>
+    </div>
+    <div class="devgrid">
+      <div class="term rv" id="term" aria-label="Terminal">
+        <div class="app-bar"><i></i><i></i><i></i><span><span class="ms">terminal</span>zsh · oikos</span></div>
+        <pre id="term-out" class="mono"></pre>
+      </div>
+      <div class="rv" style="--d:.1s">
+        <div class="fill-points" style="margin-top:0">
+          <div class="pt"><div class="ico"><span class="ms">folder_zip</span></div><div><h3 data-i="dv1h">Progetti e ambienti</h3><p data-i="dv1p">Importa un file, incolla il testo o trova tutti i .env di una cartella. Sviluppo, staging, produzione: ognuno al suo posto.</p></div></div>
+          <div class="pt"><div class="ico"><span class="ms">block</span></div><div><h3 data-i="dv2h">Nessun .env su disco</h3><p data-i="dv2p">Con <span class="mono">kryptos env run</span> le variabili vanno dritte al comando: non c’è un file da perdere o da committare per sbaglio.</p></div></div>
+          <div class="pt"><div class="ico"><span class="ms">history</span></div><div><h3 data-i="dv3h">Versioni, confronto, .env.example</h3><p data-i="dv3p">Le ultime 10 versioni a un tocco, il confronto tra ambienti senza mostrare i valori, e un .env.example pronto per git.</p></div></div>
+        </div>
+        <div class="cmds mono">
+          <span><b>env list</b><em data-i="dv.c1">progetti e ambienti</em></span><span><b>env run</b><em data-i="dv.c2">avvia con le variabili</em></span><span><b>env pull</b><em data-i="dv.c3">scarica il .env</em></span><span><b>env push</b><em data-i="dv.c4">salva il .env</em></span><span><b>env example</b><em>.env.example</em></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ai rv" id="ai">
+      <div class="ai-l">
+        <div class="eyebrow" data-i="ai.eye">Assistenti AI (MCP)</div>
+        <h3 class="h-lg" data-i="ai.h">Claude può chiedere una password. Tu decidi.</h3>
+        <p data-i="ai.p">Un assistente AI (Claude Desktop, Claude Code, qualsiasi client MCP) può usare <b>solo i login che scegli</b>, e ogni volta serve il tuo OK con Touch ID o la master password.</p>
+        <ul class="checks tight">
+          <li><span class="ms">toggle_off</span><div><b data-i="ai1b">Spento di default.</b> <span data-i="ai1">Lo attivi tu dalle impostazioni.</span></div></li>
+          <li><span class="ms">key</span><div><b data-i="ai2b">Codice d’accesso a scadenza.</b> <span data-i="ai2">Da 1 ora a 30 giorni, mostrato una volta sola e revocabile.</span></div></li>
+          <li><span class="ms">checklist</span><div><b data-i="ai3b">Solo le voci condivise.</b> <span data-i="ai3">Le altre non compaiono nemmeno nell’elenco. La produzione non si condivide mai.</span></div></li>
+          <li><span class="ms">fingerprint</span><div><b data-i="ai4b">Una conferma per ogni segreto.</b> <span data-i="ai4">Al massimo 10 richieste al minuto, tutte registrate nell’app.</span></div></li>
+        </ul>
+        <p class="note"><span class="ms">info</span><span data-i="ai.warn">Una password data a un assistente esce da Kryptos e arriva al fornitore dell’AI: condividi account di lavoro o di prova, non la banca o la tua email principale.</span></p>
+      </div>
+      <div class="ai-r">
+        <div class="aireq shot"><img class="s-it " src="img/shots/ai-it.png" alt="Richiesta di un assistente IA da confermare in Kryptos" loading="lazy"><img class="s-en " src="img/shots/ai-en.png" alt="Richiesta di un assistente IA da confermare in Kryptos" loading="lazy"></div>
+        <div class="aiscopes mono"><span class="on"><span class="ms">check</span>GitHub</span><span class="on"><span class="ms">check</span>Stripe (test)</span><span><span class="ms">block</span>Banca</span><span><span class="ms">block</span>Email</span><span><span class="ms">block</span>production</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TEAM -->
+<section class="sec" id="team">
+  <div class="wrap">
+    <div class="sec-head center rv">
+      <div class="eyebrow" data-i="tm.eye">Profili e team</div>
+      <h2><span data-i="tm.h2a">Un vault per te.</span> <span class="grad" data-i="tm.h2b">Uno per la squadra.</span></h2>
+      <p class="lead" data-i="tm.lead">Personale, lavoro, un gruppo: vault separati sullo stesso dispositivo, ognuno con la sua master password e la sua cartella cloud. E un team si unisce senza passarsi nessuna password.</p>
+    </div>
+    <div class="sync-grid">
+      <div class="sync-card rv"><span class="tg" data-i="tm.b0">Disponibile</span>
+        <div class="sync-art"><div class="node"><span class="ms">person</span></div><div class="wire" style="width:24px"></div><div class="node"><span class="ms">work</span></div><div class="wire r" style="width:24px"></div><div class="node"><span class="ms">groups</span></div></div>
+        <h3 data-i="tm1h">Profili separati</h3><p data-i="tm1p">Personale, lavoro, un team: se ne apre uno alla volta. Cambiando profilo il vault aperto viene chiuso, quindi estensione, assistenti AI e riga di comando vedono sempre e solo quello.</p></div>
+      <div class="sync-card rv" style="--d:.08s"><span class="tg" data-i="tm.b1">Disponibile</span>
+        <div class="sync-art"><div class="node"><span class="ms">laptop_mac</span></div><div class="wire"></div><div class="node cloud"><span class="ms">key</span></div><div class="wire r"></div><div class="node"><span class="ms">laptop_mac</span></div></div>
+        <h3 data-i="tm2h">Password di team</h3><p data-i="tm2p">Un profilo condiviso tramite una cartella cloud: tutti usano la stessa password del vault. Semplice, ma chi se ne va impone di cambiare i segreti.</p></div>
+      <div class="sync-card hl rv" style="--d:.16s"><span class="tg">Beta</span>
+        <div class="sync-art"><div class="node"><span class="ms">person_add</span></div><div class="wire"></div><div class="safety mono">7K3·91Q</div><div class="wire r"></div><div class="node"><span class="ms">verified_user</span></div></div>
+        <h3 data-i="tm3h">Inviti personali</h3><p data-i="tm3p">Ognuno entra con la propria chiave, generata sul suo dispositivo e mai condivisa. Niente password da passare in giro.</p></div>
+    </div>
+    <div class="steps4 rv">
+      <div><b>1</b><span data-i="tms1">La persona crea la sua chiave e ti manda il codice pubblico: non è segreto.</span></div>
+      <div><b>2</b><span data-i="tms2">Confrontate a voce o di persona il codice di sicurezza.</span></div>
+      <div><b>3</b><span data-i="tms3">Approvi: Kryptos le consegna la chiave del team, cifrata solo per lei.</span></div>
+      <div><b>4</b><span data-i="tms4">Quando se ne va, la chiave del team cambia e non può leggere gli aggiornamenti successivi.</span></div>
+    </div>
+    <div class="merge rv"><span class="ms">info</span><div><b data-i="tm.lb">Cosa non può fare nessuno.</b> <span data-i="tm.lp">Quel che qualcuno ha già letto, lo sa: quando una persona lascia il team, cambia anche le chiavi API e le password dei servizi che ha visto.</span></div></div>
+  </div>
+</section>
+
+<!-- PRIVACY -->
+<section class="sec" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head rv"><div class="eyebrow">Privacy</div><h2><span data-i="pv.h2a">Non sappiamo chi sei.</span> <span class="grad" data-i="pv.h2b">E va bene così.</span></h2></div>
+    <div class="who">
+      <div class="card rv"><div class="ico"><span class="ms">visibility_off</span></div><h3 data-i="pv1h">Zero telemetria</h3><p data-i="pv1p">Nessuna statistica, nessun tracciamento. Kryptos non sa come lo usi.</p></div>
+      <div class="card rv" style="--d:.06s"><div class="ico"><span class="ms">cloud_off</span></div><h3 data-i="pv2h">Loghi inclusi</h3><p data-i="pv2p">Molti manager scaricano l’icona di ogni sito, rivelando cosa hai salvato. Qui i loghi sono già nell’app.</p></div>
+      <div class="card rv" style="--d:.12s"><div class="ico"><span class="ms">person_off</span></div><h3 data-i="pv3h">Nessun dato personale</h3><p data-i="pv3p">Niente email, telefono o carta di credito. Mai.</p></div>
+      <div class="card rv" style="--d:.18s"><div class="ico"><span class="ms">balance</span></div><h3 data-i="pv4h">Nessuno può costringerci</h3><p data-i="pv4p">Nessuno può essere costretto a consegnare i tuoi dati, perché nessuno li ha.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- SYNC -->
+<section class="sec" id="sync">
+  <div class="wrap">
+    <div class="sec-head center rv">
+      <div class="eyebrow" data-i="sy.eye">Sincronizzazione</div>
+      <h2><span data-i="sy.h2a">Allineati,</span> <span class="grad" data-i="sy.h2b">senza consegnare le chiavi.</span></h2>
+      <p class="lead" data-i="sy.lead">Kryptos tiene allineati i tuoi dispositivi senza un server suo. Scegli come.</p>
+    </div>
+    <div class="sync-grid">
+      <div class="sync-card hl rv"><span class="tg" data-i="sy.rec">Consigliata</span>
+        <div class="sync-art"><div class="node"><span class="ms">laptop_mac</span></div><div class="wire"></div><div class="node cloud"><span class="ms">lock</span></div><div class="wire r"></div><div class="node"><span class="ms">phone_android</span></div></div>
+        <h3 data-i="sy1h">Con il tuo cloud</h3><p data-i="sy1p">Google Drive, iCloud Drive, Dropbox o OneDrive: ci mette una copia <b>cifrata</b> del vault e allinea da solo Mac e telefono. Il fornitore conserva solo dati illeggibili, e il file lo sposta l’app del cloud, non Kryptos.</p></div>
+      <div class="sync-card rv" style="--d:.08s">
+        <div class="sync-art"><div class="node"><span class="ms">phone_android</span></div><div class="wire"></div><div class="qr" aria-hidden="true"></div><div class="wire r"></div><div class="node"><span class="ms">laptop_mac</span></div></div>
+        <h3 data-i="sy2h">Con i codici QR</h3><p data-i="sy2p">Una sequenza di codici QR mostrati su uno schermo e letti con la fotocamera dell’altro dispositivo. Niente rete, niente cavi.</p></div>
+      <div class="sync-card rv" style="--d:.16s">
+        <div class="sync-art"><div class="node"><span class="ms">folder_zip</span></div><div class="wire"></div><div class="node"><span class="ms">laptop_mac</span></div></div>
+        <h3 data-i="sy3h">Con un file di backup</h3><p data-i="sy3p">Esporta il backup cifrato e importalo dove vuoi. I dati si uniscono senza perdere nulla.</p></div>
+    </div>
+    <div class="merge rv"><span class="ms">merge</span><div><b data-i="sy.mb">Unione intelligente.</b> <span data-i="sy.mp">Le modifiche si uniscono voce per voce: vince la più recente, e le cancellazioni arrivano sugli altri dispositivi senza far “resuscitare” voci eliminate. Anche il cambio della master password si propaga da solo.</span></div></div>
+  </div>
+</section>
+
+<!-- CONFRONTO -->
+<section class="sec" id="confronto" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head center rv"><div class="eyebrow" data-i="cm.eye">Confronto</div><h2><span data-i="cm.h2a">Kryptos</span> <span class="grad" data-i="cm.h2b">e gli altri.</span></h2></div>
+    <div class="tbl-wrap rv"><table>
+      <thead><tr><th></th><th class="us"><img src="img/dial.svg" alt="">Kryptos</th><th data-i="cm.c2">Manager con cloud proprio</th><th data-i="cm.c3">Manager del browser / sistema</th></tr></thead>
+      <tbody>
+        <tr><td data-i="cm.r1">Server dell’azienda con i tuoi dati</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.no">No</span></span></td><td><span class="n"><span class="ms fill">cancel</span><span data-i="cm.yes">Sì</span></span></td><td><span class="n"><span class="ms fill">cancel</span><span data-i="cm.yes">Sì</span></span></td></tr>
+        <tr><td data-i="cm.r2">Account da creare</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.no">No</span></span></td><td data-i="cm.yes">Sì</td><td data-i="cm.r2c">Sì (account Google/Apple)</td></tr>
+        <tr><td data-i="cm.r3">L’app può collegarsi a internet</td><td class="us" data-i="cm.r3u">No (su Android neanche il permesso)</td><td data-i="cm.yes">Sì</td><td data-i="cm.yes">Sì</td></tr>
+        <tr><td data-i="cm.r4">Conferma a ogni compilazione</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.yes">Sì</span></span></td><td data-i="cm.r4c">Di solito solo allo sblocco</td><td data-i="cm.r4c">Di solito solo allo sblocco</td></tr>
+        <tr><td data-i="cm.r5">Codici 2FA integrati</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.r5u">Sì, inclusi</span></span></td><td data-i="cm.r5c">Spesso solo a pagamento</td><td data-i="cm.r5d">In genere no</td></tr>
+        <tr><td data-i="cm.r6">Codici di backup della 2FA</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.yes">Sì</span></span></td><td data-i="cm.r6c">Raramente</td><td data-i="cm.no">No</td></tr>
+        <tr><td data-i="cm.r7">Sincronizzazione</td><td class="us" data-i="cm.r7u">Sul tuo cloud, cifrata, o senza rete</td><td data-i="cm.r7c">Sul loro server</td><td data-i="cm.r7c">Sul loro server</td></tr>
+        <tr><td data-i="cm.r8">Mac e Android insieme</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.yes">Sì</span></span></td><td data-i="cm.yes">Sì</td><td data-i="cm.r8c">Non sempre</td></tr>
+        <tr><td data-i="cm.r9">Codice sorgente pubblico</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.r9u">Sì (GPL-3.0)</span></span></td><td data-i="cm.r9c">Alcuni sì, altri no</td><td data-i="cm.no">No</td></tr>
+        <tr><td data-i="cm.r10">Prezzo</td><td class="us" data-i="cm.r10u">Gratis</td><td data-i="cm.r10c">Spesso in abbonamento</td><td data-i="cm.r10d">Gratis</td></tr>
+      </tbody></table></div>
+  </div>
+</section>
+
+<!-- PER CHI -->
+<section class="sec" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head rv"><div class="eyebrow" data-i="wh.eye">Per chi è</div><h2><span data-i="wh.h2a">Fatto per chi vuole</span> <span class="grad" data-i="wh.h2b">il controllo.</span></h2></div>
+    <div class="who">
+      <div class="card rv"><div class="ico"><span class="ms">balance</span></div><h3 data-i="wh1">Non vuole affidare le password a un’azienda</h3></div>
+      <div class="card rv" style="--d:.06s"><div class="ico"><span class="ms">travel_explore</span></div><h3 data-i="wh2">Vuole sapere esattamente dove sono i suoi dati</h3></div>
+      <div class="card rv" style="--d:.12s"><div class="ico"><span class="ms">devices</span></div><h3 data-i="wh3">Usa Mac e Android insieme, senza un solo ecosistema</h3></div>
+      <div class="card rv" style="--d:.18s"><div class="ico"><span class="ms">key</span></div><h3 data-i="wh4">Vuole password, 2FA e codici di backup in un posto solo</h3></div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec" id="faq" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head center rv"><div class="eyebrow">FAQ</div><h2 data-i="fq.h2">Domande frequenti</h2></div>
+    <div class="faq rv">
+      <details><summary><span data-i="fq1q">Se dimentico la master password?</span><span class="ms">expand_more</span></summary><p data-i="fq1a">Non esiste un recupero: non c’è nessun server né account che possa reimpostarla, ed è esattamente ciò che rende il vault inaccessibile a chiunque altro. Scegli una master password forte e conserva il backup cifrato.</p></details>
+      <details><summary><span data-i="fq2q">Come fa Kryptos a sincronizzare se non si collega a internet?</span><span class="ms">expand_more</span></summary><p data-i="fq2a">Kryptos non apre mai connessioni: scrive una copia cifrata in una cartella e sarà l’app del tuo cloud (Drive, iCloud, Dropbox, OneDrive) a spostarla. In alternativa usi backup o codici QR, senza alcuna rete.</p></details>
+      <details><summary><span data-i="fq3q">È sicuro usarlo adesso?</span><span class="ms">expand_more</span></summary><p data-i="fq3a">È la versione 0.1, sperimentale: il codice non ha ancora una revisione di sicurezza indipendente. Tieni un’altra copia delle password importanti finché il progetto non matura. Le vulnerabilità vanno segnalate in privato.</p></details>
+      <details><summary><span data-i="fq4q">Quali piattaforme e browser sono supportati?</span><span class="ms">expand_more</span></summary><p data-i="fq4a">macOS e Android. Windows e Linux non sono ancora provati né supportati; iOS arriverà più avanti. L’estensione funziona con Chrome, Arc, Brave, Edge e Firefox; su Android l’autofill funziona in tutte le app e i browser.</p></details>
+      <details><summary><span data-i="fq6q">Un assistente AI può leggere tutte le mie password?</span><span class="ms">expand_more</span></summary><p data-i="fq6a">No. L’accesso è spento di default; quando lo attivi, l’assistente vede solo le voci che hai condiviso e ogni password o codice richiede la tua conferma con Touch ID o master password. Le variabili di produzione non si condividono mai.</p></details>
+      <details><summary><span data-i="fq7q">Posso usarlo con il mio team?</span><span class="ms">expand_more</span></summary><p data-i="fq7a">Sì: con una password di team su una cartella cloud condivisa, oppure con gli inviti personali (in beta), dove ogni persona ha la sua chiave e non si condivide nessuna password.</p></details>
+      <details><summary><span data-i="fq5q">Quanto costa?</span><span class="ms">expand_more</span></summary><p data-i="fq5a">Niente: è gratis, senza abbonamenti né funzioni a pagamento, con licenza GPL-3.0. Chiunque può leggere e verificare il codice.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL -->
+<section class="wrap" style="margin-top:20px">
+  <div class="final rv">
+    <div class="dial"><img src="img/dial.svg" alt="" style="border-radius:50%;animation:spin 120s linear infinite reverse"></div>
+    <div class="eyebrow" style="justify-content:center" data-i="fn.eye">Inizia ora</div>
+    <h2><span data-i="fn.h2a">Le tue password,</span> <span class="grad" data-i="fn.h2b">solo sui tuoi dispositivi.</span></h2>
+    <p class="lead" data-i="fn.lead">Scarica Kryptos: gratis, open source, senza account.</p>
+    <div class="cta"><a class="btn btn-gold" href="https://github.com/SimoneVella/Kryptos/releases"><span class="ms">download</span><span data-i="hero.cta1">Scarica Kryptos</span></a><a class="btn btn-ghost" href="https://github.com/SimoneVella/Kryptos"><span class="ms">code</span><span data-i="fn.src">Leggi il codice</span></a></div>
+    <div class="plat"><span><span class="ms">laptop_mac</span>macOS</span><span><span class="ms">phone_android</span>Android</span></div>
+    <p class="warn"><span class="ms">info</span><span data-i="fn.warn">Versione 0.1, software sperimentale: non usarlo come unica copia delle password importanti.</span></p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="img/dial.svg" alt="" width="30" height="30">Kryptos</a>
+    <nav><a href="#faq">FAQ</a><a href="https://github.com/SimoneVella/Kryptos">GitHub</a><a href="https://github.com/SimoneVella/Kryptos/blob/main/docs/ARCHITECTURE.md" data-i="ft.arch">Architettura</a><a href="https://github.com/SimoneVella/Kryptos/blob/main/SECURITY.md" data-i="ft.secp">Sicurezza</a><a href="https://github.com/SimoneVella/Kryptos/blob/main/LICENSE">GPL-3.0</a></nav>
+    <span data-i="ft.tag">Fatto con cura, senza server.</span>
+  </div>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

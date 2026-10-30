@@ -95,6 +95,11 @@ pub fn decode(bytes: &[u8]) -> Result<ParsedFile<'_>> {
     })
 }
 
+/// A team's shared copy: it has no password path at all (see team.rs).
+pub fn is_team_file(bytes: &[u8]) -> bool {
+    decode(bytes).is_ok_and(|p| p.header.wrapped_key.is_empty())
+}
+
 mod b64 {
     use super::*;
     use serde::{Deserializer, Serializer};

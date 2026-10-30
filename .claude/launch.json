@@ -4,9 +4,26 @@
     {
       "name": "design-preview",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "apps/desktop", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "dev"
+      ],
       "port": 1420,
       "url": "http://127.0.0.1:1420"
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4173",
+        "--directory",
+        "docs/sito"
+      ],
+      "port": 4173
     }
   ]
 }

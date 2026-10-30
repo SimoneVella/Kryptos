@@ -1,8 +1,11 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { CheckCircle2, Clipboard, Cloud, Download, FileInput, Fingerprint, Globe, KeySquare, KeyRound, Languages, Moon, QrCode, ScanLine, ShieldCheck, ShieldPlus, Smartphone, Timer, Upload, WifiOff } from "lucide-react";
-import { api, type BiometricStatus, type CloudProvider, type CloudStatus, type Settings as SettingsT, type StagedCopy } from "../lib/api";
+import ProfilesSheet from "./Profiles";
+import TeamSheet from "./Team";
+import { Icon } from "../components/Icon";
+import { api, type AiStatus, type BiometricStatus, type CloudProvider, type CloudStatus, type Settings as SettingsT, type StagedCopy } from "../lib/api";
 import { MergeSheet, ScanQrSheet, SendQrSheet } from "./Sync";
-import { PasswordInput, Sheet, Switch, useToast } from "../components/ui";
+import { TrashSheet } from "./Cleanup";
+import { PasswordInput, Sheet, StrengthBar, Switch, useToast } from "../components/ui";
 import { estimateBits, isMac, isMobile, strengthOf } from "../lib/utils";
 import { useT, LOCALES, type TKey } from "../i18n";
 
@@ -24,13 +27,16 @@ const CLIP_OPTIONS: [number, TKey][] = [
   [120, "settings.clipOption2m"],
 ];
 
-export default function Settings({ onImported }: { onImported: () => void }) {
+export default function Settings({ onImported, onProfileChanged }: { onImported: () => void; onProfileChanged: () => void }) {
   const { t, plural, locale, errorMessage, setLanguagePreference } = useT();
   const [s, setS] = useState<SettingsT | null>(null);
   const [browsers, setBrowsers] = useState<string[] | null>(null);
   const [changing, setChanging] = useState(false);
   const [staged, setStaged] = useState<StagedCopy | null>(null);
   const [qr, setQr] = useState<"send" | "scan" | null>(null);
+  const [trash, setTrash] = useState(false);
+  const [profiles, setProfiles] = useState(false);
+  const [team, setTeam] = useState(false);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
@@ -138,7 +144,7 @@ export default function Settings({ onImported }: { onImported: () => void }) {
       </div>
 
       <Group title={t("settings.groupLock")}>
-        <Row icon={<Languages size={20} />} title={t("settings.languageTitle")} sub={t("settings.languageSub")}>
+        <Row icon={<Icon name="translate" size={20} />} title={t("settings.languageTitle")} sub={t("settings.languageSub")}>
           <select
             className="select"
             value={s.language}
@@ -153,25 +159,25 @@ export default function Settings({ onImported }: { onImported: () => void }) {
             ))}
           </select>
         </Row>
-        <Row icon={<Timer size={20} />} title={t("settings.autoLockTitle")} sub={isMobile() ? t("settings.autoLockSubMobile") : t("settings.autoLockSub")}>
+        <Row icon={<Icon name="timer" size={20} />} title={t("settings.autoLockTitle")} sub={isMobile() ? t("settings.autoLockSubMobile") : t("settings.autoLockSub")}>
           <Segmented options={LOCK_OPTIONS} value={s.auto_lock_minutes} onChange={(v) => save({ auto_lock_minutes: v })} />
         </Row>
         <Row
-          icon={<Moon size={20} />}
+          icon={<Icon name="dark_mode" size={20} />}
           title={t("settings.lockOnSleepTitle")}
           sub={isMobile() ? t("settings.lockOnSleepSubMobile") : t("settings.lockOnSleepSubDesktop")}
         >
           <Switch checked={s.lock_on_sleep} onChange={(v) => save({ lock_on_sleep: v })} />
         </Row>
-        <Row icon={<Clipboard size={20} />} title={t("settings.clipboardTitle")} sub={t("settings.clipboardSub")}>
+        <Row icon={<Icon name="content_paste" size={20} />} title={t("settings.clipboardTitle")} sub={t("settings.clipboardSub")}>
           <Segmented options={CLIP_OPTIONS} value={s.clipboard_clear_secs} onChange={(v) => save({ clipboard_clear_secs: v })} />
         </Row>
-        <Row icon={<KeyRound size={20} />} title={t("settings.masterPasswordTitle")} sub={t("settings.masterPasswordSub")}>
+        <Row icon={<Icon name="key" size={20} />} title={t("settings.masterPasswordTitle")} sub={t("settings.masterPasswordSub")}>
           <button className="btn btn-secondary btn-sm" onClick={() => setChanging(true)}>{t("settings.change")}</button>
         </Row>
         {isMobile() && bio && (
           <Row
-            icon={<Fingerprint size={20} />}
+            icon={<Icon name="fingerprint" size={20} />}
             title={t("settings.biometricTitle")}
             sub={bio === "unavailable" ? t("settings.biometricUnavailableSub") : t("settings.biometricSub")}
           >
@@ -183,20 +189,20 @@ export default function Settings({ onImported }: { onImported: () => void }) {
       {isMobile() ? (
         <Group title={t("settings.groupAutofill")}>
           <Row
-            icon={<Smartphone size={20} />}
+            icon={<Icon name="smartphone" size={20} />}
             title={t("settings.systemAutofillTitle")}
             sub={autofill ? t("settings.systemAutofillOnSub") : t("settings.systemAutofillOffSub")}
           >
             {autofill === false && (
               <button className="btn btn-primary btn-sm" onClick={() => api.openAutofillSettings()}>{t("settings.turnOn")}</button>
             )}
-            {autofill && <CheckCircle2 size={22} style={{ color: "var(--success)", flex: "none" }} />}
+            {autofill && <Icon name="check_circle" size={22} style={{ color: "var(--success)", flex: "none" }} />}
           </Row>
         </Group>
       ) : (
         <Group title={t("settings.groupBrowser")}>
           <Row
-            icon={<Globe size={20} />}
+            icon={<Icon name="language" size={20} />}
             title={t("settings.browserExtTitle")}
             sub={
               s.browser_integration
@@ -236,7 +242,7 @@ export default function Settings({ onImported }: { onImported: () => void }) {
             )}
           </Row>
           <Row
-            icon={<KeySquare size={20} />}
+            icon={<Icon name="password" size={20} />}
             title={t("settings.fillConfirmTitle")}
             sub={isMac() ? t("settings.fillConfirmSubMac") : t("settings.fillConfirmSubOther")}
           >
@@ -246,14 +252,26 @@ export default function Settings({ onImported }: { onImported: () => void }) {
         </Group>
       )}
 
+      <Group title={t("profiles.title")}>
+        <Row icon={<Icon name="person" size={20} />} title={t("profiles.rowTitle")} sub={t("profiles.rowSub")}>
+          <button className="btn btn-secondary btn-sm" onClick={() => setProfiles(true)}>{t("common.edit")}</button>
+        </Row>
+        <Row icon={<Icon name="groups" size={20} />} title={t("team.rowTitle")} sub={t("team.rowSub")}>
+          <button className="btn btn-secondary btn-sm" onClick={() => setTeam(true)}>{t("common.show")}</button>
+        </Row>
+      </Group>
+
       <Group title={t("settings.groupData")}>
-        <Row icon={<Upload size={20} />} title={t("settings.importTitle")} sub={t("settings.importSub")}>
+        <Row icon={<Icon name="upload" size={20} />} title={t("settings.importTitle")} sub={t("settings.importSub")}>
           <button className="btn btn-secondary btn-sm" onClick={importCsv} disabled={busy}>{t("settings.import")}</button>
         </Row>
-        <Row icon={<ShieldPlus size={20} />} title={t("settings.importOtpTitle")} sub={t("settings.importOtpSub")}>
+        <Row icon={<Icon name="delete" size={20} />} title={t("trash.title")} sub={t("trash.rowSub")}>
+          <button className="btn btn-secondary btn-sm" onClick={() => setTrash(true)}>{t("trash.open")}</button>
+        </Row>
+        <Row icon={<Icon name="add_moderator" size={20} />} title={t("settings.importOtpTitle")} sub={t("settings.importOtpSub")}>
           <button className="btn btn-secondary btn-sm" onClick={importOtp} disabled={busy}>{t("settings.import")}</button>
         </Row>
-        <Row icon={<Download size={20} />} title={t("settings.backupTitle")} sub={t("settings.backupSub")}>
+        <Row icon={<Icon name="download" size={20} />} title={t("settings.backupTitle")} sub={t("settings.backupSub")}>
           <div className="row-buttons">
             <button className="btn btn-secondary btn-sm" onClick={() => attempt(async () => (await api.exportBackup()) && toast(t("settings.backupSaved")))}>
               {t("settings.export")}
@@ -267,26 +285,31 @@ export default function Settings({ onImported }: { onImported: () => void }) {
 
       <Group title={t("settings.groupSync")}>
         <CloudSync onChangeMaster={() => setChanging(true)} onSynced={onImported} />
-        <Row icon={<FileInput size={20} />} title={t("settings.syncMergeTitle")} sub={t("settings.syncMergeSub")}>
+        <Row icon={<Icon name="file_open" size={20} />} title={t("settings.syncMergeTitle")} sub={t("settings.syncMergeSub")}>
           <button className="btn btn-secondary btn-sm" onClick={() => attempt(async () => setStaged(await api.syncStageFile()))}>
             {t("settings.syncChooseFile")}
           </button>
         </Row>
-        <Row icon={<ScanLine size={20} />} title={t("settings.syncScanTitle")} sub={t("settings.syncScanSub")}>
+        <Row icon={<Icon name="qr_code_scanner" size={20} />} title={t("settings.syncScanTitle")} sub={t("settings.syncScanSub")}>
           <button className="btn btn-secondary btn-sm" onClick={() => setQr("scan")}>{t("settings.syncScan")}</button>
         </Row>
-        <Row icon={<QrCode size={20} />} title={t("settings.syncSendTitle")} sub={t("settings.syncSendSub")}>
+        <Row icon={<Icon name="qr_code_2" size={20} />} title={t("settings.syncSendTitle")} sub={t("settings.syncSendSub")}>
           <button className="btn btn-secondary btn-sm" onClick={() => setQr("send")}>{t("settings.syncShow")}</button>
         </Row>
       </Group>
 
+      {!isMobile() && <AiAccess />}
+
       <section className="about">
-        <WifiOff size={16} />
+        <Icon name="wifi_off" size={16} />
         <span>{t("settings.about")}</span>
-        <ShieldCheck size={16} />
+        <Icon name="verified_user" size={16} />
       </section>
       <p className="version">{t("settings.version", { version: __APP_VERSION__, build: __BUILD_ID__ })}</p>
 
+      {team && <TeamSheet onClose={() => setTeam(false)} />}
+      {profiles && <ProfilesSheet onClose={() => setProfiles(false)} onSwitched={onProfileChanged} />}
+      {trash && <TrashSheet onClose={() => setTrash(false)} onChanged={onImported} />}
       {qr === "send" && <SendQrSheet onClose={() => setQr(null)} />}
       {qr === "scan" && <ScanQrSheet onClose={() => setQr(null)} onReceived={received} />}
       {staged && (
@@ -345,6 +368,8 @@ function CloudSync({ onChangeMaster, onSynced }: { onChangeMaster: () => void; o
     ? t("cloud.subOff")
     : status.status.state === "other_vault"
       ? t("cloud.subOtherVault")
+      : status.status.state === "team_removed"
+        ? t("cloud.subTeamRemoved")
       : status.status.state === "error"
         ? t("cloud.subError", { name })
         : status.status.state === "waiting" || !time
@@ -353,8 +378,10 @@ function CloudSync({ onChangeMaster, onSynced }: { onChangeMaster: () => void; o
 
   return (
     <>
-      <Row icon={<Cloud size={20} />} title={t("cloud.title")} sub={sub}>
-        {on ? (
+      <Row icon={<Icon name="cloud" size={20} />} title={t("cloud.title")} sub={sub}>
+        {on && status.status.state === "other_vault" ? (
+          <button className="btn btn-primary btn-sm" onClick={() => setOpen(true)}>{t("cloud.join")}</button>
+        ) : on ? (
           <button
             className="btn btn-secondary btn-sm"
             onClick={async () => {
@@ -375,6 +402,7 @@ function CloudSync({ onChangeMaster, onSynced }: { onChangeMaster: () => void; o
       </Row>
       {open && (
         <CloudSheet
+          current={on ? { name, path: status.folder, has_vault: true } : undefined}
           onClose={() => setOpen(false)}
           onChangeMaster={() => (setOpen(false), onChangeMaster())}
           onDone={async () => {
@@ -397,7 +425,18 @@ function providerName(folder: string) {
   return folder.split("/").filter(Boolean).pop() ?? folder;
 }
 
-function CloudSheet({ onClose, onChangeMaster, onDone }: { onClose: () => void; onChangeMaster: () => void; onDone: () => void }) {
+/** `current`: the folder already in use, when joining the different vault found there. */
+function CloudSheet({
+  current,
+  onClose,
+  onChangeMaster,
+  onDone,
+}: {
+  current?: CloudProvider;
+  onClose: () => void;
+  onChangeMaster: () => void;
+  onDone: () => void;
+}) {
   const { t, errorMessage } = useT();
   const toast = useToast();
   const [providers, setProviders] = useState<CloudProvider[] | null>(null);
@@ -410,6 +449,10 @@ function CloudSheet({ onClose, onChangeMaster, onDone }: { onClose: () => void; 
 
   // The Mac finds its cloud folders; Android has the user pick one (see pick below).
   useEffect(() => {
+    if (current) {
+      setProviders([current]);
+      return setFolder(current.path);
+    }
     if (isMobile()) return setProviders([]);
     api.cloudProviders().then((p) => {
       setProviders(p);
@@ -456,16 +499,16 @@ function CloudSheet({ onClose, onChangeMaster, onDone }: { onClose: () => void; 
         <p className="error">{t("cloud.noProviders")}</p>
       ) : (
         <form className="form" onSubmit={submit}>
-          {isMobile() && (
+          {isMobile() && !current && (
             <button type="button" className="btn btn-secondary btn-block" onClick={pick}>
-              <Cloud size={18} /> {folder ? t("cloud.pickOther") : t("cloud.pick")}
+              <Icon name="cloud" size={18} /> {folder ? t("cloud.pickOther") : t("cloud.pick")}
             </button>
           )}
           <div className="choice-list">
             {providers?.map((p) => (
               <label key={p.path} className={`choice ${folder === p.path ? "on" : ""}`}>
                 <input type="radio" name="cloud" checked={folder === p.path} onChange={() => setFolder(p.path)} />
-                <Cloud size={18} />
+                <Icon name="cloud" size={18} />
                 <span className="row-main">
                   <span className="row-title">{p.name}</span>
                   <span className="row-sub">{p.has_vault ? t("cloud.hasVault") : t("cloud.newFolder")}</span>
@@ -500,6 +543,91 @@ function CloudSheet({ onClose, onChangeMaster, onDone }: { onClose: () => void; 
         </form>
       )}
     </Sheet>
+  );
+}
+
+/**
+ * AI assistants (MCP server): off by default. On, with an expiring access code
+ * shown once, assistants may request only the entries shared with AI, each
+ * time confirmed in the app. Recent requests are listed (kept in memory only).
+ */
+function AiAccess() {
+  const { t, locale, errorMessage } = useT();
+  const toast = useToast();
+  const [st, setSt] = useState<AiStatus | null>(null);
+  const [hours, setHours] = useState(24);
+  const [made, setMade] = useState<{ code: string; config: string } | null>(null);
+  const load = () => api.aiStatus().then(setSt, () => {});
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
+  }, []);
+  if (!st) return null;
+  const act = async (fn: () => Promise<unknown>) => {
+    try {
+      await fn();
+      await load();
+    } catch (e) {
+      toast(errorMessage(e));
+    }
+  };
+  const until = st.expires ? new Date(st.expires * 1000).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" }) : "";
+  return (
+    <Group title={t("ai.group")}>
+      <Row icon={<Icon name="smart_toy" size={20} />} title={t("ai.title")} sub={t("ai.sub", { n: st.shared })}>
+        <Switch checked={st.enabled} onChange={(b) => act(() => api.aiSetEnabled(b))} />
+      </Row>
+      {st.enabled && (
+        <>
+          <Row icon={<Icon name="password" size={20} />} title={t("ai.codeTitle")} sub={st.has_code ? t("ai.codeActive", { until }) : t("ai.codeNone")}>
+            <div className="row-buttons">
+              <select className="select" value={hours} onChange={(e) => setHours(Number(e.target.value))}>
+                {[1, 24, 168, 720].map((h) => (
+                  <option key={h} value={h}>{t(`ai.valid${h}` as TKey)}</option>
+                ))}
+              </select>
+              <button className="btn btn-secondary btn-sm" onClick={() => act(async () => setMade(await api.aiNewCode(hours)))}>
+                {st.has_code ? t("ai.newCode") : t("ai.makeCode")}
+              </button>
+              {st.has_code && (
+                <button className="btn btn-danger btn-sm" onClick={() => act(api.aiRevoke)}>{t("ai.revoke")}</button>
+              )}
+            </div>
+          </Row>
+          {st.log.length > 0 && (
+            <div className="ai-log">
+              {st.log.slice(0, 6).map((l, i) => (
+                <div key={i} className="ai-log-row">
+                  <Icon name={l.outcome === "given" ? "check_circle" : "close"} size={15} className={l.outcome === "given" ? "ok" : "no"} />
+                  <span>{t(l.op === "totp" ? "ai.logTotp" : l.op === "env" ? "ai.logEnv" : "ai.logCredential", { client: l.client, title: l.title })}</span>
+                  <span className="muted">{new Date(l.at * 1000).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      {made && (
+        <Sheet onClose={() => setMade(null)} title={t("ai.codeSheetTitle")}>
+          <p className="muted" style={{ margin: "6px 0 12px" }}>{t("ai.codeSheetIntro")}</p>
+          <pre className="ai-config mono">{made.config}</pre>
+          <p className="hint">{t("ai.codeSheetWarn")}</p>
+          <div className="form-actions" style={{ marginTop: 14 }}>
+            <button className="btn btn-secondary" onClick={() => setMade(null)}>{t("common.close")}</button>
+            <button
+              className="btn btn-primary"
+              onClick={async () => {
+                await api.copyText(made.config);
+                toast(t("ai.copied"));
+              }}
+            >
+              <Icon name="content_copy" size={18} /> {t("ai.copyConfig")}
+            </button>
+          </div>
+        </Sheet>
+      )}
+    </Group>
   );
 }
 
@@ -565,6 +693,7 @@ function ChangeMaster({ onClose, onDone }: { onClose: () => void; onDone: () => 
       <form className="form" onSubmit={submit} style={{ marginTop: 12 }}>
         <PasswordInput value={current} onChange={setCurrent} placeholder={t("settings.currentPasswordPlaceholder")} autoFocus />
         <PasswordInput value={next} onChange={setNext} placeholder={t("settings.newPasswordPlaceholder")} />
+        {next && <StrengthBar bits={estimateBits(next)} />}
         <PasswordInput value={confirm} onChange={setConfirm} placeholder={t("settings.confirmNewPasswordPlaceholder")} />
         {error && <p className="error">{error}</p>}
         <div className="form-actions">

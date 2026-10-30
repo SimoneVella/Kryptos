@@ -70,6 +70,9 @@ object KryptosBridge {
   /** The raw vault key while unlocked, else null. Callers must wipe it after use. */
   @JvmStatic external fun vaultKey(): ByteArray?
 
+  /** "" for the first profile, else a suffix naming the active one. */
+  @JvmStatic external fun profileKey(): String
+
   /** Opens the vault with a key released by the fingerprint prompt. */
   @JvmStatic external fun unlockWithKey(key: ByteArray): Boolean
 

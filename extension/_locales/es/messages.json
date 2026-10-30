@@ -1,7 +1,7 @@
 {
   "extName": { "message": "Kryptos" },
   "extDescription": { "message": "Completa las credenciales desde tu cofre local de Kryptos. Sin servidor, sin red." },
-  "searchPlaceholder": { "message": "Filtrar" },
+  "inlineToggle": { "message": "Sugerir inicios de sesión bajo los campos de acceso" },
   "footerText": { "message": "Sin conexión · tus datos nunca salen del ordenador" },
   "openApp": { "message": "Abrir Kryptos" },
   "noSite": { "message": "Ningún sitio" },
@@ -35,6 +35,7 @@
   "fillDeniedText": { "message": "Relleno cancelado en Kryptos." },
   "fillTimeoutText": { "message": "Sin confirmación en 3 minutos." },
   "fillBusyText": { "message": "Otro relleno ya está esperando confirmación en Kryptos." },
+  "saveShort": { "message": "Guardar inicio" },
   "saveLoginButton": { "message": "Guardar el inicio de sesión de esta página" },
   "saveTitle": {
     "message": "¿Guardar en Kryptos para $SITE$?",
@@ -48,5 +49,53 @@
   "savedText": { "message": "Inicio de sesión guardado en Kryptos." },
   "updatedText": { "message": "Contraseña actualizada en Kryptos." },
   "unchangedText": { "message": "Este inicio de sesión ya está en Kryptos." },
-  "saveFailedTitle": { "message": "No se pudo guardar" }
+  "saveFailedTitle": { "message": "No se pudo guardar" },
+  "tabSite": { "message": "Este sitio" },
+  "tabSearch": { "message": "Buscar" },
+  "tabGenerate": { "message": "Generar" },
+  "qrButton": { "message": "Código 2FA desde QR" },
+  "lookalikeTitle": { "message": "Cuidado: no es el sitio que crees" },
+  "lookalikeText": {
+    "message": "Se parece a $TITLE$ ($DOMAIN$) pero la dirección es otra. No escribas tu contraseña aquí.",
+    "placeholders": { "title": { "content": "$1" }, "domain": { "content": "$2" } }
+  },
+  "tagReused": { "message": "Reutilizada" },
+  "tagWeak": { "message": "Débil" },
+  "tag2fa": { "message": "2FA" },
+  "qrReadingTitle": { "message": "Buscando el QR…" },
+  "qrReadingText": { "message": "Leo la página visible, no se guarda nada." },
+  "qrNoneTitle": { "message": "No se encontró un QR 2FA" },
+  "qrNoneText": {
+    "message": "Abre la página donde el sitio muestra el QR para activar la verificación en dos pasos, asegúrate de que se vea entero y vuelve a intentarlo."
+  },
+  "qrCaptureFailed": { "message": "El navegador no permitió leer esta página." },
+  "qrConfirmText": { "message": "Elige en Kryptos a qué entrada añadir el código 2FA." },
+  "qrAddedTitle": { "message": "Código 2FA añadido" },
+  "qrAddedText": {
+    "message": "Guardado en $TITLE$. Desde ahora Kryptos lo rellena en este sitio.",
+    "placeholders": { "title": { "content": "$1" } }
+  },
+  "qrDeniedText": { "message": "Cancelado en Kryptos: no se guardó nada." },
+  "qrInvalidText": { "message": "Ese QR no contiene una clave 2FA válida." },
+  "qrFailedTitle": { "message": "No se pudo añadir el código" },
+  "searchAllPlaceholder": { "message": "Buscar en toda la bóveda" },
+  "searchAllHint": {
+    "message": "Escribe al menos dos letras. Los resultados se abren en Kryptos; el relleno sigue limitado al sitio de cada inicio de sesión."
+  },
+  "searchNone": { "message": "Sin resultados" },
+  "openShort": { "message": "Abrir" },
+  "genAgain": { "message": "Otra" },
+  "genCopy": { "message": "Copiar" },
+  "genCopied": { "message": "Copiada" },
+  "genInsert": { "message": "Poner en el formulario" },
+  "genInsertSave": { "message": "Poner y guardar en Kryptos" },
+  "genLength": { "message": "Longitud" },
+  "genSymbols": { "message": "Símbolos (!@#…)" },
+  "genNoFieldTitle": { "message": "No hay campo de contraseña" },
+  "genNoFieldText": { "message": "Abre primero el formulario de registro o de cambio de contraseña." },
+  "genInsertedTitle": { "message": "Contraseña en el formulario" },
+  "genInsertedText": { "message": "Envía el formulario y luego guárdala con 'Guardar inicio de sesión'." },
+  "menuFill": { "message": "Rellenar con Kryptos" },
+  "menuGenerate": { "message": "Generar una contraseña segura aquí" },
+  "commandFill": { "message": "Rellenar el último inicio de sesión usado en este sitio" }
 }

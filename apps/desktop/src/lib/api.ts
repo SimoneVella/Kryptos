@@ -3,7 +3,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
-export type Status = { exists: boolean; unlocked: boolean; platform: string };
+export type Status = { exists: boolean; unlocked: boolean; platform: string; profile: string };
+export type Profile = { id: string; name: string };
+export type Profiles = { active: string; profiles: Profile[] };
 
 export type EntrySummary = {
   id: string;
@@ -12,6 +14,10 @@ export type EntrySummary = {
   urls: string[];
   favorite: boolean;
   updated_at: number;
+  has_totp: boolean;
+  ai_access: boolean;
+  /** Unix seconds of the last copy or fill, 0 if never. */
+  last_used: number;
 };
 
 export type Entry = EntrySummary & {
@@ -20,6 +26,8 @@ export type Entry = EntrySummary & {
   /** 2FA secret or otpauth:// link ("" when none). */
   totp: string;
   backup_codes: BackupCode[];
+  /** Earlier passwords, newest first. */
+  history: { password: string; replaced_at: number }[];
   created_at: number;
 };
 
@@ -32,16 +40,45 @@ export type EntryInput = {
   favorite: boolean;
   totp: string;
   backup_codes: BackupCode[];
+  /** AI assistants may request this entry (MCP server, with confirmation). */
+  ai_access: boolean;
 };
 
 /** A cloud folder found on this computer (Google Drive, iCloud Drive, Dropbox, OneDrive). */
+export type OtpAddRequest = {
+  id: number;
+  host: string;
+  issuer: string;
+  account: string;
+  candidates: { id: string; title: string; username: string }[];
+};
+
+export type TeamMember = { public: string; name: string; safety: string; added_at: number; me: boolean; admin: boolean };
+export type TeamStatus = { code: string; safety: string; team: { name: string; is_admin: boolean; admin_safety: string; members: TeamMember[] } | null };
+
+export type EnvSummary = {
+  id: string;
+  project: string;
+  name: string;
+  vars: number;
+  versions: number;
+  ai_access: boolean;
+  production: boolean;
+  updated_at: number;
+  /** Unix seconds, 0 unless in the trash. */
+  deleted_at: number;
+};
+export type EnvFile = { id: string; project: string; name: string; content: string; ai_access: boolean; history: { content: string; replaced_at: number }[] };
+export type EnvDiff = { only_a: string[]; only_b: string[]; different: string[] };
+export type FoundEnv = { path: string; project: string; name: string; vars: number };
+
 export type CloudProvider = { name: string; path: string; has_vault: boolean };
 export type CloudStatus = {
   /** "" when sync is off. */
   folder: string;
   /** The folder's display name on Android ("" elsewhere). */
   name: string;
-  status: { state: "off" | "ok" | "waiting" | "other_vault" | "error"; last_sync: number };
+  status: { state: "off" | "ok" | "waiting" | "other_vault" | "team_removed" | "error"; last_sync: number };
 };
 export type SyncReport = { added: number; updated: number; deleted: number; password_changed: boolean };
 
@@ -73,8 +110,14 @@ export type HealthReport = {
   weak: string[];
   reused: string[];
   old: string[];
+  /** Sites offering authenticator 2FA where the entry has no code yet. */
+  no_2fa: string[];
   score: number;
 };
+
+export type TrashedEntry = EntrySummary & { deleted_at: number };
+export type TitleSuggestion = { id: string; title: string; suggested: string };
+export type DuplicateGroup = { ids: string[]; title: string; username: string; same_password: boolean };
 
 export type Settings = {
   auto_lock_minutes: number;
@@ -93,7 +136,26 @@ export type MergeReport = { added: number; updated: number; deleted: number };
 export type StagedCopy = { file: string; same_vault: boolean };
 
 /** A browser fill waiting for the user's OK in the app window (desktop). */
-export type FillRequest = { id: number; title: string; username: string; host: string; mode: "system" | "master" };
+export type FillRequest = {
+  id: number;
+  title: string;
+  username: string;
+  host: string;
+  mode: "system" | "master";
+  /** Who asks: the browser extension, or an AI assistant through the MCP server. */
+  source: "browser" | "ai" | "env";
+  /** The assistant's name, as it reports it (source "ai"). */
+  client: string;
+};
+
+export type AiStatus = {
+  enabled: boolean;
+  has_code: boolean;
+  expires: number;
+  binary: string;
+  shared: number;
+  log: { at: number; client: string; title: string; op: "credential" | "totp" | "env"; outcome: string }[];
+};
 
 export type BiometricStatus = "unavailable" | "off" | "on" | "master_required";
 
@@ -102,6 +164,20 @@ export type ErrorCode = "locked" | "wrong_password" | "not_found" | "vault_exist
 
 export const api = {
   status: () => invoke<Status>("status"),
+  teamStatus: () => invoke<TeamStatus>("team_status"),
+  teamCodeSafety: (codeText: string) => invoke<string>("team_code_safety", { codeText }),
+  teamPickFolder: () => invoke<CloudProvider | null>("team_pick_folder"),
+  teamCreate: (name: string, me: string, folder: string) => invoke<void>("team_create", { name, me, folder }),
+  teamInvite: (codeText: string, name: string) => invoke<void>("team_invite", { codeText, name }),
+  teamRemove: (publicKey: string) => invoke<void>("team_remove", { public: publicKey }),
+  teamPeek: (folder: string) => invoke<{ name: string; admin_safety: string; ticket: string }>("team_peek", { folder }),
+  teamJoin: (folder: string, ticket: string) => invoke<void>("team_join", { folder, ticket }),
+  teamLeave: () => invoke<void>("team_leave"),
+  profileList: () => invoke<Profiles>("profile_list"),
+  profileSwitch: (id: string) => invoke<void>("profile_switch", { id }),
+  profileCreate: (name: string, password: string) => invoke<void>("profile_create", { name, password }),
+  profileRename: (id: string, name: string) => invoke<void>("profile_rename", { id, name }),
+  profileDelete: (id: string, password: string) => invoke<void>("profile_delete", { id, password }),
   createVault: (password: string) => invoke<void>("create_vault", { password }),
   unlock: (password: string) => invoke<void>("unlock", { password }),
   lock: () => invoke<void>("lock"),
@@ -119,6 +195,22 @@ export const api = {
 
   /** Copies arbitrary text via Rust, auto-cleared after 30 s. */
   copyText: (text: string) => invoke<void>("copy_text", { text }),
+  envList: () => invoke<EnvSummary[]>("env_list"),
+  envGet: (id: string) => invoke<EnvFile>("env_get", { id }),
+  envPut: (project: string, name: string, content: string) => invoke<string>("env_put", { project, name, content }),
+  envUpdate: (id: string, content: string) => invoke<void>("env_update", { id, content }),
+  envSetAi: (id: string, on: boolean) => invoke<void>("env_set_ai", { id, on }),
+  envDelete: (id: string) => invoke<void>("env_delete", { id }),
+  envRestore: (id: string) => invoke<void>("env_restore", { id }),
+  envDiff: (a: string, b: string) => invoke<EnvDiff>("env_diff", { a, b }),
+  envExample: (id: string) => invoke<string>("env_example", { id }),
+  envPickFile: () => invoke<{ name: string; content: string } | null>("env_pick_file"),
+  envExport: (id: string) => invoke<boolean>("env_export", { id }),
+  envScan: () => invoke<FoundEnv[] | null>("env_scan"),
+  envImportFound: (items: FoundEnv[]) => invoke<number>("env_import_found", { items }),
+  cliStatus: () => invoke<{ installed: boolean; new_terminal: boolean }>("cli_status"),
+  cliInstall: () => invoke<{ installed: boolean; new_terminal: boolean }>("cli_install"),
+  onEnvUsed: (cb: (e: { title: string; op: string }) => void): Promise<UnlistenFn> => listen<{ title: string; op: string }>("env-used", (e) => cb(e.payload)),
   securityReport: () => invoke<HealthReport>("security_report"),
 
   generatePassword: (options: GeneratorOptions = defaultGenerator) =>
@@ -128,6 +220,29 @@ export const api = {
   getSettings: () => invoke<Settings>("get_settings"),
   updateSettings: (settings: Settings) => invoke<void>("update_settings", { settings }),
   /** Opens a native file picker; resolves null if cancelled. */
+  copyHistory: (id: string, index: number) => invoke<void>("copy_history", { id, index }),
+  trashList: () => invoke<TrashedEntry[]>("trash_list"),
+  trashRestore: (id: string) => invoke<void>("trash_restore", { id }),
+  trashPurge: (id: string) => invoke<void>("trash_purge", { id }),
+  trashEmpty: () => invoke<void>("trash_empty"),
+  smartSuggestions: () => invoke<{ titles: TitleSuggestion[]; duplicates: DuplicateGroup[] }>("smart_suggestions"),
+  applyTitles: (titles: { id: string; title: string }[]) => invoke<number>("apply_titles", { titles }),
+  mergeDuplicates: (ids: string[]) => invoke<string>("merge_duplicates", { ids }),
+  generatePassphrase: (words: number, separator: string, capitalize: boolean, digit: boolean) =>
+    invoke<{ password: string; entropy_bits: number }>("generate_passphrase", { words, separator, capitalize, digit }),
+  openChangePassword: (id: string) => invoke<void>("open_change_password", { id }),
+  otpAddAnswer: (id: number, choice: string | null) => invoke<void>("otp_add_answer", { id, choice }),
+  onOtpAdd: (cb: (r: OtpAddRequest) => void): Promise<UnlistenFn> => listen<OtpAddRequest>("otp-add", (e) => cb(e.payload)),
+  onOtpAddDone: (cb: (id: number) => void): Promise<UnlistenFn> => listen<number>("otp-add-done", (e) => cb(e.payload)),
+  /** The browser extension asked to show an entry (search result in the popup). */
+  onOpenEntry: (cb: (id: string) => void): Promise<UnlistenFn> => listen<string>("open-entry", (e) => cb(e.payload)),
+  onOtpAdded: (cb: (title: string) => void): Promise<UnlistenFn> => listen<{ title: string }>("otp-added", (e) => cb(e.payload.title)),
+  aiStatus: () => invoke<AiStatus>("ai_status"),
+  aiSetEnabled: (enabled: boolean) => invoke<void>("ai_set_enabled", { enabled }),
+  aiNewCode: (hours: number) => invoke<{ code: string; config: string }>("ai_new_code", { hours }),
+  aiRevoke: () => invoke<void>("ai_revoke"),
+  onAiUsed: (cb: (e: { client: string; title: string; op: string }) => void): Promise<UnlistenFn> =>
+    listen<{ client: string; title: string; op: string }>("ai-used", (e) => cb(e.payload)),
   cloudProviders: () => invoke<CloudProvider[]>("cloud_providers"),
   /** Android: the system folder picker. */
   cloudPickFolder: () => invoke<CloudProvider | null>("cloud_pick_folder"),
@@ -172,6 +287,7 @@ export const api = {
    *  Rejects with "cancelled", "failed", "wrong_password" or "timeout" (request gone). */
   fillConfirmSystem: (id: number, reason: string) => invoke<void>("fill_confirm_system", { id, reason }),
   fillConfirmMaster: (id: number, password: string) => invoke<void>("fill_confirm_master", { id, password }),
+  fillReasonTemplate: (template: string) => invoke<void>("fill_reason_template", { template }),
   fillConfirmCancel: (id: number) => invoke<void>("fill_confirm_cancel", { id }),
   onFillConfirm: (cb: (r: FillRequest) => void): Promise<UnlistenFn> =>
     listen<FillRequest>("fill-confirm", (e) => cb(e.payload)),

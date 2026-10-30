@@ -6,26 +6,47 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <header class="hero">
-      <img class="logo" src="icons/128.png" alt="" />
-      <div class="hero-text">
-        <div class="eyebrow">Kryptos</div>
-        <div class="site" id="site">—</div>
+    <header class="top">
+      <svg class="mark" viewBox="0 0 1024 1024" aria-hidden="true">
+        <rect width="1024" height="1024" rx="230" fill="#0B0C0E" />
+        <circle cx="512" cy="512" r="370" fill="none" stroke="#D6A166" stroke-width="64" />
+        <g stroke="#D6A166" stroke-width="72" stroke-linecap="round">
+          <line x1="512" y1="512" x2="512" y2="300" /><line x1="512" y1="512" x2="328" y2="618" /><line x1="512" y1="512" x2="696" y2="618" />
+        </g>
+        <circle cx="512" cy="512" r="96" fill="#D6A166" /><circle cx="512" cy="512" r="38" fill="#0B0C0E" />
+      </svg>
+      <div class="brand">
+        <b>Kryptos</b>
+        <span id="site">—</span>
       </div>
+      <button class="ib" id="open-app" data-i18n-title="openApp"></button>
     </header>
-    <label class="search" id="search-wrap" hidden>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="search" data-i18n-placeholder="searchPlaceholder" autocomplete="off" />
-    </label>
+
+    <nav class="tabs" id="tabs">
+      <button data-tab="site" class="on"><span class="ms"></span><span data-i18n="tabSite"></span></button>
+      <button data-tab="search"><span class="ms"></span><span data-i18n="tabSearch"></span></button>
+      <button data-tab="gen"><span class="ms"></span><span data-i18n="tabGenerate"></span></button>
+    </nav>
+
     <main id="content" aria-live="polite"></main>
-    <div class="save-row" id="save-row" hidden>
-      <button class="link" id="save-btn" data-i18n="saveLoginButton"></button>
+
+    <div class="actions" id="actions" hidden>
+      <button class="act" id="save-btn"><span class="ms"></span><span data-i18n="saveShort"></span></button>
+      <button class="act" id="qr-btn"><span class="ms"></span><span data-i18n="qrButton"></span></button>
     </div>
+
+    <label class="inline-toggle">
+      <input type="checkbox" id="inline-on" />
+      <span data-i18n="inlineToggle"></span>
+    </label>
+
     <footer>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h.01M8.5 16.4a5 5 0 0 1 7 0M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8a15 15 0 0 0-11-3.8M5 12.9a10 10 0 0 1 5.2-2.8M19 12.9a10 10 0 0 0-1.7-1.3M2 2l20 20"/></svg>
-      <span id="footer-text" data-i18n="footerText"></span>
+      <span class="ms">wifi_off</span>
+      <span data-i18n="footerText"></span>
     </footer>
     <script src="brand-icons.js"></script>
+    <!-- jsQR (Apache-2.0, github.com/cozmo/jsQR): reads 2FA QR codes from the page screenshot. -->
+    <script src="jsQR.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

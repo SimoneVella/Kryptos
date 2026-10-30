@@ -49,9 +49,9 @@ place (`raw_key()` / `unlock_with_key()`).
 
 ## Browser autofill
 
-1. The user opens the popup (or presses ⌘⇧L). No content script runs on pages.
+1. The user opens the popup (or presses ⌘⇧L). The only script on pages is `content.js`, which offers logins under a login field (see below).
 2. The popup sends `{type:"logins", url}` and the app replies with entries matching the site.
-3. On click, the popup hands the fill to `background.js` and the app window comes forward to **confirm
+3. On click, the popup hands the fill to `background.js` and the system prompt (or the app window, in master password mode) asks to **confirm
    this fill** (`confirm.rs`): Touch ID or the Mac password (LocalAuthentication, `DeviceOwnerAuthentication`),
    or the master password, verified against the vault file with Argon2id. Settings → Browser → *Confirm each
    fill* picks which; outside macOS it is always the master password. Neither ever reaches the browser.
@@ -70,6 +70,23 @@ sends `{type:"save", url, username, password}`. The app applies the same rule as
 (`UnlockedVault::save_login`): new password for the entry of that site and username, otherwise a new entry
 for the page origin. Saves count towards the same 20-per-minute limit and show up in the app.
 
+**Popup features.** All on user action, with the same origin checks:
+- *This site*: logins for the page, most recently used first, tagged *reused* / *weak* / *2FA*.
+- *Look-alike warning* (`smart::lookalike`): when the page has no login of its own but imitates a saved
+  site (one or two letters off, look-alike characters such as `paypa1`, or the saved domain used as a
+  decoy prefix such as `paypal.com.secure-login.io`), the popup shows a red warning, and the fill
+  shortcut refuses to act.
+- *Search*: the whole vault by name, username or site (names and usernames only, at most 20, from two
+  characters); a result opens in the app. Filling stays limited to each login's own site.
+- *Generate*: a password from Web Crypto, put into the page's new-password fields (never a
+  "current password" one), optionally saved as this site's login.
+- *2FA code from QR*: captures the visible tab (`tabs.captureVisibleTab`, allowed by `activeTab` only after
+  that click), decodes the `otpauth://` QR in the popup with jsQR, and asks the app, which comes forward
+  and lets the user choose the entry (`otp_add.rs`). Nothing is stored without that choice; the
+  screenshot never leaves the popup's memory.
+- *Shortcut* ⌥⇧L fills the site's most recently used login, and the right-click menu offers *Fill with
+  Kryptos* and *Generate a strong password here* (`contextMenus`, the only permission added).
+
 URL matching (`matching.rs`): same registrable domain (eTLD+1, Public Suffix List bundled in the binary,
 so no network needed). `github.io`, `co.uk` and similar are treated as public suffixes. An entry saved
 for https is never offered to an http page.
@@ -81,7 +98,7 @@ for https is never offered to an http page.
 | A program connects directly to the app's socket | The app identifies the connecting process (`LOCAL_PEERPID`) and only accepts `kryptos-native-host` from its own bundle, with an intact code signature and, if the app is Developer ID signed, the same Team ID | `untrusted_peer` |
 | A program launches the legitimate native host and writes requests to it | The native host only replies if the process that launched it is a browser with a valid Apple signature from a trusted vendor (Google, Mozilla, Microsoft, Brave) and the browser declares our extension's ID as the caller | `untrusted_caller` |
 | Another extension calls the native host | `allowed_origins` in the manifest: the browser only launches it for our ID | — |
-| A malicious page, an iframe from another site, or a page that changed in the meantime | Fill checks `location.origin` in every frame. No script runs on pages | — |
+| A malicious page, an iframe from another site, or a page that changed in the meantime | Fill checks `location.origin` in every frame. On pages, `content.js` only reacts to a trusted click on a login field: it reads no values, and the list is an extension page in a closed shadow root | — |
 | Lookalike sites (`example.com.evil.io`, `alice.github.io` vs. `mallory.github.io`) | eTLD+1 matching with the Public Suffix List. Https is never offered to http | unit tests |
 | Bulk extraction | Every fill needs the user's OK in the app (Touch ID, Mac password or master password); at most 20 passwords per minute, and every fill shows up as a notification in the app | — |
 
@@ -201,6 +218,54 @@ Dropbox, OneDrive) moves it. The folders are found under `~/Library/CloudStorage
   fingerprint unlock is turned off and must be turned on again. The provider may show a remote change
   a little late; nothing is lost, it merges on the next round.
 
+## Smart features
+
+- **Trash** (`vault.rs`): deleting moves an entry to the trash for 30 days (still encrypted in the vault);
+  restoring counts as an edit made now, so it wins over the deletion on other devices. The trash merges
+  across devices like the entries.
+- **Password history**: every password change keeps the old one (the last 10) with its date, viewable and
+  copyable in the entry. Merging duplicates adds the others' passwords there.
+- **Recent**: the time of each copy or fill, kept apart from the entries (`usage`) so that using an entry
+  doesn't count as an edit in sync conflicts; it orders the *Recent* filter and the extension's list.
+- **Cleanup** (`smart.rs`): readable titles for entries named after a host (`account.live.com` →
+  *Microsoft*, a small bundled name table, otherwise the domain's name) and groups of duplicates (same
+  registrable domain and username); merging keeps the newest and trashes the rest. Only suggestions: the
+  user applies them.
+- **2FA to turn on** (`twofa.rs`): a bundled list of services known to offer authenticator-app codes;
+  entries for them without a code are listed in the security check (not counted in the score).
+- **Change password on the site**: opens `https://<site>/.well-known/change-password` (the standard
+  address sites redirect to their page), built in Rust from the entry's own site; the UI has no way to
+  open arbitrary URLs (the opener plugin isn't exposed to JS).
+- **Passphrases**: words from the bundled EFF large wordlist (7776 words, about 12.9 bits each), for
+  master passwords.
+- **2FA QR from the camera** in the entry editor (phones), **Quick Settings tile** on Android
+  (`KryptosTileService`, only opens the app), keyboard shortcuts on the desktop (⌘K search and copy, ⌘C
+  username, ⇧⌘C password, ⌥⌘C 2FA code).
+
+## AI assistants (MCP)
+
+`crates/mcp-server` builds `kryptos-mcp`, a Model Context Protocol server (stdio) bundled next to the
+native host. An AI app (Claude Desktop, Claude Code…) starts it from its MCP config. It holds no secrets
+and never reads the vault: each tool call (`kryptos_list_credentials`, `kryptos_get_credential`,
+`kryptos_get_totp`) is relayed to the running app over its Unix socket. Layers, all required:
+
+1. **Off by default**: Settings → AI assistants.
+2. **Peer check**: the app accepts only its own bundled `kryptos-mcp` (same path and signature checks as
+   the native host), and each binary may make only its own kind of request: the MCP server can't ask
+   for fills, saves or searches, the browser can't ask for AI requests.
+3. **Access code**: 256 random bits, shown once in a ready-to-paste config; the settings keep only its
+   SHA-256 (constant-time compare), it expires (1 hour to 30 days) and can be revoked.
+4. **Per-entry sharing**: only entries with *Available to AI assistants* on are listed (names and
+   usernames only).
+5. **Confirmation of every secret**: each password or 2FA code needs Touch ID / the Mac password or the
+   master password in the app window, which says which assistant asks (its self-reported name, a hint
+   only). The entry is read again after the answer.
+6. **Limits and traces**: 10 requests a minute; every request is logged in memory (never on disk, so
+   entry names aren't written in clear) and announced in the app.
+
+A secret given to an assistant leaves Kryptos (it enters the model's context and its provider's
+servers): sharing is meant for work or test credentials, not a bank or the main email account.
+
 ## Roadmap
 
 - [x] Core: vault, KDF, generator, URL matching, atomic storage, CSV import, security analysis, sync merge (30 tests)
@@ -220,10 +285,85 @@ Dropbox, OneDrive) moves it. The folders are found under `~/Library/CloudStorage
 - [x] TOTP: the code is filled into one-time-code fields on Android and by the extension (with the login,
       after the same confirmation); import from Aegis/2FAS (unencrypted), Google Authenticator transfer
       links and otpauth:// lists; backup codes read from the file the site lets you download
-- [ ] TOTP: scan the QR with the camera; encrypted Aegis/2FAS exports
+- [x] TOTP from QR codes: the extension reads the page's QR, phones scan it with the camera
+- [ ] TOTP: encrypted Aegis/2FAS exports
+- [x] Trash, password history, recent, smart cleanup, 2FA suggestions, passphrases, change-password assistant
+- [x] Extension: search, generator, look-alike warning, fill shortcut, right-click menu
+- [x] MCP server for AI assistants (off by default, scoped, confirmed per request)
 - [ ] Windows: named pipe for the bridge and native host registration in the registry
 - [x] Sync without network: merge a backup or a QR-code transfer, per-entry merge with tombstones
 - [x] Cloud folder sync, automatic: macOS finds Google Drive, iCloud Drive, Dropbox, OneDrive; Android
       picks the folder once through the system picker
 - [ ] Optional LAN sync (QR pairing with an ephemeral X25519 key, Noise channel). Would need the INTERNET
   permission on Android, so only as an opt-in
+
+## Projects (.env files)
+
+`.env` files live in the vault, one per project and environment, as text (comments and order kept), with
+the last 10 versions, a 30-day trash and the same sync as entries (`crates/core/src/envs.rs`). The same
+environment created on two devices merges into one: the older content moves to the history.
+
+`kryptos` (`crates/cli`, bundled with the app) reaches them over the app socket, like `kryptos-mcp`. It holds
+no secrets and the app accepts only that bundled, signature-checked binary, which may make only `env`
+requests. Every read and write is confirmed in the app window; a confirmed read stays valid for 5 minutes in
+the same unlock, never for production. `kryptos env run` passes variables to the command and writes nothing
+to disk; `pull` writes a 0600 file, refuses to overwrite a different one and warns if git doesn't ignore it.
+
+Environments can be shared with AI assistants one by one. Production (names starting with `prod`, `live`,
+`main`) can never be shared.
+
+## Profiles
+
+Separate vaults on one device (`apps/desktop/src-tauri/src/profiles.rs`): each has its own file, master
+password, settings and cloud folder. The first stays at its original path; others live in
+`<data>/profiles/<id>/`. `profiles.json` holds only names and the active id.
+
+Only the active profile is ever open: switching drops the decrypted vault and ends earlier confirmations.
+So the extension, AI assistants, the command line and Android autofill reach that one vault. Two profiles
+can't use the same cloud folder. On Android each profile has its own fingerprint-sealed key.
+
+A team shares a vault by syncing a profile through a shared folder and sharing that vault's password.
+Anyone holding the password and a copy of the file can read it, so people leaving means changing the
+secrets inside. Teams (below) avoid sharing a password.
+
+## Teams
+
+A team shares a vault through a cloud folder, and people join with a personal key instead of a password
+(`crates/core/src/team.rs`). Everyone keeps their own local vault and master password. The shared copy is
+encrypted with a separate random team key and has no password path at all; it holds the data and the member
+list, never anyone's keys.
+
+Each person has an X25519 identity in their local vault. They send the admin a public code, and both compare
+a safety code by voice or in person. The admin seals the team key to that member (ephemeral and admin X25519,
+HKDF-SHA256, XChaCha20-Poly1305) in `member-<hash>.key` next to the shared copy, and the member pins the admin.
+
+Removing someone makes a new team key, sealed to those who stay. Key updates count only if sealed by the
+pinned admin, so a removed member can't push a key. A member's password and fingerprint unlock don't depend
+on the team key. An old-key copy found in the folder is never merged: the admin overwrites it and the others
+wait for the new one. So edits another member made during a key change can be lost, and the member list can
+be altered by any current member (it's for display: key updates depend only on the pinned admin).
+
+There's one admin, who can't leave or be replaced. What someone already read can't be taken back: secrets they
+saw must be changed.
+
+## Security notes
+
+Changing the master password makes a new vault key, so an old password plus an old copy can't read new
+copies. Other devices stop syncing until they join again with the new password; a password or header is never
+adopted from a synced file. Merges ignore dates more than a day ahead and every edit is dated after what it
+replaces, so a planted future date can't undo later edits. Joining or starting a team empties the trash.
+An invitation is accepted only if it's the exact file whose safety code was shown.
+
+A read confirmed from the command line stays valid for 5 minutes for any process of the same OS user, not
+just the one that asked. Production environments are recognized by name (`prod…`, `prd`, `live`, `main`, also as
+part of a name like `eu-prod`), so name them that way.
+
+## Logins under the field
+
+`content.js` runs in the top frame of every http(s) page, which is why the extension has host permissions. It
+sees only the page. On a real click on a login field it asks `background.js`, which takes the site from the
+browser (`sender`), never from the script, and shows nothing on a lookalike of a saved site. The list is
+`inline.html`, an extension page in an iframe inside a closed shadow root, reached with a random token, so the
+site can't read usernames. Clicks count only 400 ms after it appears, and a fill still needs the usual
+confirmation, which names the site. The site can tell that a list appeared, so it can learn the user has a login
+there. It can be turned off from the popup, and the script then does nothing.

@@ -11,17 +11,20 @@ use crate::settings::Settings;
 /// holds one too, since it can run before (or without) the Tauri app.
 #[derive(Clone)]
 pub struct AppState {
-    pub vault_path: PathBuf,
-    settings_path: PathBuf,
     inner: Arc<Mutex<Inner>>,
 }
 
 struct Inner {
+    /// The active profile's files (see profiles.rs).
+    vault_path: PathBuf,
+    settings_path: PathBuf,
     vault: Option<UnlockedVault>,
     last_activity: Activity,
     /// Set while no app screen is visible (mobile): the vault locks shortly after.
     background_since: Option<Activity>,
     settings: Settings,
+    /// Counts unlocks, so a confirmation can't outlive the unlock it was given in.
+    session: u64,
 }
 
 /// Tracks both clocks: the monotonic one can pause while the device sleeps
@@ -41,11 +44,28 @@ impl Activity {
 impl AppState {
     pub fn new(vault_path: PathBuf, settings_path: PathBuf) -> Self {
         let settings = Settings::load(&settings_path);
-        Self { vault_path, settings_path, inner: Arc::new(Mutex::new(Inner { vault: None, last_activity: Activity::now(), background_since: None, settings })) }
+        Self { inner: Arc::new(Mutex::new(Inner { vault_path, settings_path, vault: None, last_activity: Activity::now(), background_since: None, settings, session: 0 })) }
+    }
+
+    pub fn vault_path(&self) -> PathBuf {
+        self.inner.lock().unwrap().vault_path.clone()
     }
 
     pub fn vault_exists(&self) -> bool {
-        self.vault_path.exists()
+        self.vault_path().exists()
+    }
+
+    /// Moves to another profile: the open vault is locked and dropped first.
+    pub fn switch(&self, vault_path: PathBuf, settings_path: PathBuf) {
+        let settings = Settings::load(&settings_path);
+        let mut g = self.inner.lock().unwrap();
+        g.vault = None;
+        g.session += 1;
+        g.vault_path = vault_path;
+        g.settings_path = settings_path;
+        g.settings = settings;
+        g.background_since = None;
+        g.last_activity = Activity::now();
     }
 
     pub fn is_unlocked(&self) -> bool {
@@ -56,12 +76,20 @@ impl AppState {
         let mut g = self.inner.lock().unwrap();
         g.vault = Some(v);
         g.last_activity = Activity::now();
+        g.session += 1;
+    }
+
+    #[cfg_attr(not(all(unix, desktop)), allow(dead_code))]
+    pub fn session(&self) -> u64 {
+        self.inner.lock().unwrap().session
     }
 
     /// Drops the decrypted vault; `UnlockedVault` zeroizes keys and entries on drop.
     /// Returns whether it was unlocked.
     pub fn lock(&self) -> bool {
-        self.inner.lock().unwrap().vault.take().is_some()
+        let mut g = self.inner.lock().unwrap();
+        g.session += 1;
+        g.vault.take().is_some()
     }
 
     pub fn touch(&self) {
@@ -74,8 +102,9 @@ impl AppState {
 
     pub fn set_settings(&self, s: Settings) -> Result<(), String> {
         s.validate()?;
-        s.save(&self.settings_path)?;
-        self.inner.lock().unwrap().settings = s;
+        let mut g = self.inner.lock().unwrap();
+        s.save(&g.settings_path)?;
+        g.settings = s;
         Ok(())
     }
 
@@ -129,9 +158,10 @@ impl AppState {
     pub fn mutate<T>(&self, f: impl FnOnce(&mut UnlockedVault) -> Result<T, String>) -> Result<T, String> {
         let mut g = self.inner.lock().unwrap();
         g.last_activity = Activity::now();
+        let path = g.vault_path.clone();
         let v = g.vault.as_mut().ok_or("locked")?;
         let out = f(v)?;
-        storage::write_atomic(&self.vault_path, &v.to_bytes()).map_err(|e| e.to_string())?;
+        storage::write_atomic(&path, &v.to_bytes()).map_err(|e| e.to_string())?;
         crate::cloud::mark_dirty();
         Ok(out)
     }
@@ -140,10 +170,11 @@ impl AppState {
     /// something. Not user activity: it runs in the background.
     pub fn sync_from(&self, bytes: &[u8]) -> Result<SyncReport, String> {
         let mut g = self.inner.lock().unwrap();
+        let path = g.vault_path.clone();
         let v = g.vault.as_mut().ok_or("locked")?;
         let r = v.sync_from(bytes).map_err(crate::commands::code)?;
         if r.merge != MergeReport::default() || r.password_changed {
-            storage::write_atomic(&self.vault_path, &v.to_bytes()).map_err(|e| e.to_string())?;
+            storage::write_atomic(&path, &v.to_bytes()).map_err(|e| e.to_string())?;
         }
         Ok(r)
     }
@@ -155,8 +186,39 @@ impl AppState {
         let mut g = self.inner.lock().unwrap();
         let v = g.vault.as_ref().ok_or(kryptos_core::Error::InvalidInput("locked"))?;
         let (shared, report) = v.join(bytes, password)?;
-        storage::write_atomic(&self.vault_path, &shared.to_bytes())?;
+        storage::write_atomic(&g.vault_path, &shared.to_bytes())?;
         g.vault = Some(shared);
         Ok(report)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use kryptos_core::crypto::KdfParams;
+
+    #[test]
+    fn switching_profile_closes_the_vault_and_keeps_files_apart() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = |p: &str, f: &str| dir.path().join(p).join(f);
+        std::fs::create_dir_all(dir.path().join("a")).unwrap();
+        std::fs::create_dir_all(dir.path().join("b")).unwrap();
+        let state = AppState::new(file("a", "vault.kryptos"), file("a", "settings.json"));
+        let mut s = state.settings();
+        s.cloud_folder = "/drive/personal".into();
+        state.set_settings(s).unwrap();
+        state.set_unlocked(UnlockedVault::create("password one", KdfParams::TEST).unwrap());
+        let session = state.session();
+
+        state.switch(file("b", "vault.kryptos"), file("b", "settings.json"));
+        assert!(!state.is_unlocked(), "nothing of the old profile stays open");
+        assert_ne!(state.session(), session, "earlier confirmations don't carry over");
+        assert_eq!(state.settings().cloud_folder, "", "settings belong to the profile");
+
+        // A write can't land in the other profile's file.
+        state.set_unlocked(UnlockedVault::create("password two", KdfParams::TEST).unwrap());
+        state.mutate(|_| Ok(())).unwrap();
+        assert!(file("b", "vault.kryptos").exists());
+        assert!(!file("a", "vault.kryptos").exists());
     }
 }

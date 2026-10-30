@@ -1,0 +1,15 @@
+[package]
+name = "kryptos-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Command line for Kryptos: `kryptos env` gets a project's .env from the app, each read confirmed by the user."
+
+[[bin]]
+name = "kryptos"
+path = "src/main.rs"
+
+[dependencies]
+kryptos-core = { path = "../core" }
+serde_json.workspace = true
+zeroize = "1"

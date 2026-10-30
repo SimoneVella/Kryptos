@@ -1,13 +1,18 @@
-import type { ReactElement } from "react";
-import { useEffect, useState } from "react";
-import { Check, Copy, Eye, EyeOff, Globe, KeyRound, ListChecks, Pencil, ShieldCheck, Star, StickyNote, Trash2, User } from "lucide-react";
+import type { ReactElement, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Icon } from "../components/Icon";
 import { api, type Entry, type EntryInput, type TotpCode } from "../lib/api";
 import { Action, Avatar, Sheet, useToast } from "../components/ui";
-import { hostOf } from "../lib/utils";
+import { hostOf, isMac, isMobile } from "../lib/utils";
 import { useT } from "../i18n";
 
+/**
+ * One entry. On phones and narrow windows it opens as a sheet over the list; on
+ * wide windows (`inline`) it fills the detail pane next to the list.
+ */
 export default function EntrySheet(props: {
   id: string;
+  inline?: boolean;
   clipboardClearSecs: number;
   onClose: () => void;
   onEdit: (id: string, input: EntryInput) => void;
@@ -20,10 +25,32 @@ export default function EntrySheet(props: {
   const toast = useToast();
 
   useEffect(() => {
+    // The pane stays mounted while another entry is picked: start each one hidden.
+    setReveal(false);
+    setConfirmDelete(false);
     api.getEntry(props.id).then(setEntry).catch(props.onClose);
   }, [props.id]);
 
-  if (!entry) return null;
+  // Desktop shortcuts for the open entry, as in other password managers:
+  // ⌘C username, ⇧⌘C password, ⌥⌘C 2FA code (Ctrl on Windows and Linux).
+  // They stay out of the way of normal copying: not while typing in a field or
+  // with text selected.
+  const shortcut = useRef<(field: "username" | "password" | "totp") => void>(() => {});
+  useEffect(() => {
+    if (isMobile()) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.code !== "KeyC") return;
+      const el = document.activeElement;
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || window.getSelection()?.toString()) return;
+      e.preventDefault();
+      shortcut.current(e.altKey ? "totp" : e.shiftKey ? "password" : "username");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  if (!entry || entry.id !== props.id) return null;
+  const Frame = props.inline ? Pane : Sheet;
 
   const copy = async (field: "username" | "password" | "totp") => {
     await api.copyField(entry.id, field);
@@ -35,6 +62,11 @@ export default function EntrySheet(props: {
           : t("entry.copyUsernameToast"),
     );
   };
+  shortcut.current = (field) => {
+    if (field === "totp" && !entry.totp) return;
+    if (field === "username" && !entry.username) return;
+    copy(field);
+  };
   const edit = () =>
     props.onEdit(entry.id, {
       title: entry.title,
@@ -45,42 +77,43 @@ export default function EntrySheet(props: {
       favorite: entry.favorite,
       totp: entry.totp,
       backup_codes: entry.backup_codes,
+      ai_access: entry.ai_access,
     });
 
   return (
-    <Sheet onClose={props.onClose}>
+    <Frame onClose={props.onClose}>
       <div className="sheet-hero">
         <Avatar name={entry.title} urls={entry.urls} size="lg" />
         <div>
           <h2 style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
             {entry.title}
-            {entry.favorite && <Star size={18} className="star" fill="currentColor" />}
+            {entry.favorite && <Icon name="star" size={18} className="star" fill />}
           </h2>
           {entry.urls[0] && <p className="muted" style={{ marginTop: 4 }}>{hostOf(entry.urls[0])}</p>}
         </div>
       </div>
 
       <div className="sheet-actions">
-        <Action icon={<User size={20} />} label={t("entry.actionUser")} onClick={() => copy("username")} />
-        <Action icon={<KeyRound size={20} />} label={t("entry.actionPassword")} onClick={() => copy("password")} />
-        <Action icon={<Pencil size={19} />} label={t("common.edit")} onClick={edit} />
+        <Action icon={<Icon name="person" size={20} />} label={t("entry.actionUser")} onClick={() => copy("username")} />
+        <Action icon={<Icon name="key" size={20} />} label={t("entry.actionPassword")} onClick={() => copy("password")} />
+        <Action icon={<Icon name="edit" size={19} />} label={t("common.edit")} onClick={edit} />
       </div>
 
       <div className="detail-list">
         {entry.username && (
-          <Item icon={<User size={18} />} label={t("entry.usernameLabel")} value={entry.username} onCopy={() => copy("username")} />
+          <Item icon={<Icon name="person" size={18} />} label={t("entry.usernameLabel")} value={entry.username} onCopy={() => copy("username")} />
         )}
         <div className="detail-item">
-          <KeyRound size={18} className="muted" />
+          <Icon name="key" size={18} className="muted" />
           <div className="row-main">
             <span className="detail-label">{t("entry.passwordLabel")}</span>
-            <span className="detail-value mono">{reveal ? entry.password : "•".repeat(Math.min(entry.password.length, 16)) || "—"}</span>
+            <span className="detail-value mono pw-value">{reveal ? <Chars text={entry.password} /> : "•".repeat(Math.min(entry.password.length, 16)) || "—"}</span>
           </div>
           <button className="icon-btn" onClick={() => setReveal(!reveal)} aria-label={reveal ? t("common.hide") : t("common.show")}>
-            {reveal ? <EyeOff size={18} /> : <Eye size={18} />}
+            {reveal ? <Icon name="visibility_off" size={18} /> : <Icon name="visibility" size={18} />}
           </button>
           <button className="icon-btn" onClick={() => copy("password")} aria-label={t("entry.copyPasswordAria")}>
-            <Copy size={18} />
+            <Icon name="content_copy" size={18} />
           </button>
         </div>
         {entry.totp && <TotpItem id={entry.id} onCopy={() => copy("totp")} />}
@@ -96,15 +129,31 @@ export default function EntrySheet(props: {
             }
           />
         )}
+        {entry.history.length > 0 && <History entry={entry} clipboardClearSecs={props.clipboardClearSecs} />}
         {entry.urls.map((u) => (
-          <Item key={u} icon={<Globe size={18} />} label={t("entry.websiteLabel")} value={u} />
+          <Item key={u} icon={<Icon name="language" size={18} />} label={t("entry.websiteLabel")} value={u} />
         ))}
-        {entry.notes && <Item icon={<StickyNote size={18} />} label={t("entry.notesLabel")} value={entry.notes} />}
+        {entry.notes && <Item icon={<Icon name="sticky_note_2" size={18} />} label={t("entry.notesLabel")} value={entry.notes} />}
       </div>
 
+      {entry.urls.length > 0 && entry.password && (
+        <button className="btn btn-secondary btn-block change-pw" onClick={() => api.openChangePassword(entry.id).catch(() => toast(t("entry.noChangePage")))}>
+          <Icon name="open_in_new" size={18} /> {t("entry.changeOnSite")}
+        </button>
+      )}
+      {entry.ai_access && (
+        <p className="ai-badge"><Icon name="smart_toy" size={16} /> {t("entry.aiAllowed")}</p>
+      )}
       <p className="muted" style={{ fontSize: 12, textAlign: "center", margin: "16px 0" }}>
         {t("entry.modifiedOn", { date: formatDate(entry.updated_at) })}
       </p>
+      {!isMobile() && (
+        <p className="shortcuts muted">
+          <span><kbd className="kbd">{isMac() ? "⌘C" : "Ctrl+C"}</kbd> {t("entry.actionUser")}</span>
+          <span><kbd className="kbd">{isMac() ? "⇧⌘C" : "Ctrl+Shift+C"}</kbd> {t("entry.actionPassword")}</span>
+          {entry.totp && <span><kbd className="kbd">{isMac() ? "⌥⌘C" : "Ctrl+Alt+C"}</kbd> {t("entry.totpLabel")}</span>}
+        </p>
+      )}
 
       {confirmDelete ? (
         <div className="form-actions">
@@ -122,10 +171,30 @@ export default function EntrySheet(props: {
         </div>
       ) : (
         <button className="btn btn-danger btn-block" onClick={() => setConfirmDelete(true)}>
-          <Trash2 size={18} /> {t("common.delete")}
+          <Icon name="delete" size={18} /> {t("common.delete")}
         </button>
       )}
-    </Sheet>
+    </Frame>
+  );
+}
+
+/** The detail pane of wide windows: same content as the sheet, no overlay. */
+function Pane({ children }: { onClose: () => void; children: ReactNode }) {
+  return (
+    <section className="pane-detail">
+      <div className="pane-inner">{children}</div>
+    </section>
+  );
+}
+
+/** A revealed password with digits and symbols tinted, so look-alikes (0/O, l/1) stand apart. */
+function Chars({ text }: { text: string }) {
+  return (
+    <>
+      {[...text].map((c, i) =>
+        /\d/.test(c) ? <span key={i} className="ch-d">{c}</span> : /[^\p{L}]/u.test(c) ? <span key={i} className="ch-s">{c}</span> : c,
+      )}
+    </>
   );
 }
 
@@ -143,23 +212,64 @@ function TotpItem({ id, onCopy }: { id: string; onCopy: () => void }) {
 
   const code = totp ? `${totp.code.slice(0, totp.code.length / 2)} ${totp.code.slice(totp.code.length / 2)}` : "··· ···";
   const left = totp ? totp.remaining / totp.period : 1;
+  const ending = !!totp && totp.remaining <= 5;
   return (
-    <div className="detail-item">
-      <ShieldCheck size={18} className="muted" />
+    <div className="detail-item totp-item">
+      <Icon name="verified_user" size={18} className="muted" />
       <div className="row-main">
         <span className="detail-label">{t("entry.totpLabel")}</span>
-        <span className={`detail-value mono totp-code ${totp && totp.remaining <= 5 ? "ending" : ""}`}>{error ? "—" : code}</span>
+        <span className={`detail-value mono totp-code ${ending ? "ending" : ""}`}>{error ? "—" : code}</span>
       </div>
       {totp && (
-        <svg className="totp-ring" width="22" height="22" viewBox="0 0 22 22" aria-label={t("entry.totpSeconds", { secs: totp.remaining })}>
-          <circle cx="11" cy="11" r="9" />
-          <circle cx="11" cy="11" r="9" strokeDasharray={`${2 * Math.PI * 9}`} strokeDashoffset={`${2 * Math.PI * 9 * (1 - left)}`} />
-        </svg>
+        <span className="mono muted totp-secs" aria-label={t("entry.totpSeconds", { secs: totp.remaining })}>
+          {totp.remaining}s
+        </span>
       )}
+      {totp && <span className={`totp-bar ${ending ? "ending" : ""}`} style={{ width: `${left * 100}%` }} />}
       <button className="icon-btn" onClick={onCopy} disabled={error} aria-label={t("entry.copyTotpAria")}>
-        <Copy size={18} />
+        <Icon name="content_copy" size={18} />
       </button>
     </div>
+  );
+}
+
+/** Earlier passwords, newest first: hidden until asked, each can be copied. */
+function History({ entry, clipboardClearSecs }: { entry: Entry; clipboardClearSecs: number }) {
+  const { t, formatDate } = useT();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div className="detail-item">
+        <Icon name="history" size={18} className="muted" />
+        <div className="row-main">
+          <span className="detail-label">{t("entry.historyLabel")}</span>
+          <span className="detail-value">{t("entry.historyCount", { n: entry.history.length })}</span>
+        </div>
+        <button className="icon-btn" onClick={() => setOpen(!open)} aria-label={open ? t("common.hide") : t("common.show")}>
+          <Icon name={open ? "visibility_off" : "visibility"} size={18} />
+        </button>
+      </div>
+      {open &&
+        entry.history.map((h, i) => (
+          <div key={i} className="detail-item backup-code">
+            <span className="row-main">
+              <span className="detail-value mono pw-value">{h.password}</span>
+              <span className="detail-label">{t("entry.historyUntil", { date: formatDate(h.replaced_at) })}</span>
+            </span>
+            <button
+              className="icon-btn"
+              aria-label={t("entry.copyPasswordAria")}
+              onClick={async () => {
+                await api.copyHistory(entry.id, i);
+                toast(t("common.copiedClearing", { secs: clipboardClearSecs }));
+              }}
+            >
+              <Icon name="content_copy" size={18} />
+            </button>
+          </div>
+        ))}
+    </>
   );
 }
 
@@ -181,13 +291,13 @@ function BackupCodes({ entry, onCopy, onMarked }: { entry: Entry; onCopy: (code:
   return (
     <>
       <div className="detail-item">
-        <ListChecks size={18} className="muted" />
+        <Icon name="receipt_long" size={18} className="muted" />
         <div className="row-main">
           <span className="detail-label">{t("entry.backupCodesLabel")}</span>
           <span className="detail-value">{t("entry.backupCodesLeft", { left, total: codes.length })}</span>
         </div>
         <button className="icon-btn" onClick={() => setReveal(!reveal)} aria-label={reveal ? t("common.hide") : t("common.show")}>
-          {reveal ? <EyeOff size={18} /> : <Eye size={18} />}
+          {reveal ? <Icon name="visibility_off" size={18} /> : <Icon name="visibility" size={18} />}
         </button>
       </div>
       {reveal &&
@@ -200,12 +310,12 @@ function BackupCodes({ entry, onCopy, onMarked }: { entry: Entry; onCopy: (code:
               aria-label={c.used ? t("entry.backupCodeUnmark") : t("entry.backupCodeMark")}
               title={c.used ? t("entry.backupCodeUnmark") : t("entry.backupCodeMark")}
             >
-              {c.used && <Check size={14} />}
+              {c.used && <Icon name="check" size={14} />}
             </button>
             <span className="detail-value mono row-main">{c.code}</span>
             {!c.used && (
               <button className="icon-btn" onClick={() => onCopy(c.code)} aria-label={t("entry.backupCodeCopy")}>
-                <Copy size={18} />
+                <Icon name="content_copy" size={18} />
               </button>
             )}
           </div>
@@ -225,7 +335,7 @@ function Item({ icon, label, value, onCopy }: { icon: ReactElement; label: strin
       </div>
       {onCopy && (
         <button className="icon-btn" onClick={onCopy} aria-label={t("entry.copyFieldAria", { label })}>
-          <Copy size={18} />
+          <Icon name="content_copy" size={18} />
         </button>
       )}
     </div>

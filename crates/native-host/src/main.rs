@@ -93,9 +93,9 @@ fn relay(msg: &Value) -> Result<Value, String> {
 
     let path = kryptos_core::paths::ipc_socket_path();
     let mut stream = UnixStream::connect(&path).map_err(|_| "app_not_running".to_string())?;
-    // The app answers at once, except for credentials: those wait for the user to
-    // confirm the fill in the app window (it gives up after 170 s, see confirm.rs).
-    let wait = if msg.get("type").and_then(Value::as_str) == Some("credentials") { 180 } else { 10 };
+    // The app answers at once, except for credentials and add_totp: those wait for
+    // the user in the app window (it gives up after 170 s, see confirm.rs, otp_add.rs).
+    let wait = if matches!(msg.get("type").and_then(Value::as_str), Some("credentials" | "add_totp")) { 180 } else { 10 };
     stream.set_read_timeout(Some(Duration::from_secs(wait))).ok();
 
     // Re-serialize: compact JSON never contains a raw newline, which frames the socket protocol.

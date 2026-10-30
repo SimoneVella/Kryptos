@@ -1,0 +1,14 @@
+[package]
+name = "kryptos-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "MCP server for AI assistants: lets them request the logins the user shared with them, each one confirmed in the Kryptos app."
+
+[[bin]]
+name = "kryptos-mcp"
+path = "src/main.rs"
+
+[dependencies]
+kryptos-core = { path = "../core" }
+serde_json.workspace = true

@@ -1,7 +1,7 @@
 {
   "extName": { "message": "Kryptos" },
   "extDescription": { "message": "Remplit les identifiants depuis votre coffre-fort Kryptos local. Aucun serveur, aucun réseau." },
-  "searchPlaceholder": { "message": "Filtrer" },
+  "inlineToggle": { "message": "Proposer les identifiants sous les champs de connexion" },
   "footerText": { "message": "Hors ligne · vos données ne quittent jamais l'ordinateur" },
   "openApp": { "message": "Ouvrir Kryptos" },
   "noSite": { "message": "Aucun site" },
@@ -35,6 +35,7 @@
   "fillDeniedText": { "message": "Remplissage annulé dans Kryptos." },
   "fillTimeoutText": { "message": "Aucune confirmation en 3 minutes." },
   "fillBusyText": { "message": "Un autre remplissage attend déjà une confirmation dans Kryptos." },
+  "saveShort": { "message": "Enregistrer" },
   "saveLoginButton": { "message": "Enregistrer l'identifiant de cette page" },
   "saveTitle": {
     "message": "Enregistrer dans Kryptos pour $SITE$ ?",
@@ -48,5 +49,53 @@
   "savedText": { "message": "Identifiant enregistré dans Kryptos." },
   "updatedText": { "message": "Mot de passe mis à jour dans Kryptos." },
   "unchangedText": { "message": "Cet identifiant est déjà dans Kryptos." },
-  "saveFailedTitle": { "message": "Échec de l'enregistrement" }
+  "saveFailedTitle": { "message": "Échec de l'enregistrement" },
+  "tabSite": { "message": "Ce site" },
+  "tabSearch": { "message": "Chercher" },
+  "tabGenerate": { "message": "Générer" },
+  "qrButton": { "message": "Code 2FA depuis QR" },
+  "lookalikeTitle": { "message": "Attention : ce n'est pas le site que vous croyez" },
+  "lookalikeText": {
+    "message": "Il ressemble à $TITLE$ ($DOMAIN$) mais l'adresse est différente. Ne tapez pas votre mot de passe ici.",
+    "placeholders": { "title": { "content": "$1" }, "domain": { "content": "$2" } }
+  },
+  "tagReused": { "message": "Réutilisé" },
+  "tagWeak": { "message": "Faible" },
+  "tag2fa": { "message": "2FA" },
+  "qrReadingTitle": { "message": "Recherche du QR code…" },
+  "qrReadingText": { "message": "Lecture de la page visible, rien n'est enregistré." },
+  "qrNoneTitle": { "message": "Aucun QR code 2FA trouvé" },
+  "qrNoneText": {
+    "message": "Ouvrez la page où le site affiche le QR code de la validation en deux étapes, vérifiez qu'il est entièrement visible et réessayez."
+  },
+  "qrCaptureFailed": { "message": "Le navigateur n'a pas autorisé la lecture de cette page." },
+  "qrConfirmText": { "message": "Choisissez dans Kryptos l'entrée qui reçoit le code 2FA." },
+  "qrAddedTitle": { "message": "Code 2FA ajouté" },
+  "qrAddedText": {
+    "message": "Enregistré dans $TITLE$. Kryptos le remplira désormais sur ce site.",
+    "placeholders": { "title": { "content": "$1" } }
+  },
+  "qrDeniedText": { "message": "Annulé dans Kryptos : rien n'a été enregistré." },
+  "qrInvalidText": { "message": "Ce QR code ne contient pas de clé 2FA valide." },
+  "qrFailedTitle": { "message": "Impossible d'ajouter le code" },
+  "searchAllPlaceholder": { "message": "Chercher dans tout le coffre" },
+  "searchAllHint": {
+    "message": "Tapez au moins deux lettres. Les résultats s'ouvrent dans Kryptos ; le remplissage reste limité au site de chaque identifiant."
+  },
+  "searchNone": { "message": "Aucun résultat" },
+  "openShort": { "message": "Ouvrir" },
+  "genAgain": { "message": "Une autre" },
+  "genCopy": { "message": "Copier" },
+  "genCopied": { "message": "Copié" },
+  "genInsert": { "message": "Mettre dans le formulaire" },
+  "genInsertSave": { "message": "Mettre et enregistrer dans Kryptos" },
+  "genLength": { "message": "Longueur" },
+  "genSymbols": { "message": "Symboles (!@#…)" },
+  "genNoFieldTitle": { "message": "Aucun champ de mot de passe" },
+  "genNoFieldText": { "message": "Ouvrez d'abord le formulaire d'inscription ou de changement de mot de passe." },
+  "genInsertedTitle": { "message": "Mot de passe dans le formulaire" },
+  "genInsertedText": { "message": "Envoyez le formulaire, puis enregistrez-le avec « Enregistrer l'identifiant »." },
+  "menuFill": { "message": "Remplir avec Kryptos" },
+  "menuGenerate": { "message": "Générer un mot de passe fort ici" },
+  "commandFill": { "message": "Remplir le dernier identifiant utilisé sur ce site" }
 }

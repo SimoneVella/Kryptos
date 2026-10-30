@@ -8,11 +8,31 @@
   "permissions": [
     "nativeMessaging",
     "activeTab",
-    "scripting"
+    "scripting",
+    "contextMenus",
+    "storage"
+  ],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["inline.html"],
+      "matches": ["http://*/*", "https://*/*"],
+      "use_dynamic_url": true
+    }
   ],
   "background": {
     "service_worker": "background.js",
-    "scripts": ["background.js"]
+    "scripts": [
+      "background.js"
+    ]
   },
   "action": {
     "default_popup": "popup.html",
@@ -33,6 +53,13 @@
         "default": "Ctrl+Shift+L",
         "mac": "Command+Shift+L"
       }
+    },
+    "fill-login": {
+      "suggested_key": {
+        "default": "Alt+Shift+L",
+        "mac": "Alt+Shift+L"
+      },
+      "description": "__MSG_commandFill__"
     }
   },
   "content_security_policy": {

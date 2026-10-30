@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Small-size mark (16–48 px): the dial reduced to its bezel and three-spoke wheel. -->
+  <rect width="1024" height="1024" rx="218" fill="#0B0C0E"/>
+  <circle cx="512" cy="512" r="370" fill="none" stroke="#D6A166" stroke-width="64"/>
+  <g stroke="#D6A166" stroke-width="72" stroke-linecap="round" fill="none">
+    <line x1="512" y1="512" x2="512" y2="300"/>
+    <line x1="512" y1="512" x2="328" y2="618"/>
+    <line x1="512" y1="512" x2="696" y2="618"/>
+  </g>
+  <circle cx="512" cy="512" r="96" fill="#D6A166"/>
+  <circle cx="512" cy="512" r="38" fill="#0B0C0E"/>
+</svg>

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { Fingerprint } from "lucide-react";
-import { api, type BiometricStatus } from "../lib/api";
+import { Icon } from "../components/Icon";
+import { api, type BiometricStatus, type Profiles } from "../lib/api";
 import { Logo, PasswordInput } from "../components/ui";
 import { isMobile } from "../lib/utils";
 import { useT, type TKey } from "../i18n";
+import { useProfileName } from "./Profiles";
 
 /** What to tell the user after a fingerprint attempt; null = nothing to say. */
 const BIOMETRIC_ERRORS: Record<string, TKey | null> = {
@@ -22,6 +23,12 @@ export default function Unlock({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [shake, setShake] = useState(0);
   const [bio, setBio] = useState<BiometricStatus | null>(isMobile() ? null : "unavailable");
+
+  const label = useProfileName();
+  const [reg, setReg] = useState<Profiles | null>(null);
+  useEffect(() => {
+    api.profileList().then(setReg);
+  }, []);
 
   const unlockWithFingerprint = useCallback(async () => {
     setError("");
@@ -74,9 +81,16 @@ export default function Unlock({ onDone }: { onDone: () => void }) {
   return (
     <div className="auth">
       <div className="auth-card">
-        <Logo large />
-        <h1 style={{ marginTop: 14 }}>{t("unlock.title")}</h1>
+        <Logo large spinning={busy} />
+        <h1 style={{ marginTop: 6 }}>{t("unlock.title")}</h1>
         <p className="muted">{t("unlock.subtitle")}</p>
+        {reg && reg.profiles.length > 1 && (
+          <div className="profile-chips">
+            {reg.profiles.map((p) => (
+              <button key={p.id} type="button" className={p.id === reg.active ? "on" : ""} onClick={() => api.profileSwitch(p.id).then(onDone)}>{label(p)}</button>
+            ))}
+          </div>
+        )}
         <form onSubmit={submit} key={shake} className={shake ? "shake" : ""}>
           {/* With a fingerprint available the keyboard would only get in the way of the prompt. */}
           <PasswordInput value={pw} onChange={setPw} placeholder={t("unlock.placeholder")} autoFocus={bio !== null && bio !== "on"} />
@@ -86,7 +100,7 @@ export default function Unlock({ onDone }: { onDone: () => void }) {
           </button>
           {bio === "on" && (
             <button type="button" className="btn btn-secondary btn-block" onClick={unlockWithFingerprint}>
-              <Fingerprint size={20} />
+              <Icon name="fingerprint" size={20} />
               {t("unlock.biometricButton")}
             </button>
           )}
@@ -95,3 +109,4 @@ export default function Unlock({ onDone }: { onDone: () => void }) {
     </div>
   );
 }
+

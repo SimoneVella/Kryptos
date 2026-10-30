@@ -4,6 +4,7 @@ import Setup from "./screens/Setup";
 import Unlock from "./screens/Unlock";
 import Shell from "./screens/Shell";
 import FillConfirm from "./screens/FillConfirm";
+import OtpAddDialog from "./screens/OtpAddDialog";
 import { ToastProvider } from "./components/ui";
 import { setPlatform } from "./lib/utils";
 import { I18nProvider } from "./i18n";
@@ -46,12 +47,17 @@ export default function App() {
         {!status.exists ? (
           <Setup onDone={refresh} />
         ) : !status.unlocked ? (
-          <Unlock onDone={refresh} />
+          <Unlock key={status.profile} onDone={refresh} />
         ) : (
-          <Shell onLock={() => api.lock().then(refresh)} />
+          <Shell key={status.profile} onLock={() => api.lock().then(refresh)} onProfileChanged={refresh} />
         )}
         {/* Browser fills wait for an OK here, whatever screen is open (desktop only). */}
-        {status.platform !== "android" && status.platform !== "ios" && <FillConfirm />}
+        {status.platform !== "android" && status.platform !== "ios" && (
+          <>
+            <FillConfirm />
+            <OtpAddDialog />
+          </>
+        )}
       </ToastProvider>
     </I18nProvider>
   );

@@ -102,6 +102,8 @@ mod tests {
             favorite: false,
             totp: String::new(),
             backup_codes: Vec::new(),
+            history: Vec::new(),
+            ai_access: false,
             created_at: 0,
             updated_at: 0,
         };

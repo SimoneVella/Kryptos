@@ -67,9 +67,58 @@ pub fn entropy_bits(opts: &GeneratorOptions) -> f64 {
     if pool == 0 { 0.0 } else { opts.length as f64 * (pool as f64).log2() }
 }
 
+/// The EFF large wordlist (7776 words, about 12.9 bits each), bundled.
+const WORDS: &str = include_str!("eff_wordlist.txt");
+
+/// A passphrase of `words` random words (4 to 12), joined by `separator`, with
+/// one digit added to a random word when `digit` is set: easy to type and to
+/// remember, as a master password should be.
+pub fn passphrase(words: usize, separator: &str, capitalize: bool, digit: bool) -> Result<String> {
+    if !(4..=12).contains(&words) || separator.chars().count() > 3 {
+        return Err(Error::InvalidInput("invalid_length"));
+    }
+    let list: Vec<&str> = WORDS.lines().filter(|w| !w.is_empty()).collect();
+    let mut rng = OsRng;
+    let mut picked: Vec<String> = (0..words)
+        .map(|_| {
+            let w = list[rng.gen_range(0..list.len())];
+            if capitalize {
+                let mut c = w.chars();
+                c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
+            } else {
+                w.to_owned()
+            }
+        })
+        .collect();
+    if digit {
+        let i = rng.gen_range(0..picked.len());
+        picked[i].push(char::from(b'0' + rng.gen_range(0..10u8)));
+    }
+    Ok(picked.join(separator))
+}
+
+/// Entropy of a passphrase made by [`passphrase`].
+pub fn passphrase_bits(words: usize, digit: bool) -> f64 {
+    let n = WORDS.lines().filter(|w| !w.is_empty()).count() as f64;
+    words as f64 * n.log2() + if digit { (10.0 * words as f64).log2() } else { 0.0 }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn passphrases() {
+        let p = passphrase(5, "-", false, false).unwrap();
+        assert_eq!(p.split('-').count(), 5);
+        assert!(p.split('-').all(|w| WORDS.lines().any(|l| l == w)));
+        let p = passphrase(6, " ", true, true).unwrap();
+        assert_eq!(p.split(' ').count(), 6);
+        assert!(p.chars().any(|c| c.is_ascii_digit()));
+        assert!(p.split(' ').all(|w| w.chars().next().unwrap().is_uppercase()));
+        assert!(passphrase(3, "-", false, false).is_err());
+        assert!((passphrase_bits(5, false) - 64.6).abs() < 0.1);
+    }
 
     #[test]
     fn respects_length_and_classes() {

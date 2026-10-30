@@ -1,10 +1,12 @@
-//! Confirmation of every browser fill, in the app window.
+//! Confirmation of every browser fill.
 //!
-//! The bridge thread that received a `credentials` request blocks in [`ask`]
-//! while the window comes forward and asks the user: Touch ID or the Mac
-//! password (LocalAuthentication), or the master password. The browser never
-//! sees either: the extension popup only gets the result. Only one request can
-//! wait at a time; a second one is refused as "busy".
+//! The bridge thread that received a `credentials` request blocks in [`ask`].
+//! Browser fills with Touch ID or the Mac password (LocalAuthentication) show
+//! only the system prompt, which names the site, and leave the user in the
+//! browser. The app window comes forward for the master password, if the system
+//! prompt can't be used, and for AI and command line requests, which say who's
+//! asking. The browser sees neither: the extension popup only gets the result.
+//! Only one request can wait at a time; a second one is refused as "busy".
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{mpsc, Mutex};
@@ -25,6 +27,10 @@ pub struct FillRequest {
     pub host: String,
     /// "system" (Touch ID / Mac password) or "master".
     pub mode: &'static str,
+    /// Who asks: "browser" (the extension) or "ai" (an assistant through the MCP server).
+    pub source: &'static str,
+    /// For "ai": the assistant's name, as it reports it.
+    pub client: String,
 }
 
 struct Pending {
@@ -34,6 +40,23 @@ struct Pending {
 
 static PENDING: Mutex<Option<Pending>> = Mutex::new(None);
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+/// The system prompt's text in the UI's language, with `{host}` in it.
+static REASON: Mutex<Option<String>> = Mutex::new(None);
+
+pub fn set_reason(template: String) {
+    *REASON.lock().unwrap() = Some(template);
+}
+
+fn reason(host: &str) -> String {
+    REASON.lock().unwrap().as_deref().unwrap_or("fill your password on {host}").replace("{host}", host)
+}
+
+fn release(id: u64) {
+    let mut pending = PENDING.lock().unwrap();
+    if pending.as_ref().is_some_and(|p| p.id == id) {
+        *pending = None;
+    }
+}
 
 /// Whether Touch ID / the Mac password can confirm fills on this computer.
 pub fn system_available() -> bool {
@@ -43,9 +66,9 @@ pub fn system_available() -> bool {
     false
 }
 
-/// Shows the request in the app window and waits for the user's answer.
+/// Asks the user and waits for the answer.
 /// Ok when confirmed, else "denied", "timeout" or "busy".
-pub fn ask(app: &AppHandle, title: String, username: String, host: String, mode: &str) -> Result<(), String> {
+pub fn ask(app: &AppHandle, title: String, username: String, host: String, mode: &str, source: &'static str, client: String) -> Result<(), String> {
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let (tx, rx) = mpsc::channel();
     {
@@ -56,6 +79,20 @@ pub fn ask(app: &AppHandle, title: String, username: String, host: String, mode:
         *pending = Some(Pending { id, tx });
     }
     let mode = if mode == "system" && system_available() { "system" } else { "master" };
+    if source == "browser" && mode == "system" {
+        match system_auth(&reason(&host)) {
+            Ok(()) => {
+                release(id);
+                return Ok(());
+            }
+            Err(e) if e == "cancelled" || e == "timeout" => {
+                release(id);
+                return Err(if e == "cancelled" { "denied".into() } else { e });
+            }
+            // The prompt couldn't be shown: the app window asks instead.
+            Err(_) => {}
+        }
+    }
     let window = app.get_webview_window("main");
     let was_focused = window.as_ref().is_some_and(|w| w.is_focused().unwrap_or(false));
     let was_minimized = window.as_ref().is_some_and(|w| w.is_minimized().unwrap_or(false));
@@ -64,15 +101,10 @@ pub fn ask(app: &AppHandle, title: String, username: String, host: String, mode:
         let _ = w.show();
         let _ = w.set_focus();
     }
-    let _ = app.emit("fill-confirm", FillRequest { id, title, username, host, mode });
+    let _ = app.emit("fill-confirm", FillRequest { id, title, username, host, mode, source, client });
 
     let answer = rx.recv_timeout(TIMEOUT);
-    {
-        let mut pending = PENDING.lock().unwrap();
-        if pending.as_ref().is_some_and(|p| p.id == id) {
-            *pending = None;
-        }
-    }
+    release(id);
     let _ = app.emit("fill-confirm-done", id);
 
     // Kryptos came forward only to ask: hand the screen back to the browser.
@@ -105,10 +137,11 @@ pub fn is_pending(id: u64) -> bool {
 }
 
 /// Shows the system prompt (Touch ID, or the Mac password) with `reason`
-/// and blocks until it is answered. Error codes: "cancelled", "unavailable", "failed".
+/// and blocks until it is answered, for `TIMEOUT` at most. Error codes: "cancelled"
+/// (by the user), "interrupted" (by the system), "timeout", "unavailable", "failed".
 pub fn system_auth(reason: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
-    return macos::evaluate(reason);
+    return macos::evaluate(reason, TIMEOUT);
     #[cfg(not(target_os = "macos"))]
     {
         let _ = reason;
@@ -119,6 +152,7 @@ pub fn system_auth(reason: &str) -> Result<(), String> {
 #[cfg(target_os = "macos")]
 mod macos {
     use std::sync::mpsc;
+    use std::time::Duration;
 
     use block2::RcBlock;
     use objc2::runtime::Bool;
@@ -138,7 +172,7 @@ mod macos {
         unsafe { ctx.canEvaluatePolicy_error(POLICY) }.is_ok()
     }
 
-    pub fn evaluate(reason: &str) -> Result<(), String> {
+    pub fn evaluate(reason: &str, timeout: Duration) -> Result<(), String> {
         let ctx = unsafe { LAContext::new() };
         if unsafe { ctx.canEvaluatePolicy_error(POLICY) }.is_err() {
             return Err("unavailable".into());
@@ -154,9 +188,14 @@ mod macos {
             let _ = tx.send(result);
         });
         unsafe { ctx.evaluatePolicy_localizedReason_reply(POLICY, &NSString::from_str(reason), &reply) };
-        match rx.recv() {
+        match rx.recv_timeout(timeout) {
             Ok(Ok(())) => Ok(()),
-            Ok(Err(USER_CANCEL | SYSTEM_CANCEL | APP_CANCEL)) => Err("cancelled".into()),
+            Ok(Err(USER_CANCEL | APP_CANCEL)) => Err("cancelled".into()),
+            Ok(Err(SYSTEM_CANCEL)) => Err("interrupted".into()),
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                unsafe { ctx.invalidate() };
+                Err("timeout".into())
+            }
             _ => Err("failed".into()),
         }
     }

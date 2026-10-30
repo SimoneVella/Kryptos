@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Plus, RefreshCw } from "lucide-react";
+import { Icon } from "../components/Icon";
 import { api, defaultGenerator, type GeneratorOptions } from "../lib/api";
 import { Switch, useToast } from "../components/ui";
 import { localStorageGet, localStorageSet, strengthOf } from "../lib/utils";
@@ -21,23 +21,42 @@ function loadOpts(): GeneratorOptions {
   }
 }
 
+type Phrase = { words: number; separator: string; capitalize: boolean; digit: boolean };
+const PHRASE_DEFAULT: Phrase = { words: 5, separator: "-", capitalize: false, digit: true };
+
+function loadPhrase(): Phrase {
+  try {
+    return { ...PHRASE_DEFAULT, ...JSON.parse(localStorageGet("passphrase") ?? "{}") };
+  } catch {
+    return PHRASE_DEFAULT;
+  }
+}
+
 export default function Generator({ onSave, clipboardClearSecs }: { onSave: (pw: string) => void; clipboardClearSecs: number }) {
   const { t } = useT();
   const [opts, setOpts] = useState<GeneratorOptions>(loadOpts);
+  // Random characters, or random words (easier to type and remember: master passwords).
+  const [mode, setMode] = useState<"password" | "phrase">(() => (localStorageGet("generatorMode") === "phrase" ? "phrase" : "password"));
+  const [phrase, setPhrase] = useState<Phrase>(loadPhrase);
   const [pw, setPw] = useState("");
   const [bits, setBits] = useState(0);
   const toast = useToast();
 
   const regen = (o = opts) =>
-    api.generatePassword(o).then((r) => {
+    (mode === "phrase"
+      ? api.generatePassphrase(phrase.words, phrase.separator, phrase.capitalize, phrase.digit)
+      : api.generatePassword(o)
+    ).then((r) => {
       setPw(r.password);
       setBits(r.entropy_bits);
     });
 
   useEffect(() => {
     localStorageSet("generator", JSON.stringify(opts));
+    localStorageSet("passphrase", JSON.stringify(phrase));
+    localStorageSet("generatorMode", mode);
     regen(opts).catch(() => {});
-  }, [opts]);
+  }, [opts, phrase, mode]);
 
   const update = (patch: Partial<GeneratorOptions>) => {
     const next = { ...opts, ...patch };
@@ -57,6 +76,11 @@ export default function Generator({ onSave, clipboardClearSecs }: { onSave: (pw:
         </div>
       </div>
 
+      <div className="segmented" style={{ alignSelf: "flex-start" }}>
+        <button className={mode === "password" ? "active" : ""} onClick={() => setMode("password")}>{t("generator.modePassword")}</button>
+        <button className={mode === "phrase" ? "active" : ""} onClick={() => setMode("phrase")}>{t("generator.modePhrase")}</button>
+      </div>
+
       <section className="card" style={{ padding: 0 }}>
         <div className="gen-display">
           {[...pw].map((c, i) => (
@@ -74,7 +98,7 @@ export default function Generator({ onSave, clipboardClearSecs }: { onSave: (pw:
         </div>
         <div style={{ display: "flex", gap: 10, padding: "0 24px 24px", justifyContent: "center" }}>
           <button className="btn btn-secondary" onClick={() => regen()}>
-            <RefreshCw size={18} /> {t("generator.regenerate")}
+            <Icon name="refresh" size={18} /> {t("generator.regenerate")}
           </button>
           <button
             className="btn btn-primary"
@@ -83,14 +107,42 @@ export default function Generator({ onSave, clipboardClearSecs }: { onSave: (pw:
               toast(t("common.copiedClearing", { secs: clipboardClearSecs }));
             }}
           >
-            <Copy size={18} /> {t("common.copy")}
+            <Icon name="content_copy" size={18} /> {t("common.copy")}
           </button>
           <button className="btn btn-secondary" onClick={() => onSave(pw)}>
-            <Plus size={18} /> {t("common.save")}
+            <Icon name="add" size={18} /> {t("common.save")}
           </button>
         </div>
       </section>
 
+      {mode === "phrase" ? (
+        <section className="card card-pad">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <h3>{t("generator.words")}</h3>
+            <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>{phrase.words}</span>
+          </div>
+          <input className="range" type="range" min={4} max={10} value={phrase.words} onChange={(e) => setPhrase({ ...phrase, words: Number(e.target.value) })} />
+          <div className="toggle-row">
+            <div>{t("generator.separator")}</div>
+            <div className="segmented">
+              {["-", " ", ".", "_"].map((sep) => (
+                <button key={sep} className={phrase.separator === sep ? "active" : ""} onClick={() => setPhrase({ ...phrase, separator: sep })}>
+                  <span className="mono">{sep === " " ? "␣" : sep}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="toggle-row">
+            <div>{t("generator.capitalize")}</div>
+            <Switch checked={phrase.capitalize} onChange={(b) => setPhrase({ ...phrase, capitalize: b })} />
+          </div>
+          <div className="toggle-row">
+            <div>{t("generator.addDigit")}</div>
+            <Switch checked={phrase.digit} onChange={(b) => setPhrase({ ...phrase, digit: b })} />
+          </div>
+          <p className="hint">{t("generator.phraseHint")}</p>
+        </section>
+      ) : (
       <section className="card card-pad">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <h3>{t("generator.length")}</h3>
@@ -116,6 +168,7 @@ export default function Generator({ onSave, clipboardClearSecs }: { onSave: (pw:
           ))}
         </div>
       </section>
+      )}
     </div>
   );
 }

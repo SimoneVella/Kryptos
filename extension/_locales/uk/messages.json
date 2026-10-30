@@ -1,7 +1,7 @@
 {
   "extName": { "message": "Kryptos" },
   "extDescription": { "message": "Заповнює облікові дані з вашого локального сховища Kryptos. Без сервера, без мережі." },
-  "searchPlaceholder": { "message": "Фільтр" },
+  "inlineToggle": { "message": "Пропонувати логіни під полями входу" },
   "footerText": { "message": "Офлайн · ваші дані ніколи не залишають комп'ютер" },
   "openApp": { "message": "Відкрити Kryptos" },
   "noSite": { "message": "Немає сайту" },
@@ -35,6 +35,7 @@
   "fillDeniedText": { "message": "Заповнення скасовано в Kryptos." },
   "fillTimeoutText": { "message": "Немає підтвердження протягом 3 хвилин." },
   "fillBusyText": { "message": "Інше заповнення вже очікує підтвердження в Kryptos." },
+  "saveShort": { "message": "Зберегти вхід" },
   "saveLoginButton": { "message": "Зберегти вхід з цієї сторінки" },
   "saveTitle": {
     "message": "Зберегти в Kryptos для $SITE$?",
@@ -48,5 +49,53 @@
   "savedText": { "message": "Вхід збережено в Kryptos." },
   "updatedText": { "message": "Пароль оновлено в Kryptos." },
   "unchangedText": { "message": "Цей вхід уже є в Kryptos." },
-  "saveFailedTitle": { "message": "Не вдалося зберегти" }
+  "saveFailedTitle": { "message": "Не вдалося зберегти" },
+  "tabSite": { "message": "Цей сайт" },
+  "tabSearch": { "message": "Пошук" },
+  "tabGenerate": { "message": "Створити" },
+  "qrButton": { "message": "Код 2FA з QR" },
+  "lookalikeTitle": { "message": "Обережно: це не той сайт" },
+  "lookalikeText": {
+    "message": "Схожий на $TITLE$ ($DOMAIN$), але адреса інша. Не вводьте тут пароль.",
+    "placeholders": { "title": { "content": "$1" }, "domain": { "content": "$2" } }
+  },
+  "tagReused": { "message": "Повтор" },
+  "tagWeak": { "message": "Слабкий" },
+  "tag2fa": { "message": "2FA" },
+  "qrReadingTitle": { "message": "Шукаю QR-код…" },
+  "qrReadingText": { "message": "Читаю видиму сторінку, нічого не зберігається." },
+  "qrNoneTitle": { "message": "QR-код 2FA не знайдено" },
+  "qrNoneText": {
+    "message": "Відкрийте сторінку, де сайт показує QR-код для двоетапної перевірки, переконайтеся, що його видно повністю, і повторіть."
+  },
+  "qrCaptureFailed": { "message": "Браузер не дозволив прочитати цю сторінку." },
+  "qrConfirmText": { "message": "Виберіть у Kryptos запис для коду 2FA." },
+  "qrAddedTitle": { "message": "Код 2FA додано" },
+  "qrAddedText": {
+    "message": "Збережено в $TITLE$. Тепер Kryptos заповнюватиме його на цьому сайті.",
+    "placeholders": { "title": { "content": "$1" } }
+  },
+  "qrDeniedText": { "message": "Скасовано в Kryptos: нічого не збережено." },
+  "qrInvalidText": { "message": "У цьому QR-коді немає дійсного ключа 2FA." },
+  "qrFailedTitle": { "message": "Не вдалося додати код" },
+  "searchAllPlaceholder": { "message": "Пошук у всьому сховищі" },
+  "searchAllHint": {
+    "message": "Введіть щонайменше дві літери. Результати відкриваються в Kryptos; заповнення працює лише на сайті кожного запису."
+  },
+  "searchNone": { "message": "Нічого не знайдено" },
+  "openShort": { "message": "Відкрити" },
+  "genAgain": { "message": "Інший" },
+  "genCopy": { "message": "Копіювати" },
+  "genCopied": { "message": "Скопійовано" },
+  "genInsert": { "message": "Вставити у форму" },
+  "genInsertSave": { "message": "Вставити й зберегти в Kryptos" },
+  "genLength": { "message": "Довжина" },
+  "genSymbols": { "message": "Символи (!@#…)" },
+  "genNoFieldTitle": { "message": "Немає поля для пароля" },
+  "genNoFieldText": { "message": "Спочатку відкрийте форму реєстрації або зміни пароля." },
+  "genInsertedTitle": { "message": "Пароль у формі" },
+  "genInsertedText": { "message": "Надішліть форму, потім збережіть через «Зберегти вхід»." },
+  "menuFill": { "message": "Заповнити з Kryptos" },
+  "menuGenerate": { "message": "Створити надійний пароль тут" },
+  "commandFill": { "message": "Заповнити останній вхід на цьому сайті" }
 }

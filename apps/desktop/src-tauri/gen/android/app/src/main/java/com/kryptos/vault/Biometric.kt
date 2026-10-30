@@ -49,7 +49,7 @@ object Biometric {
 
   /** Call whenever the master password has just been verified. */
   fun onMasterUnlock(ctx: Context) {
-    prefs(ctx).edit().putLong("verified_at", System.currentTimeMillis()).putInt("boot", bootCount(ctx)).apply()
+    prefs(ctx).edit().putLong("verified_at" + profile(), System.currentTimeMillis()).putInt("boot" + profile(), bootCount(ctx)).apply()
   }
 
   /** Seals the (currently unlocked) vault key under a new fingerprint-bound key. */
@@ -61,7 +61,7 @@ object Biometric {
       val sealed = c?.let { runCatching { it.doFinal(vaultKey) }.getOrNull() }
       vaultKey.fill(0)
       if (c == null || sealed == null) return@prompt done(if (c == null) error else "failed")
-      prefs(activity).edit().putString("iv", b64(c.iv)).putString("ct", b64(sealed)).apply()
+      prefs(activity).edit().putString("iv" + profile(), b64(c.iv)).putString("ct" + profile(), b64(sealed)).apply()
       done("ok")
     }
   }
@@ -98,8 +98,8 @@ object Biometric {
       else -> return done("off")
     }
     val p = prefs(activity)
-    val iv = unb64(p.getString("iv", null))
-    val sealed = unb64(p.getString("ct", null))
+    val iv = unb64(p.getString("iv" + profile(), null))
+    val sealed = unb64(p.getString("ct" + profile(), null))
     val cipher = runCatching {
       Cipher.getInstance(TRANSFORM).apply { init(Cipher.DECRYPT_MODE, loadKey(), GCMParameterSpec(128, iv)) }
     }.getOrElse { e ->
@@ -117,16 +117,16 @@ object Biometric {
   }
 
   fun disable(ctx: Context) {
-    prefs(ctx).edit().remove("iv").remove("ct").apply()
-    runCatching { keyStore().deleteEntry(KEY_ALIAS) }
+    prefs(ctx).edit().remove("iv" + profile()).remove("ct" + profile()).apply()
+    runCatching { keyStore().deleteEntry(alias()) }
   }
 
-  private fun isEnabled(ctx: Context) = prefs(ctx).contains("ct")
+  private fun isEnabled(ctx: Context) = prefs(ctx).contains("ct" + profile())
 
   private fun masterRequired(ctx: Context): Boolean {
     val p = prefs(ctx)
-    val age = System.currentTimeMillis() - p.getLong("verified_at", 0)
-    return age !in 0..MAX_AGE_MS || p.getInt("boot", -1) != bootCount(ctx)
+    val age = System.currentTimeMillis() - p.getLong("verified_at" + profile(), 0)
+    return age !in 0..MAX_AGE_MS || p.getInt("boot" + profile(), -1) != bootCount(ctx)
   }
 
   private fun bootCount(ctx: Context) = Settings.Global.getInt(ctx.contentResolver, Settings.Global.BOOT_COUNT, 0)
@@ -161,8 +161,8 @@ object Biometric {
   }
 
   private fun createKey(): SecretKey {
-    runCatching { keyStore().deleteEntry(KEY_ALIAS) }
-    val spec = KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+    runCatching { keyStore().deleteEntry(alias()) }
+    val spec = KeyGenParameterSpec.Builder(alias(), KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
       .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
       .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
       .setKeySize(256)
@@ -185,9 +185,14 @@ object Biometric {
     }
   }
 
-  private fun loadKey() = keyStore().getKey(KEY_ALIAS, null) as SecretKey
+  private fun loadKey() = keyStore().getKey(alias(), null) as SecretKey
 
   private fun keyStore() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+
+  /** Each profile has its own sealed key and its own 7-day timer. */
+  private fun profile() = KryptosBridge.profileKey()
+
+  private fun alias() = KEY_ALIAS + profile()
 
   private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 

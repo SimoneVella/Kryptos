@@ -1,7 +1,9 @@
 {
   "bundle": {
     "externalBin": [
-      "binaries/kryptos-native-host"
+      "binaries/kryptos-native-host",
+      "binaries/kryptos-mcp",
+      "binaries/kryptos"
     ],
     "macOS": {
       "minimumSystemVersion": "11.0",

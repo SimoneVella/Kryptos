@@ -24,6 +24,24 @@ pub fn host_binary() -> Result<PathBuf, String> {
     if p.exists() { Ok(p) } else { Err(format!("native host not found at {}", p.display())) }
 }
 
+/// The MCP server for AI assistants, bundled the same way (see crates/mcp-server).
+#[cfg_attr(not(all(unix, desktop)), allow(dead_code))]
+pub fn mcp_binary() -> Result<PathBuf, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let name = if cfg!(windows) { "kryptos-mcp.exe" } else { "kryptos-mcp" };
+    let p = exe.parent().ok_or("no exe dir")?.join(name);
+    if p.exists() { Ok(p) } else { Err(format!("MCP server not found at {}", p.display())) }
+}
+
+/// The command line, bundled the same way (see crates/cli).
+#[cfg_attr(not(all(unix, desktop)), allow(dead_code))]
+pub fn cli_binary() -> Result<PathBuf, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let name = if cfg!(windows) { "kryptos.exe" } else { "kryptos" };
+    let p = exe.parent().ok_or("no exe dir")?.join(name);
+    if p.exists() { Ok(p) } else { Err(format!("command line not found at {}", p.display())) }
+}
+
 #[cfg(all(unix, desktop))]
 fn targets() -> Vec<(&'static str, PathBuf, bool)> {
     let home = dirs::home_dir().unwrap_or_default();

@@ -33,7 +33,8 @@ static SEEN: Mutex<Option<i64>> = Mutex::new(None);
 #[derive(Clone, Copy, Serialize)]
 pub struct Status {
     /// "off", "ok", "waiting" (vault locked or folder missing), "other_vault"
-    /// (the folder holds a different vault: join it) or "error".
+    /// (the folder holds a different vault: join it), "team_removed" (no key for
+    /// this team any more) or "error".
     pub state: &'static str,
     /// Unix seconds of the last successful sync, 0 if none yet.
     pub last_sync: u64,
@@ -58,6 +59,13 @@ fn set_status(state: &'static str, synced: bool) {
     if synced {
         s.last_sync = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map_or(0, |d| d.as_secs());
     }
+}
+
+/// Another profile is now active: nothing known about the old folder applies.
+pub fn reset() {
+    *SEEN.lock().unwrap() = None;
+    mark_dirty();
+    *STATUS.lock().unwrap() = Status { state: "off", last_sync: 0 };
 }
 
 /// Called after every change to the local vault.
@@ -140,6 +148,7 @@ pub fn start(app: AppHandle, state: AppState) {
             }
             Ok(None) => {}
             Err(e) if e == "other_vault" => set_status("other_vault", false),
+            Err(e) if e == "team_removed" => set_status("team_removed", false),
             Err(e) if e == "locked" || e == "no_folder" => set_status("waiting", false),
             Err(_) => set_status("error", false),
         }
@@ -148,14 +157,14 @@ pub fn start(app: AppHandle, state: AppState) {
 
 /// Where the cloud copy lives: a folder on disk (desktop) or a folder the user
 /// picked with Android's system picker, reached through CloudFolder.kt.
-enum Store {
+pub enum Store {
     Fs(PathBuf),
     #[cfg(target_os = "android")]
     Saf(String),
 }
 
 impl Store {
-    fn of(folder: &str) -> Store {
+    pub fn of(folder: &str) -> Store {
         #[cfg(target_os = "android")]
         if folder.starts_with("content://") {
             return Store::Saf(folder.to_owned());
@@ -164,7 +173,7 @@ impl Store {
     }
 
     /// The folder is reachable (provider app installed, permission not revoked).
-    fn available(&self) -> bool {
+    pub fn available(&self) -> bool {
         match self {
             Store::Fs(file) => file.parent().and_then(Path::parent).is_some_and(Path::is_dir),
             #[cfg(target_os = "android")]
@@ -185,7 +194,7 @@ impl Store {
         }
     }
 
-    fn read(&self) -> Option<Vec<u8>> {
+    pub fn read(&self) -> Option<Vec<u8>> {
         match self {
             Store::Fs(file) => storage::read(file).ok(),
             #[cfg(target_os = "android")]
@@ -193,11 +202,46 @@ impl Store {
         }
     }
 
-    fn write(&self, bytes: &[u8]) -> Result<(), String> {
+    pub fn write(&self, bytes: &[u8]) -> Result<(), String> {
         match self {
             Store::Fs(file) => storage::write_replace(file, bytes).map_err(|e| e.to_string()),
             #[cfg(target_os = "android")]
             Store::Saf(tree) => crate::android::saf::write(tree, bytes).then_some(()).ok_or_else(|| "cloud_write_failed".into()),
+        }
+    }
+
+    /// A small file next to the vault copy: the team's sealed keys (team.rs).
+    pub fn read_named(&self, name: &str) -> Option<Vec<u8>> {
+        match self {
+            Store::Fs(file) => storage::read(&file.parent()?.join(name)).ok(),
+            #[cfg(target_os = "android")]
+            Store::Saf(tree) => crate::android::saf::read_named(tree, name),
+        }
+    }
+
+    pub fn write_named(&self, name: &str, bytes: &[u8]) -> Result<(), String> {
+        match self {
+            Store::Fs(file) => {
+                let dir = file.parent().ok_or("no_folder")?;
+                std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+                storage::write_replace(&dir.join(name), bytes).map_err(|e| e.to_string())
+            }
+            #[cfg(target_os = "android")]
+            Store::Saf(tree) => crate::android::saf::write_named(tree, name, bytes).then_some(()).ok_or_else(|| "cloud_write_failed".into()),
+        }
+    }
+
+    pub fn delete_named(&self, name: &str) {
+        match self {
+            Store::Fs(file) => {
+                if let Some(dir) = file.parent() {
+                    let _ = std::fs::remove_file(dir.join(name));
+                }
+            }
+            #[cfg(target_os = "android")]
+            Store::Saf(tree) => {
+                crate::android::saf::delete_named(tree, name);
+            }
         }
     }
 
@@ -257,7 +301,19 @@ pub fn sync(state: &AppState, folder: &str) -> Result<Option<kryptos_core::SyncR
 
     let mut report = kryptos_core::SyncReport::default();
     let mut merge = |bytes: &[u8]| -> Result<(), String> {
-        let r = state.sync_from(bytes)?;
+        let r = match state.sync_from(bytes) {
+            // The admin changed the team key: take ours from the folder, if there's one.
+            Err(e) if e == "team_key_outdated" => match team_key_changed(state, &store, bytes)? {
+                Some(r) => r,
+                // The admin's copy replaces an old-key one, unread: a removed
+                // member still has that key, so nothing in it can be trusted.
+                None => {
+                    mark_dirty();
+                    return Ok(());
+                }
+            },
+            other => other?,
+        };
         report.merge.added += r.merge.added;
         report.merge.updated += r.merge.updated;
         report.merge.deleted += r.merge.deleted;
@@ -278,7 +334,7 @@ pub fn sync(state: &AppState, folder: &str) -> Result<Option<kryptos_core::SyncR
 
     // Pull first, then push: the copy written below has everything from both sides.
     if DIRTY.swap(false, Ordering::Relaxed) || modified.is_none() || !conflicts.is_empty() || report.merge != MergeReport::default() {
-        let bytes = state.read(|v| Ok(v.to_bytes()))?;
+        let bytes = state.read(|v| v.to_cloud_bytes().map_err(crate::commands::code))?;
         if let Err(e) = store.write(&bytes) {
             mark_dirty();
             return Err(e);
@@ -286,6 +342,33 @@ pub fn sync(state: &AppState, folder: &str) -> Result<Option<kryptos_core::SyncR
     }
     *SEEN.lock().unwrap() = store.modified();
     Ok(Some(report))
+}
+
+/// The shared copy doesn't open with this device's team key. Takes the new key
+/// the admin left here and merges, or says what's going on. None for the admin,
+/// whose key is the newest by definition.
+fn team_key_changed(state: &AppState, store: &Store, bytes: &[u8]) -> Result<Option<kryptos_core::SyncReport>, String> {
+    if state.read(|v| Ok(v.is_admin()))? {
+        return Ok(None);
+    }
+    let me = state.read(|v| v.identity_public().ok_or_else(|| "team_removed".to_owned()))?;
+    let sealed = store.read_named(&kryptos_core::team::invite_file(&me)).ok_or("team_removed")?;
+    if state.mutate(|v| v.team_update(&sealed).map_err(crate::commands::code))? {
+        return state.sync_from(bytes).map(Some).map_err(|_| "no_folder".to_owned());
+    }
+    // Already on the admin's newest key: the new shared copy is still on its way.
+    let current = state.read(|v| Ok(v.team_peek(&sealed).ok().map(|i| i.epoch) == v.team().map(|t| t.epoch)))?;
+    Err(if current { "no_folder".into() } else { "team_removed".into() })
+}
+
+/// Writes this vault to the folder now, over whatever is there: after a new
+/// vault key, when the copy in the folder can't be merged any more.
+pub fn force_push(state: &AppState, folder: &str) -> Result<(), String> {
+    let store = Store::of(folder);
+    store.write(&state.read(|v| v.to_cloud_bytes().map_err(crate::commands::code))?)?;
+    *SEEN.lock().unwrap() = store.modified();
+    DIRTY.store(false, Ordering::Relaxed);
+    Ok(())
 }
 
 /// The folder already holds a Kryptos vault (set up from another device).
@@ -314,14 +397,17 @@ pub fn enable(state: &AppState, folder: &str, password: &str, cloud_password: Op
         return Err("no_folder".into());
     }
     let outcome = match store.read() {
+        // A team's copy opens with an invitation, never with a password.
+        Some(bytes) if kryptos_core::format::is_team_file(&bytes) && !state.read(|v| Ok(v.is_copy(&bytes)))? => return Err("cloud_team_folder".into()),
         None => {
-            store.write(&state.read(|v| Ok(v.to_bytes()))?)?;
+            store.write(&state.read(|v| v.to_cloud_bytes().map_err(crate::commands::code))?)?;
             Enabled { outcome: "created", added: 0 }
         }
-        Some(bytes) if state.read(|v| Ok(v.is_copy(&bytes)))? => {
+        Some(bytes) if state.read(|v| Ok(v.is_copy(&bytes)))? && state.read(|v| Ok(v.opens(&bytes)))? => {
             let r = state.sync_from(&bytes)?;
             Enabled { outcome: "synced", added: r.merge.added }
         }
+        // Another vault, or this one after its password changed elsewhere.
         Some(bytes) => {
             let pw = cloud_password.unwrap_or(password);
             let report = state.join_cloud(&bytes, pw).map_err(|e| match e {
@@ -360,6 +446,7 @@ mod tests {
             favorite: false,
             totp: String::new(),
             backup_codes: Vec::new(),
+            ai_access: false,
         }
     }
 
@@ -396,7 +483,7 @@ mod tests {
         assert_eq!(r.merge.added, 1);
         assert_eq!(state.read(|v| Ok(titles(v))).unwrap(), ["Here", "There"]);
         // ...and was saved to this device's own file.
-        let local = UnlockedVault::unlock(&storage::read(&state.vault_path).unwrap(), "same password").unwrap();
+        let local = UnlockedVault::unlock(&storage::read(&state.vault_path()).unwrap(), "same password").unwrap();
         assert_eq!(titles(&local), ["Here", "There"]);
 
         // A change made here reaches the folder.
@@ -441,8 +528,80 @@ mod tests {
         assert_eq!((done.outcome, done.added), ("joined", 1));
         assert_eq!(state.read(|v| Ok(titles(v))).unwrap(), ["Computer", "Phone"]);
         // This device now uses the shared vault and its password.
-        let local = storage::read(&state.vault_path).unwrap();
+        let local = storage::read(&state.vault_path()).unwrap();
         assert!(UnlockedVault::unlock(&local, "phone password").is_ok());
         assert_eq!(state.read(|v| Ok(v.vault_id())).unwrap(), shared.vault_id());
+    }
+
+    #[test]
+    fn a_team_syncs_and_a_removed_member_stops_while_the_others_follow() {
+        let _guard = SERIAL.lock().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path().join("Shared").to_string_lossy().into_owned();
+        std::fs::create_dir_all(&folder).unwrap();
+        let device = |name: &str, password: &str| {
+            let state = AppState::new(dir.path().join(name).join("vault.kryptos"), dir.path().join(name).join("settings.json"));
+            std::fs::create_dir_all(dir.path().join(name)).unwrap();
+            state.set_unlocked(UnlockedVault::create(password, KdfParams::TEST).unwrap());
+            state.mutate(|_| Ok(())).unwrap();
+            state
+        };
+        let (admin, marco, anna) = (device("admin", "admin password"), device("marco", "marco password"), device("anna", "anna password"));
+        let store = Store::of(&folder);
+        let round = |s: &AppState| {
+            *SEEN.lock().unwrap() = None;
+            mark_dirty();
+            sync(s, &folder)
+        };
+
+        admin.mutate(|v| v.team_create("Oikos", "Simone").map_err(|e| e.to_string())).unwrap();
+        admin.mutate(|v| v.add(entry("server")).map_err(|e| e.to_string())).unwrap();
+        round(&admin).unwrap();
+        for member in [&marco, &anna] {
+            let code = kryptos_core::team::member_code(&member.mutate(|v| Ok(v.ensure_identity())).unwrap());
+            let (file, sealed) = admin.mutate(|v| v.team_invite(&code, "x").map_err(|e| e.to_string())).unwrap();
+            store.write_named(&file, &sealed).unwrap();
+            let got = store.read_named(&file).unwrap();
+            member.mutate(|v| v.team_join(&got).map_err(|e| e.to_string())).unwrap();
+            round(member).unwrap();
+            assert_eq!(member.read(|v| Ok(titles(v))).unwrap(), ["server"]);
+        }
+
+        let gone = marco.read(|v| Ok(v.identity_public().unwrap())).unwrap();
+        let (files, removed) = admin.mutate(|v| v.team_remove(&gone).map_err(|e| e.to_string())).unwrap();
+        for (file, sealed) in &files {
+            store.write_named(file, sealed).unwrap();
+        }
+        store.delete_named(&removed);
+        admin.mutate(|v| v.add(entry("after removal")).map_err(|e| e.to_string())).unwrap();
+        round(&admin).unwrap();
+        let shared = storage::read(&vault_file(&folder)).unwrap();
+
+        assert_eq!(round(&marco).err().as_deref(), Some("team_removed"));
+        assert_eq!(storage::read(&vault_file(&folder)).unwrap(), shared, "a removed member must not write");
+        round(&anna).unwrap();
+        assert!(anna.read(|v| Ok(titles(v))).unwrap().contains(&"after removal".to_owned()));
+    }
+
+    #[test]
+    fn a_device_joins_again_after_a_password_change_elsewhere() {
+        let _guard = SERIAL.lock().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path().join("Drive").to_string_lossy().into_owned();
+        std::fs::create_dir_all(&folder).unwrap();
+        let state = AppState::new(dir.path().join("local/vault.kryptos"), dir.path().join("local/settings.json"));
+        let v = UnlockedVault::create("old password", KdfParams::TEST).unwrap();
+        let mut phone = UnlockedVault::unlock(&v.to_bytes(), "old password").unwrap();
+        state.set_unlocked(v);
+        state.mutate(|_| Ok(())).unwrap();
+        enable(&state, &folder, "old password", None).unwrap();
+
+        phone.change_password("new password here", KdfParams::TEST).unwrap();
+        storage::write_replace(&vault_file(&folder), &phone.to_bytes()).unwrap();
+        *SEEN.lock().unwrap() = None;
+        assert_eq!(sync(&state, &folder).err().as_deref(), Some("other_vault"));
+        assert_eq!(enable(&state, &folder, "old password", None).err().as_deref(), Some("cloud_other_password"));
+        assert_eq!(enable(&state, &folder, "old password", Some("new password here")).unwrap().outcome, "joined");
+        sync(&state, &folder).unwrap();
     }
 }

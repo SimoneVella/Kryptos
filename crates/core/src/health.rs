@@ -15,6 +15,9 @@ pub struct HealthReport {
     pub weak: Vec<Uuid>,
     pub reused: Vec<Uuid>,
     pub old: Vec<Uuid>,
+    /// Sites that offer authenticator-app 2FA where the entry has no 2FA code yet
+    /// (a suggestion: it doesn't lower the score).
+    pub no_2fa: Vec<Uuid>,
     /// 0-100: share of entries with no issue.
     pub score: u8,
 }
@@ -48,7 +51,12 @@ pub fn analyze(entries: &[Entry]) -> HealthReport {
         .filter(|e| weak.contains(&e.id) || reused.contains(&e.id) || old.contains(&e.id))
         .count();
     let score = if entries.is_empty() { 100 } else { (100 * (entries.len() - flagged) / entries.len()) as u8 };
-    HealthReport { total: entries.len(), weak, reused, old, score }
+    let no_2fa: Vec<Uuid> = entries
+        .iter()
+        .filter(|e| e.totp.trim().is_empty() && e.urls.iter().any(|u| crate::twofa::supported(u)))
+        .map(|e| e.id)
+        .collect();
+    HealthReport { total: entries.len(), weak, reused, old, no_2fa, score }
 }
 
 #[cfg(test)]
@@ -66,6 +74,8 @@ mod tests {
             favorite: false,
             totp: String::new(),
             backup_codes: Vec::new(),
+            history: Vec::new(),
+            ai_access: false,
             created_at: updated_at,
             updated_at,
         }

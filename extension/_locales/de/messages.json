@@ -1,7 +1,7 @@
 {
   "extName": { "message": "Kryptos" },
   "extDescription": { "message": "Füllt Anmeldedaten aus deinem lokalen Kryptos-Tresor aus. Kein Server, kein Netzwerk." },
-  "searchPlaceholder": { "message": "Filtern" },
+  "inlineToggle": { "message": "Logins unter Anmeldefeldern vorschlagen" },
   "footerText": { "message": "Offline · deine Daten verlassen nie den Computer" },
   "openApp": { "message": "Kryptos öffnen" },
   "noSite": { "message": "Keine Website" },
@@ -35,6 +35,7 @@
   "fillDeniedText": { "message": "Ausfüllen in Kryptos abgebrochen." },
   "fillTimeoutText": { "message": "Keine Bestätigung innerhalb von 3 Minuten." },
   "fillBusyText": { "message": "Ein anderes Ausfüllen wartet bereits auf Bestätigung in Kryptos." },
+  "saveShort": { "message": "Anmeldung speichern" },
   "saveLoginButton": { "message": "Anmeldung dieser Seite speichern" },
   "saveTitle": {
     "message": "Für $SITE$ in Kryptos speichern?",
@@ -48,5 +49,53 @@
   "savedText": { "message": "Anmeldung in Kryptos gespeichert." },
   "updatedText": { "message": "Passwort in Kryptos aktualisiert." },
   "unchangedText": { "message": "Diese Anmeldung ist bereits in Kryptos." },
-  "saveFailedTitle": { "message": "Speichern fehlgeschlagen" }
+  "saveFailedTitle": { "message": "Speichern fehlgeschlagen" },
+  "tabSite": { "message": "Diese Seite" },
+  "tabSearch": { "message": "Suchen" },
+  "tabGenerate": { "message": "Erzeugen" },
+  "qrButton": { "message": "2FA-Code aus QR" },
+  "lookalikeTitle": { "message": "Achtung: Das ist nicht die Website, die du meinst" },
+  "lookalikeText": {
+    "message": "Sie ähnelt $TITLE$ ($DOMAIN$), hat aber eine andere Adresse. Gib hier kein Passwort ein.",
+    "placeholders": { "title": { "content": "$1" }, "domain": { "content": "$2" } }
+  },
+  "tagReused": { "message": "Mehrfach genutzt" },
+  "tagWeak": { "message": "Schwach" },
+  "tag2fa": { "message": "2FA" },
+  "qrReadingTitle": { "message": "Suche den QR-Code…" },
+  "qrReadingText": { "message": "Ich lese die sichtbare Seite, nichts wird gespeichert." },
+  "qrNoneTitle": { "message": "Kein 2FA-QR-Code gefunden" },
+  "qrNoneText": {
+    "message": "Öffne die Seite, auf der die Website den QR-Code zum Einschalten der Zwei-Faktor-Authentifizierung zeigt, sorge dafür, dass er ganz sichtbar ist, und versuch es erneut."
+  },
+  "qrCaptureFailed": { "message": "Der Browser hat das Lesen dieser Seite nicht erlaubt." },
+  "qrConfirmText": { "message": "Wähle in Kryptos, welcher Eintrag den 2FA-Code bekommt." },
+  "qrAddedTitle": { "message": "2FA-Code hinzugefügt" },
+  "qrAddedText": {
+    "message": "In $TITLE$ gespeichert. Kryptos füllt ihn ab jetzt auf dieser Website aus.",
+    "placeholders": { "title": { "content": "$1" } }
+  },
+  "qrDeniedText": { "message": "In Kryptos abgebrochen: nichts wurde gespeichert." },
+  "qrInvalidText": { "message": "Dieser QR-Code enthält keinen gültigen 2FA-Schlüssel." },
+  "qrFailedTitle": { "message": "Code konnte nicht hinzugefügt werden" },
+  "searchAllPlaceholder": { "message": "Ganzen Tresor durchsuchen" },
+  "searchAllHint": {
+    "message": "Gib mindestens zwei Buchstaben ein. Ergebnisse öffnen sich in Kryptos; das Ausfüllen bleibt auf die Website jeder Anmeldung beschränkt."
+  },
+  "searchNone": { "message": "Nichts gefunden" },
+  "openShort": { "message": "Öffnen" },
+  "genAgain": { "message": "Neu" },
+  "genCopy": { "message": "Kopieren" },
+  "genCopied": { "message": "Kopiert" },
+  "genInsert": { "message": "Ins Formular einfügen" },
+  "genInsertSave": { "message": "Einfügen und in Kryptos speichern" },
+  "genLength": { "message": "Länge" },
+  "genSymbols": { "message": "Sonderzeichen (!@#…)" },
+  "genNoFieldTitle": { "message": "Kein Passwortfeld zum Ausfüllen" },
+  "genNoFieldText": { "message": "Öffne zuerst das Registrierungs- oder Passwortänderungsformular." },
+  "genInsertedTitle": { "message": "Passwort im Formular" },
+  "genInsertedText": { "message": "Sende das Formular ab und speichere es dann mit 'Anmeldung speichern'." },
+  "menuFill": { "message": "Mit Kryptos ausfüllen" },
+  "menuGenerate": { "message": "Hier ein sicheres Passwort erzeugen" },
+  "commandFill": { "message": "Zuletzt genutzte Anmeldung dieser Website ausfüllen" }
 }

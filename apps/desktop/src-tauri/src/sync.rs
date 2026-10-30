@@ -107,7 +107,7 @@ pub fn sync_qr_frames(state: State<'_, AppState>) -> CmdResult<QrFrames> {
     state.touch();
     // Only while unlocked: showing the vault is a deliberate act of the user.
     state.read(|_| Ok(()))?;
-    let bytes = storage::read(&state.vault_path).map_err(code)?;
+    let bytes = storage::read(&state.vault_path()).map_err(code)?;
     let session = &uuid::Uuid::new_v4().simple().to_string()[..8];
     let frames = frame_texts(&bytes, session).iter().map(|t| frame_svg(t)).collect::<CmdResult<Vec<_>>>()?;
     Ok(QrFrames { frames, bytes: bytes.len() })
@@ -135,7 +135,7 @@ pub async fn share_backup(app: AppHandle, state: State<'_, AppState>) -> CmdResu
     state.touch();
     #[cfg(target_os = "android")]
     {
-        let src = state.vault_path.to_string_lossy().into_owned();
+        let src = state.vault_path().to_string_lossy().into_owned();
         let name = format!("Kryptos-backup-{}.kryptos", crate::commands::today());
         tauri::async_runtime::spawn_blocking(move || crate::android::share_file(&app, src, name))
             .await

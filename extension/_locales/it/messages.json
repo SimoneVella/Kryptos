@@ -1,7 +1,7 @@
 {
   "extName": { "message": "Kryptos" },
   "extDescription": { "message": "Riempie le credenziali dal tuo vault Kryptos locale. Nessun server, nessuna rete." },
-  "searchPlaceholder": { "message": "Filtra" },
+  "inlineToggle": { "message": "Suggerisci i login sotto i campi di accesso" },
   "footerText": { "message": "Offline · i dati non lasciano il computer" },
   "openApp": { "message": "Apri Kryptos" },
   "noSite": { "message": "Nessun sito" },
@@ -35,6 +35,7 @@
   "fillDeniedText": { "message": "Compilazione annullata in Kryptos." },
   "fillTimeoutText": { "message": "Nessuna conferma entro 3 minuti." },
   "fillBusyText": { "message": "Un'altra compilazione è già in attesa di conferma in Kryptos." },
+  "saveShort": { "message": "Salva login" },
   "saveLoginButton": { "message": "Salva il login di questa pagina" },
   "saveTitle": {
     "message": "Salvare in Kryptos per $SITE$?",
@@ -48,5 +49,53 @@
   "savedText": { "message": "Login salvato in Kryptos." },
   "updatedText": { "message": "Password aggiornata in Kryptos." },
   "unchangedText": { "message": "Questo login è già in Kryptos." },
-  "saveFailedTitle": { "message": "Salvataggio non riuscito" }
+  "saveFailedTitle": { "message": "Salvataggio non riuscito" },
+  "tabSite": { "message": "Questo sito" },
+  "tabSearch": { "message": "Cerca" },
+  "tabGenerate": { "message": "Genera" },
+  "qrButton": { "message": "Codice 2FA da QR" },
+  "lookalikeTitle": { "message": "Attenzione: non è il sito che pensi" },
+  "lookalikeText": {
+    "message": "Somiglia a $TITLE$ ($DOMAIN$) ma l'indirizzo è un altro. Non inserire qui la password.",
+    "placeholders": { "title": { "content": "$1" }, "domain": { "content": "$2" } }
+  },
+  "tagReused": { "message": "Riusata" },
+  "tagWeak": { "message": "Debole" },
+  "tag2fa": { "message": "2FA" },
+  "qrReadingTitle": { "message": "Cerco il QR…" },
+  "qrReadingText": { "message": "Leggo la pagina visibile, non viene salvato nulla." },
+  "qrNoneTitle": { "message": "Nessun QR 2FA trovato" },
+  "qrNoneText": {
+    "message": "Apri la pagina in cui il sito mostra il QR per attivare la verifica in due passaggi, assicurati che sia tutto visibile e riprova."
+  },
+  "qrCaptureFailed": { "message": "Il browser non ha permesso di leggere questa pagina." },
+  "qrConfirmText": { "message": "Scegli in Kryptos a quale voce aggiungere il codice 2FA." },
+  "qrAddedTitle": { "message": "Codice 2FA aggiunto" },
+  "qrAddedText": {
+    "message": "Salvato in $TITLE$. Da ora Kryptos lo compila su questo sito.",
+    "placeholders": { "title": { "content": "$1" } }
+  },
+  "qrDeniedText": { "message": "Annullato in Kryptos: non è stato salvato nulla." },
+  "qrInvalidText": { "message": "Questo QR non contiene una chiave 2FA valida." },
+  "qrFailedTitle": { "message": "Impossibile aggiungere il codice" },
+  "searchAllPlaceholder": { "message": "Cerca in tutto il vault" },
+  "searchAllHint": {
+    "message": "Scrivi almeno due lettere. I risultati si aprono in Kryptos; la compilazione resta limitata al sito di ogni login."
+  },
+  "searchNone": { "message": "Nessun risultato" },
+  "openShort": { "message": "Apri" },
+  "genAgain": { "message": "Un'altra" },
+  "genCopy": { "message": "Copia" },
+  "genCopied": { "message": "Copiata" },
+  "genInsert": { "message": "Inserisci nel modulo" },
+  "genInsertSave": { "message": "Inserisci e salva in Kryptos" },
+  "genLength": { "message": "Lunghezza" },
+  "genSymbols": { "message": "Simboli (!@#…)" },
+  "genNoFieldTitle": { "message": "Nessun campo password da compilare" },
+  "genNoFieldText": { "message": "Apri prima il modulo di registrazione o di cambio password." },
+  "genInsertedTitle": { "message": "Password nel modulo" },
+  "genInsertedText": { "message": "Invia il modulo, poi salvala con 'Salva il login'." },
+  "menuFill": { "message": "Compila con Kryptos" },
+  "menuGenerate": { "message": "Genera una password sicura qui" },
+  "commandFill": { "message": "Compila l'ultimo login usato su questo sito" }
 }

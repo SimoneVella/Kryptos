@@ -206,3 +206,70 @@ export function ScanQrSheet({ onClose, onReceived }: { onClose: () => void; onRe
     </Sheet>
   );
 }
+
+/**
+ * Reads a site's 2FA QR code with the camera (the `otpauth://` link inside it).
+ * Used by the entry editor; nothing leaves the device.
+ */
+export function ScanOtpSheet({ onClose, onFound }: { onClose: () => void; onFound: (uri: string) => void }) {
+  const { t } = useT();
+  const video = useRef<HTMLVideoElement>(null);
+  const [error, setError] = useState("");
+  const [wrong, setWrong] = useState(false);
+  useWakeLock();
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let raf = 0;
+    let stopped = false;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+    const tick = () => {
+      if (stopped) return;
+      const v = video.current;
+      if (v && v.readyState >= v.HAVE_CURRENT_DATA && v.videoWidth) {
+        const scale = Math.min(1, 720 / v.videoWidth);
+        canvas.width = Math.round(v.videoWidth * scale);
+        canvas.height = Math.round(v.videoHeight * scale);
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
+        if (code?.data.toLowerCase().startsWith("otpauth://")) {
+          stopped = true;
+          onFound(code.data);
+          return;
+        }
+        // A QR that isn't a 2FA one (a menu, a link): say so instead of staying silent.
+        if (code) setWrong(true);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    navigator.mediaDevices
+      ?.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } }, audio: false })
+      .then((s) => {
+        if (stopped) return s.getTracks().forEach((tr) => tr.stop());
+        stream = s;
+        if (video.current) {
+          video.current.srcObject = s;
+          video.current.play().catch(() => {});
+        }
+        raf = requestAnimationFrame(tick);
+      })
+      .catch((e) => setError(e?.name === "NotFoundError" ? t("sync.noCamera") : t("sync.cameraDenied")));
+    if (!navigator.mediaDevices) setError(t("sync.noCamera"));
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(raf);
+      stream?.getTracks().forEach((tr) => tr.stop());
+    };
+  }, [onFound, t]);
+
+  return (
+    <Sheet onClose={onClose} title={t("otpScan.title")}>
+      <div className="qr-send">
+        <video ref={video} className="qr-camera" muted playsInline />
+        {error ? <p className="error">{error}</p> : <p className="muted qr-hint">{wrong ? t("otpScan.notOtp") : t("otpScan.hint")}</p>}
+      </div>
+    </Sheet>
+  );
+}

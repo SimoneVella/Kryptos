@@ -31,7 +31,6 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 use zeroize::Zeroizing;
 
-use crate::settings::Settings;
 use crate::state::AppState;
 use crate::watchdog;
 
@@ -56,6 +55,8 @@ struct PendingSave {
     username: Zeroizing<String>,
     password: Zeroizing<String>,
     at: Instant,
+    /// The profile it was accepted in: it's saved there or not at all.
+    profile: String,
 }
 static PENDING_SAVE: Mutex<Option<PendingSave>> = Mutex::new(None);
 /// A pending save is dropped if the vault is not opened within this time.
@@ -68,7 +69,8 @@ pub fn shared_state(data_dir: PathBuf) -> AppState {
     STATE
         .get_or_init(|| {
             kryptos_core::paths::set_data_dir(data_dir);
-            let state = AppState::new(kryptos_core::paths::vault_path(), Settings::path());
+            let (vault, settings) = crate::profiles::active_files();
+            let state = AppState::new(vault, settings);
             watchdog::start(state.clone(), |reason| emit("vault-locked", reason));
             state
         })
@@ -237,6 +239,31 @@ pub mod saf {
         .unwrap_or_default()
     }
 
+    pub fn read_named(tree: &str, name: &str) -> Option<Vec<u8>> {
+        with(|env, c| {
+            let (t, n) = (env.new_string(tree)?, env.new_string(name)?);
+            let obj = env.call_static_method(c, "readNamed", "(Ljava/lang/String;Ljava/lang/String;)[B", &[JValue::Object(&t), JValue::Object(&n)])?.l()?;
+            bytes(env, obj)
+        })
+        .flatten()
+    }
+
+    pub fn write_named(tree: &str, name: &str, data: &[u8]) -> bool {
+        with(|env, c| {
+            let (t, n, b) = (env.new_string(tree)?, env.new_string(name)?, env.byte_array_from_slice(data)?);
+            env.call_static_method(c, "writeNamed", "(Ljava/lang/String;Ljava/lang/String;[B)Z", &[JValue::Object(&t), JValue::Object(&n), JValue::Object(&b)])?.z()
+        })
+        .unwrap_or(false)
+    }
+
+    pub fn delete_named(tree: &str, name: &str) -> bool {
+        with(|env, c| {
+            let (t, n) = (env.new_string(tree)?, env.new_string(name)?);
+            env.call_static_method(c, "deleteNamed", "(Ljava/lang/String;Ljava/lang/String;)Z", &[JValue::Object(&t), JValue::Object(&n)])?.z()
+        })
+        .unwrap_or(false)
+    }
+
     pub fn read_doc(doc: &str) -> Option<Vec<u8>> {
         with(|env, c| {
             let obj = call(env, c, "readDoc", "(Ljava/lang/String;)[B", &[doc])?.l()?;
@@ -293,7 +320,8 @@ fn save(state: &AppState, p: &PendingSave) -> Result<&'static str, String> {
 /// and still fresh. Returns its outcome, or None.
 pub fn apply_pending_save() -> Option<&'static str> {
     let state = state()?;
-    let p = PENDING_SAVE.lock().unwrap().take().filter(|p| p.at.elapsed() < SAVE_TTL)?;
+    let active = crate::profiles::Registry::load().active;
+    let p = PENDING_SAVE.lock().unwrap().take().filter(|p| p.at.elapsed() < SAVE_TTL && p.profile == active)?;
     save(state, &p).ok()
 }
 
@@ -348,6 +376,15 @@ pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_vaultKey(env: JNIEnv
     env.byte_array_from_slice(&key).map(|a| a.into_raw()).unwrap_or(std::ptr::null_mut())
 }
 
+/// Suffix for what the fingerprint seals, so each profile keeps its own ("" for
+/// the first one, which keeps what earlier versions stored).
+#[no_mangle]
+pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_profileKey(env: JNIEnv, _class: JClass) -> jstring {
+    let active = crate::profiles::Registry::load().active;
+    let suffix = if active == crate::profiles::DEFAULT { String::new() } else { format!("_{active}") };
+    env.new_string(suffix).map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
 /// Opens the vault with a key released by the biometric prompt.
 #[no_mangle]
 pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_unlockWithKey(
@@ -357,7 +394,7 @@ pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_unlockWithKey(
 ) -> jboolean {
     let Some(s) = state() else { return JNI_FALSE };
     let Ok(key) = env.convert_byte_array(&key).map(Zeroizing::new) else { return JNI_FALSE };
-    let vault = storage::read(&s.vault_path).ok().and_then(|bytes| UnlockedVault::unlock_with_key(&bytes, &key).ok());
+    let vault = storage::read(&s.vault_path()).ok().and_then(|bytes| UnlockedVault::unlock_with_key(&bytes, &key).ok());
     match vault {
         Some(v) => {
             s.set_unlocked(v);
@@ -429,6 +466,7 @@ pub extern "system" fn Java_com_kryptos_vault_KryptosBridge_saveLogin<'a>(
         username: Zeroizing::new(username),
         password: Zeroizing::new(password),
         at: Instant::now(),
+        profile: crate::profiles::Registry::load().active,
     };
     let result = match state() {
         Some(s) if s.is_unlocked() => save(s, &p).unwrap_or("failed"),

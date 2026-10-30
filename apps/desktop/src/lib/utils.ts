@@ -19,7 +19,7 @@ export function strengthOf(bits: number): { key: "weak" | "fair" | "strong" | "e
 }
 
 
-export const emptyInput: EntryInput = { title: "", username: "", password: "", urls: [], notes: "", favorite: false, totp: "", backup_codes: [] };
+export const emptyInput: EntryInput = { title: "", username: "", password: "", urls: [], notes: "", favorite: false, totp: "", backup_codes: [], ai_access: false };
 
 export function hostOf(url?: string): string {
   if (!url) return "";

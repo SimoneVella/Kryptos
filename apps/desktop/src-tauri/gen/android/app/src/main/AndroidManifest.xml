@@ -49,6 +49,18 @@
             android:taskAffinity=""
             android:theme="@style/Theme.kryptos_transparent" />
 
+        <!-- Quick Settings tile that opens Kryptos (KryptosTileService.kt). -->
+        <service
+            android:name=".KryptosTileService"
+            android:label="Kryptos"
+            android:icon="@drawable/ic_tile"
+            android:exported="true"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".KryptosAutofillService"
             android:label="Kryptos"

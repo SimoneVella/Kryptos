@@ -20,6 +20,12 @@ pub struct Settings {
     pub fill_confirm: String,
     /// Cloud folder the vault syncs through ("" = off), see cloud.rs.
     pub cloud_folder: String,
+    /// AI assistants may request shared logins through the MCP server (ai.rs).
+    pub ai_enabled: bool,
+    /// SHA-256 of the current AI access code ("" = none); the code itself is shown once.
+    pub ai_code_hash: String,
+    /// Unix seconds after which the code stops working.
+    pub ai_code_expires: u64,
 }
 
 impl Default for Settings {
@@ -32,6 +38,9 @@ impl Default for Settings {
             language: "system".into(),
             fill_confirm: "system".into(),
             cloud_folder: String::new(),
+            ai_enabled: false,
+            ai_code_hash: String::new(),
+            ai_code_expires: 0,
         }
     }
 }

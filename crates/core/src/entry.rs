@@ -22,6 +22,12 @@ pub struct Entry {
     /// One-time recovery codes the site gave when 2FA was turned on.
     #[serde(default)]
     pub backup_codes: Vec<BackupCode>,
+    /// Earlier passwords, newest first (the last few, see vault.rs).
+    #[serde(default)]
+    pub history: Vec<PasswordChange>,
+    /// The user allowed AI assistants to request this entry (see the MCP server).
+    #[serde(default)]
+    pub ai_access: bool,
     /// Unix seconds.
     pub created_at: u64,
     pub updated_at: u64,
@@ -43,6 +49,16 @@ pub struct EntryInput {
     pub totp: String,
     #[serde(default)]
     pub backup_codes: Vec<BackupCode>,
+    #[serde(default)]
+    pub ai_access: bool,
+}
+
+/// A password an entry used before, kept so a change can be undone.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
+pub struct PasswordChange {
+    pub password: String,
+    /// Unix seconds: when it stopped being the current one.
+    pub replaced_at: u64,
 }
 
 /// A 2FA recovery code; each works once, so the user marks the ones spent.
@@ -62,6 +78,14 @@ pub struct EntrySummary {
     pub urls: Vec<String>,
     pub favorite: bool,
     pub updated_at: u64,
+    /// Has a 2FA secret (the list offers to copy its code).
+    #[serde(default)]
+    pub has_totp: bool,
+    #[serde(default)]
+    pub ai_access: bool,
+    /// Unix seconds of the last copy or fill, 0 if never (see `UnlockedVault::record_use`).
+    #[serde(default)]
+    pub last_used: u64,
 }
 
 impl From<&Entry> for EntrySummary {
@@ -73,6 +97,9 @@ impl From<&Entry> for EntrySummary {
             urls: e.urls.clone(),
             favorite: e.favorite,
             updated_at: e.updated_at,
+            has_totp: !e.totp.trim().is_empty(),
+            ai_access: e.ai_access,
+            last_used: 0,
         }
     }
 }

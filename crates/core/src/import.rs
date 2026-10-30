@@ -53,12 +53,13 @@ pub fn parse_csv(data: &[u8]) -> Result<Vec<EntryInput>> {
             // Kept only if Kryptos can use it, so one odd value doesn't skip the login.
             totp: Some(get(totp)).filter(|t| crate::totp::Totp::parse(t).is_ok()).unwrap_or_default(),
             backup_codes: Vec::new(),
+            ai_access: false,
         });
     }
     Ok(out)
 }
 
-pub(crate) fn host_of(url: &str) -> Option<String> {
+pub fn host_of(url: &str) -> Option<String> {
     let parsed = url::Url::parse(url).or_else(|_| url::Url::parse(&format!("https://{url}"))).ok()?;
     let host = parsed.host_str()?;
     Some(host.strip_prefix("www.").unwrap_or(host).to_owned())

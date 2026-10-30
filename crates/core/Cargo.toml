@@ -15,6 +15,8 @@ serde_json.workspace = true
 thiserror.workspace = true
 zeroize.workspace = true
 uuid = { version = "1", features = ["v4", "serde"] }
+x25519-dalek = { version = "2", features = ["static_secrets", "zeroize"] }
+hkdf = "0.12"
 url = "2"
 psl = "2"
 dirs = "5"
