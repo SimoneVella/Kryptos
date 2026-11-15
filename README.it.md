@@ -9,7 +9,7 @@
 <h1 align="center">Kryptos</h1>
 
 <p align="center">
-  <b>Password manager offline</b> per macOS e Android, con estensione per il browser.<br>
+  <b>Password manager offline</b> per macOS, Windows e Android, con estensione per il browser.<br>
   Nessun server, nessun account: il vault cifrato resta sui tuoi dispositivi.
 </p>
 
@@ -29,8 +29,9 @@
 > alcuni flussi sono stati provati solo in ambienti di test. Non usarlo come **unica** copia di password
 > importanti. Le vulnerabilità vanno segnalate in privato: vedi [SECURITY.md](SECURITY.md).
 
-**Piattaforme:** macOS e Android. Windows e Linux non sono ancora provati né
-supportati (per esempio, Touch ID esiste solo su macOS). iOS arriverà più avanti.
+**Piattaforme:** macOS, Windows e Android (iOS arriverà più avanti; anche Linux compila core e bridge
+senza dipendenze extra, ma non è provato end-to-end). Touch ID esiste solo su macOS e l'impronta su Android;
+su Windows sblocco e conferme usano la master password.
 
 **Crittografia:** Argon2id (256 MiB su desktop, 64 MiB su mobile) e XChaCha20-Poly1305, con una vault key
 casuale cifrata dalla master password. Algoritmi pubblici e standard: la sicurezza dipende dalla tua
@@ -125,7 +126,7 @@ cargo test -p kryptos-core
 ### Build
 
 ```bash
-cd apps/desktop && npx tauri build            # macOS .app / .dmg (include il native host)
+cd apps/desktop && npx tauri build            # macOS .app / .dmg o Windows .msi / .exe (include i sidecar)
 ```
 
 Per firmare e notarizzare la release macOS con il certificato Developer ID installato nel Portachiavi:
@@ -252,12 +253,12 @@ Per lavorare in gruppo ci sono due strade:
   le chiavi API e le password interessate. Ogni modifica è firmata: in ogni voce e `.env` vedi chi l'ha
   cambiata per ultimo, e nessuno può far passare una modifica per quella di un altro.
 
-**Una cartella condivisa su Google Drive (Mac).** Crea una cartella, avvia il team su quella e condividi con
+**Una cartella condivisa su Google Drive (Mac e Windows).** Crea una cartella, avvia il team su quella e condividi con
 ogni persona, come **Editor**, la cartella `Kryptos` che Kryptos crea al suo interno. Le cartelle «Condivisi con
-me» non compaiono sul Mac: l'altra persona aggiunge una scorciatoia nel suo Drive (dal web: tasto destro →
+me» non compaiono sul computer: l'altra persona aggiunge una scorciatoia nel suo Drive (dal web: tasto destro →
 Organizza → Aggiungi scorciatoia) e sceglie quella cartella in Kryptos, qualunque nome le dia Drive. Controlla i
 nomi dei menu sul tuo Drive: Google li cambia. Funziona anche un Drive condiviso (Google Workspace), che compare da
-solo. Windows non è ancora supportato.
+solo.
 
 ## Assistenti IA (MCP)
 

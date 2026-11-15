@@ -9,7 +9,7 @@
 <h1 align="center">Kryptos</h1>
 
 <p align="center">
-  <b>Offline password manager</b> for macOS and Android, with a browser extension.<br>
+  <b>Offline password manager</b> for macOS, Windows and Android, with a browser extension.<br>
   No servers, no accounts: your encrypted vault stays on your devices.
 </p>
 
@@ -29,8 +29,9 @@
 > flows have only been tried in test environments. Don't use it as the **only** copy of important
 > passwords. Please report vulnerabilities privately: see [SECURITY.md](SECURITY.md).
 
-**Platforms:** macOS and Android. Windows and Linux are not tested or supported yet (Touch
-ID, for example, exists only on macOS). iOS will come later.
+**Platforms:** macOS, Windows and Android (iOS later; Linux compiles the core and IPC bridge cleanly as well,
+though untested end-to-end). Touch ID unlock exists on macOS and fingerprint unlock on Android; Windows
+unlocks and confirms actions with the master password.
 
 **Cryptography:** Argon2id (256 MiB on desktop, 64 MiB on mobile) and XChaCha20-Poly1305, with a random
 vault key encrypted by the master password. Public, standard algorithms: security depends on your master
@@ -126,7 +127,7 @@ cargo test -p kryptos-core
 ### Build
 
 ```bash
-cd apps/desktop && npx tauri build            # macOS .app / .dmg (includes the native host)
+cd apps/desktop && npx tauri build            # macOS .app / .dmg or Windows .msi / .exe (includes sidecars)
 ```
 
 To code-sign and notarize the macOS release with the Developer ID certificate in the Keychain:
@@ -252,11 +253,11 @@ There are two ways to work as a group:
   passwords involved. Every change is signed, so each entry and `.env` shows who changed it last, and nobody
   can pass an edit off as someone else's.
 
-**A shared folder on Google Drive (Mac).** Make a folder, start the team on it, and share the `Kryptos` folder
-Kryptos creates inside with each person as **Editor**. Folders under "Shared with me" don't appear on the Mac:
+**A shared folder on Google Drive (Mac & Windows).** Make a folder, start the team on it, and share the `Kryptos` folder
+Kryptos creates inside with each person as **Editor**. Folders under "Shared with me" don't appear on the computer:
 the other person adds a shortcut to it in their Drive (on the web: right-click → Organize → Add shortcut) and
 picks that folder in Kryptos, whatever name Drive gives it. Check the menu names on your setup: Google changes
-them. A shared drive (Google Workspace) also works and shows up on its own. Windows isn't supported yet.
+them. A shared drive (Google Workspace) also works and shows up on its own.
 
 ## AI assistants (MCP)
 

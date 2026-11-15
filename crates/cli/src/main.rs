@@ -6,9 +6,10 @@
 //! `env run` is the safe way to work: variables only reach the command's
 //! environment, so no `.env` sits on disk to leak or be committed.
 
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
+use std::time::Duration;
 
 use kryptos_core::envs;
 use serde_json::{json, Value};
@@ -162,33 +163,20 @@ fn warn_if_tracked(path: &Path) {
     }
 }
 
-#[cfg(unix)]
 fn request(body: &Value) -> Result<Value, String> {
-    use std::os::unix::net::UnixStream;
-    use std::time::Duration;
-
-    let path = kryptos_core::paths::ipc_socket_path();
-    let mut stream = UnixStream::connect(&path).map_err(|_| explain("app_not_running"))?;
-    // Reads and writes wait for the user's answer in the app (170 s there).
-    stream.set_read_timeout(Some(Duration::from_secs(180))).map_err(|e| e.to_string())?;
     let mut msg = body.clone();
     msg["type"] = json!("env");
-    let mut line = msg.to_string();
-    line.push('\n');
-    stream.write_all(line.as_bytes()).map_err(|e| e.to_string())?;
-    let mut reply = String::new();
-    BufReader::new(stream.take(MAX_REPLY)).read_line(&mut reply).map_err(|e| e.to_string())?;
-    let reply: Value = serde_json::from_str(&reply).map_err(|_| "bad reply from Kryptos".to_owned())?;
+    // Reads and writes wait for the user's answer in the app (170 s there).
+    let raw = kryptos_core::ipc::send(&msg.to_string(), Duration::from_secs(180), MAX_REPLY).map_err(|e| match e.as_str() {
+        "app_not_running" | "untrusted_peer" | "unsupported_platform" => explain(&e),
+        _ => e,
+    })?;
+    let reply: Value = serde_json::from_str(&raw).map_err(|_| "bad reply from Kryptos".to_owned())?;
     if reply["ok"].as_bool() == Some(true) {
         Ok(reply)
     } else {
         Err(explain(reply["error"].as_str().unwrap_or("error")))
     }
-}
-
-#[cfg(not(unix))]
-fn request(_body: &Value) -> Result<Value, String> {
-    Err("not available on this system yet".into())
 }
 
 fn explain(code: &str) -> String {

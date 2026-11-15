@@ -7,7 +7,7 @@ Password manager offline e zero-knowledge. Nessun componente apre socket di rete
 ```
 ┌──────────── Browser ────────────┐        ┌──────────── App desktop (Tauri) ─────────────┐
 │ extension/popup + background.js │ stdio  │                                               │
-│  connectNative ─────────────────┼──────▶ │ kryptos-native-host ──Unix socket 0600──▶ bridge.rs
+│  connectNative ─────────────────┼──────▶ │ kryptos-native-host ─Unix socket / Named Pipe─▶ bridge.rs
 │  scripting.executeScript (fill) │        │ (relay, nessun segreto)            │          │
 └─────────────────────────────────┘        │                                    ▼          │
                                            │ React UI ──invoke──▶ commands.rs ▶ AppState   │
@@ -45,7 +45,8 @@ ogni riavvio (`kern.boottime` su macOS) e ogni 7 giorni.
   Nota: SQLCipher usa AES-256-**CBC** + HMAC-SHA512, non GCM come diceva il piano.
 - **Il native host non "parla" col browser via pipe e basta**: il browser avvia un nuovo processo
   host a ogni messaggio, e quel processo non ha accesso al vault sbloccato. Per questo l'host fa da
-  relay verso l'app tramite un **Unix domain socket** (non TCP, non raggiungibile dalla rete).
+  relay verso l'app tramite un **Unix domain socket** (`bridge.sock`, permessi `0600`) su macOS/Linux oppure
+  una **Named Pipe** locale (`\\.\pipe\kryptos-bridge-...`, `PIPE_REJECT_REMOTE_CLIENTS`) su Windows (mai TCP).
 - **Tauri non può "spegnere la rete" a livello di OS.** Quello che facciamo: nessun plugin http/shell/fs,
   la CSP permette solo `ipc:` in `connect-src`, e JS ha solo `core:default`. Gli appunti vengono gestiti
   da Rust, quindi le password copiate non passano da JS.
@@ -101,8 +102,8 @@ per https non viene mai offerta a una pagina http.
 
 | Attacco | Difesa | Verificato |
 |---|---|---|
-| Un programma si collega direttamente al socket dell'app | L'app identifica il processo collegato (`LOCAL_PEERPID`) e accetta solo il `kryptos-native-host` del proprio bundle, con firma di codice intatta e, se l'app è firmata Developer ID, dello stesso Team ID | `untrusted_peer` |
-| Un programma avvia il native host legittimo e gli scrive richieste | Il native host risponde solo se il processo che l'ha avviato è un browser con firma Apple valida di un produttore fidato (Google, Mozilla, Microsoft, Brave, The Browser Company, Vivaldi) e se il browser dichiara come chiamante l'ID della nostra estensione | `untrusted_caller` |
+| Un programma si collega direttamente al socket / alla named pipe dell'app | L'app identifica il processo collegato (`LOCAL_PEERPID` / `SO_PEERCRED` / `GetNamedPipeClientProcessId`) e accetta solo i binari inclusi nel proprio bundle (percorso esatto, più firma intatta / Team ID su macOS o Authenticode sulle build firmate su Windows) | `untrusted_peer` |
+| Un programma avvia il native host legittimo e gli scrive richieste | Il native host risponde solo se il processo che l'ha avviato è un browser fidato (Team ID Apple su macOS, Authenticode + nome eseguibile su Windows, nome eseguibile su Linux) e se il browser dichiara come chiamante l'ID della nostra estensione | `untrusted_caller` |
 | Un'altra estensione chiama il native host | `allowed_origins` nel manifest: il browser lo avvia solo per il nostro ID | — |
 | Una pagina ostile, un iframe di un altro sito o una pagina cambiata nel frattempo | La compilazione controlla `location.origin` in ogni frame. Sulle pagine `content.js` reagisce solo a un clic reale su un campo di accesso: non legge valori, e la tendina è una pagina dell'estensione in una closed shadow root | — |
 | Siti simili (`example.com.evil.io`, `alice.github.io` rispetto a `mallory.github.io`) | Corrispondenza per eTLD+1 con la Public Suffix List. Https non viene mai offerto a http | test unitari |
@@ -200,10 +201,11 @@ unisce (`crates/core/src/vault.rs`, `apps/desktop/src-tauri/src/sync.rs`).
 - **Permessi.** Android chiede la fotocamera solo quando parte la scansione; resta senza permesso INTERNET.
   macOS dichiara `NSCameraUsageDescription` e l'entitlement per la fotocamera.
 
-**Sincronizzazione con una cartella cloud** (`apps/desktop/src-tauri/src/cloud.rs`, macOS e Android).
+**Sincronizzazione con una cartella cloud** (`apps/desktop/src-tauri/src/cloud.rs`, macOS, Windows e Android).
 Kryptos continua a non collegarsi mai: tiene `<cartella cloud>/Kryptos/vault.kryptos` e il file lo sposta
-l'app del fornitore (Google Drive, iCloud Drive, Dropbox, OneDrive). Le cartelle vengono trovate in
-`~/Library/CloudStorage` e `~/Library/Mobile Documents`, quindi per attivarla basta una scelta, senza
+l'app del fornitore (Google Drive, iCloud Drive, Dropbox, OneDrive). Su macOS le cartelle vengono trovate in
+`~/Library/CloudStorage` e `~/Library/Mobile Documents`, mentre su Windows tramite le variabili OneDrive,
+`info.json` di Dropbox, iCloud Drive e le unità montate di Google Drive (`My Drive` su `G:\`..`Z:\`), quindi per attivarla basta una scelta, senza
 selezionare file.
 
 - **Un solo vault condiviso.** Tutti i dispositivi usano lo stesso vault (id, chiave, master password),
@@ -299,9 +301,9 @@ gestisce): la condivisione è pensata per credenziali di lavoro o di test, non p
 - [x] Cestino, cronologia password, recenti, pulizia intelligente, 2FA da attivare, passphrase, cambio password sul sito
 - [x] Estensione: ricerca, generatore, avviso sito imitato, scorciatoia di compilazione, menu del tasto destro
 - [x] Server MCP per gli assistenti IA (spento di default, limitato alle voci scelte, conferma a ogni richiesta)
-- [ ] Windows: named pipe per il bridge e registrazione del native host nel registro
+- [x] Windows: named pipe per il bridge (`PIPE_REJECT_REMOTE_CLIENTS` + `GetNamedPipeClientProcessId` + Authenticode) e registrazione del native host nel registro `HKCU`
 - [x] Sincronizzazione senza rete: unione di un backup o trasferimento con i QR, unione per voce con tombstone
-- [x] Sincronizzazione con cartella cloud, automatica: macOS trova Google Drive, iCloud Drive, Dropbox,
+- [x] Sincronizzazione con cartella cloud, automatica: macOS e Windows trovano Google Drive, iCloud Drive, Dropbox,
       OneDrive; Android sceglie la cartella una volta con il selettore di sistema
 - [ ] Sync LAN opzionale (abbinamento con QR e chiave effimera X25519, canale Noise). Su Android servirebbe il permesso INTERNET, quindi solo su richiesta esplicita
 

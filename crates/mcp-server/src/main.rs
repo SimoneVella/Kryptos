@@ -12,7 +12,8 @@
 //!
 //! Transport: newline-delimited JSON-RPC 2.0 on stdin/stdout (MCP stdio).
 
-use std::io::{self, BufRead, BufReader, Read, Write};
+use std::io::{self, BufRead, Write};
+use std::time::Duration;
 
 use serde_json::{json, Value};
 
@@ -138,24 +139,8 @@ fn text(is_error: bool, s: &str) -> Value {
     json!({ "content": [{ "type": "text", "text": s }], "isError": is_error })
 }
 
-#[cfg(unix)]
 fn relay(msg: &Value) -> Result<Value, String> {
-    use std::os::unix::net::UnixStream;
-    use std::time::Duration;
-
-    let path = kryptos_core::paths::ipc_socket_path();
-    let mut stream = UnixStream::connect(&path).map_err(|_| "app_not_running".to_string())?;
     // Requests for a secret wait for the user's approval in the app (170 s there).
-    stream.set_read_timeout(Some(Duration::from_secs(180))).map_err(|e| e.to_string())?;
-    let mut line = msg.to_string();
-    line.push('\n');
-    stream.write_all(line.as_bytes()).map_err(|e| e.to_string())?;
-    let mut reply = String::new();
-    BufReader::new(stream.take(MAX_LINE)).read_line(&mut reply).map_err(|e| e.to_string())?;
+    let reply = kryptos_core::ipc::send(&msg.to_string(), Duration::from_secs(180), MAX_LINE)?;
     serde_json::from_str(&reply).map_err(|_| "bad_reply".to_string())
-}
-
-#[cfg(not(unix))]
-fn relay(_msg: &Value) -> Result<Value, String> {
-    Err("unsupported_on_this_platform".into())
 }

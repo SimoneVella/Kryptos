@@ -7,7 +7,7 @@ Offline, zero-knowledge password manager. No component opens a network socket.
 ```
 ┌──────────── Browser ────────────┐        ┌──────────── Desktop app (Tauri) ─────────────┐
 │ extension/popup + background.js │ stdio  │                                               │
-│  connectNative ─────────────────┼──────▶ │ kryptos-native-host ──Unix socket 0600──▶ bridge.rs
+│  connectNative ─────────────────┼──────▶ │ kryptos-native-host ─Unix socket / Named Pipe─▶ bridge.rs
 │  scripting.executeScript (fill) │        │ (relay, no secrets)                │          │
 └─────────────────────────────────┘        │                                    ▼          │
                                            │ React UI ──invoke──▶ commands.rs ▶ AppState   │
@@ -45,7 +45,8 @@ password stays required after every reboot (`kern.boottime` on macOS) and every 
   not GCM as the original plan said.
 - **The native host doesn't just "talk" to the browser over a pipe**: the browser spawns a new host
   process for every message, and that process has no access to the unlocked vault. That's why the host
-  relays to the app over a **Unix domain socket** (not TCP, not reachable from the network).
+  relays to the app over a local **Unix domain socket** (`bridge.sock`, mode `0600`) on macOS/Linux or a
+  local-only **Named Pipe** (`\\.\pipe\kryptos-bridge-...`, `PIPE_REJECT_REMOTE_CLIENTS`) on Windows (never TCP).
 - **Tauri can't "turn off the network" at the OS level.** What we do instead: no http/shell/fs plugins,
   the CSP only allows `ipc:` in `connect-src`, and JS only has `core:default`. The clipboard is handled by
   Rust, so copied passwords never pass through JS.
@@ -98,8 +99,8 @@ for https is never offered to an http page.
 
 | Attack | Defense | Verified |
 |---|---|---|
-| A program connects directly to the app's socket | The app identifies the connecting process (`LOCAL_PEERPID`) and only accepts `kryptos-native-host` from its own bundle, with an intact code signature and, if the app is Developer ID signed, the same Team ID | `untrusted_peer` |
-| A program launches the legitimate native host and writes requests to it | The native host only replies if the process that launched it is a browser with a valid Apple signature from a trusted vendor (Google, Mozilla, Microsoft, Brave, The Browser Company, Vivaldi) and the browser declares our extension's ID as the caller | `untrusted_caller` |
+| A program connects directly to the app's socket / named pipe | The app identifies the connecting process (`LOCAL_PEERPID` / `SO_PEERCRED` / `GetNamedPipeClientProcessId`) and only accepts the bundled `kryptos-native-host` (by path, plus intact code signature / same Team ID on macOS or Authenticode on signed Windows builds) | `untrusted_peer` |
+| A program launches the legitimate native host and writes requests to it | The native host only replies if the process that launched it is a trusted browser (Apple Team ID signature on macOS, Authenticode + executable stem on Windows, executable name on Linux) and the browser declares our extension's ID as the caller | `untrusted_caller` |
 | Another extension calls the native host | `allowed_origins` in the manifest: the browser only launches it for our ID | — |
 | A malicious page, an iframe from another site, or a page that changed in the meantime | Fill checks `location.origin` in every frame. On pages, `content.js` only reacts to a trusted click on a login field: it reads no values, and the list is an extension page in a closed shadow root | — |
 | Lookalike sites (`example.com.evil.io`, `alice.github.io` vs. `mallory.github.io`) | eTLD+1 matching with the Public Suffix List. Https is never offered to http | unit tests |
@@ -198,10 +199,11 @@ Devices never connect to each other: a copy of the **encrypted vault file** is c
 - **Permissions.** Android asks for the camera only when scanning starts; it still has no INTERNET
   permission. macOS declares `NSCameraUsageDescription` and the camera entitlement.
 
-**Cloud folder sync** (`apps/desktop/src-tauri/src/cloud.rs`, macOS and Android). Kryptos still never connects:
+**Cloud folder sync** (`apps/desktop/src-tauri/src/cloud.rs`, macOS, Windows and Android). Kryptos still never connects:
 it keeps `<cloud folder>/Kryptos/vault.kryptos` and the provider's app (Google Drive, iCloud Drive,
-Dropbox, OneDrive) moves it. The folders are found under `~/Library/CloudStorage` and
-`~/Library/Mobile Documents`, so turning it on is one choice, no file picking.
+Dropbox, OneDrive) moves it. On macOS folders are found under `~/Library/CloudStorage` and
+`~/Library/Mobile Documents`, and on Windows via OneDrive env vars, Dropbox `info.json`, iCloud Drive and
+Google Drive mounts (`My Drive` on `G:\`..`Z:\`), so turning it on is one choice, no file picking.
 
 - **One shared vault.** Every device uses the same vault (id, key, master password), so the copy opens
   with the key already in memory and merges silently (`UnlockedVault::sync_from`). A device that starts
@@ -293,10 +295,9 @@ servers): sharing is meant for work or test credentials, not a bank or the main 
 - [x] Trash, password history, recent, smart cleanup, 2FA suggestions, passphrases, change-password assistant
 - [x] Extension: search, generator, look-alike warning, fill shortcut, right-click menu
 - [x] MCP server for AI assistants (off by default, scoped, confirmed per request)
-- [ ] Windows: named pipe for the bridge and native host registration in the registry
+- [x] Windows: named pipe for the bridge (`PIPE_REJECT_REMOTE_CLIENTS` + `GetNamedPipeClientProcessId` + Authenticode check) and native host registration in the `HKCU` registry
 - [x] Sync without network: merge a backup or a QR-code transfer, per-entry merge with tombstones
-- [x] Cloud folder sync, automatic: macOS finds Google Drive, iCloud Drive, Dropbox, OneDrive; Android
-      picks the folder once through the system picker
+- [x] Cloud folder sync, automatic: macOS and Windows find Google Drive, iCloud Drive, Dropbox, OneDrive; Android picks the folder once through the system picker
 - [ ] Optional LAN sync (QR pairing with an ephemeral X25519 key, Noise channel). Would need the INTERNET
   permission on Android, so only as an opt-in
 

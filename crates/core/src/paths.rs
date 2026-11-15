@@ -35,3 +35,33 @@ pub fn vault_path() -> PathBuf {
 pub fn ipc_socket_path() -> PathBuf {
     data_dir().join("bridge.sock")
 }
+
+/// Named pipe path for the local IPC bridge on Windows (`\\.\pipe\kryptos-bridge-<tag>`),
+/// derived deterministically from [`data_dir`] so each user (and each test's
+/// `KRYPTOS_DATA_DIR`) has its own isolated pipe.
+pub fn ipc_pipe_name() -> String {
+    use sha2::{Digest, Sha256};
+
+    let dir = data_dir().to_string_lossy().to_lowercase();
+    let digest = Sha256::digest(dir.as_bytes());
+    let mut hex = String::with_capacity(16);
+    for b in &digest[..8] {
+        use std::fmt::Write;
+        let _ = write!(&mut hex, "{b:02x}");
+    }
+    format!(r"\\.\pipe\kryptos-bridge-{hex}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pipe_name_is_deterministic_and_local() {
+        let a = ipc_pipe_name();
+        let b = ipc_pipe_name();
+        assert_eq!(a, b);
+        assert!(a.starts_with(r"\\.\pipe\kryptos-bridge-"));
+        assert_eq!(a.len(), r"\\.\pipe\kryptos-bridge-".len() + 16);
+    }
+}

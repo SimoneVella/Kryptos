@@ -790,6 +790,21 @@ mod cli {
     }
 }
 
+#[cfg(all(windows, desktop))]
+mod cli_win {
+    use std::path::{Path, PathBuf};
+
+    pub fn shim_path() -> Option<PathBuf> {
+        Some(dirs::data_local_dir()?.join(r"Microsoft\WindowsApps\kryptos.cmd"))
+    }
+
+    pub fn shim_body(target: &Path) -> String {
+        let s = target.to_string_lossy();
+        let clean = s.strip_prefix(r"\\?\").unwrap_or(&s);
+        format!("@echo off\r\n\"{clean}\" %*\r\n")
+    }
+}
+
 /// Whether `kryptos` is ready to use in a terminal.
 #[tauri::command]
 pub fn cli_status() -> CliStatus {
@@ -797,11 +812,18 @@ pub fn cli_status() -> CliStatus {
     if let (Some(link), Ok(target)) = (cli::link(), crate::browser::cli_binary()) {
         return CliStatus { installed: cli::linked(&link, &target), new_terminal: false };
     }
+    #[cfg(all(windows, desktop))]
+    if let (Some(shim), Ok(target)) = (cli_win::shim_path(), crate::browser::cli_binary()) {
+        let expected = cli_win::shim_body(&target);
+        return CliStatus {
+            installed: std::fs::read_to_string(&shim).is_ok_and(|s| s == expected),
+            new_terminal: false,
+        };
+    }
     CliStatus::default()
 }
 
-/// Links the bundled `kryptos` into `~/.local/bin` and adds that folder to
-/// `~/.zshrc` if it's missing. Safe to run again.
+/// Installs the bundled `kryptos` CLI onto the user's `PATH`. Safe to run again.
 #[tauri::command]
 pub fn cli_install() -> CmdResult<CliStatus> {
     #[cfg(all(unix, desktop))]
@@ -825,7 +847,16 @@ pub fn cli_install() -> CmdResult<CliStatus> {
         }
         Ok(CliStatus { installed: true, new_terminal: add })
     }
-    #[cfg(not(all(unix, desktop)))]
+    #[cfg(all(windows, desktop))]
+    {
+        let (shim, target) = (cli_win::shim_path().ok_or("no_home")?, crate::browser::cli_binary()?);
+        if let Some(dir) = shim.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(&shim, cli_win::shim_body(&target)).map_err(|e| e.to_string())?;
+        Ok(CliStatus { installed: true, new_terminal: false })
+    }
+    #[cfg(not(all(desktop, any(unix, windows))))]
     Err("unsupported_on_this_device".into())
 }
 

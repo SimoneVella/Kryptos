@@ -9,7 +9,8 @@
 //! the Kryptos extension. This stops other local programs from spawning the host
 //! and feeding it requests. The app separately verifies that its peer is this binary.
 
-use std::io::{self, BufRead, BufReader, Read, Write};
+use std::io::{self, Read, Write};
+use std::time::Duration;
 
 use serde_json::{json, Value};
 
@@ -48,7 +49,7 @@ fn caller_is_trusted() -> bool {
 
 #[cfg(target_os = "macos")]
 fn parent_is_browser() -> bool {
-    let ppid = unsafe { libc::getppid() };
+    let Some(ppid) = kryptos_core::peer::parent_pid() else { return false };
     kryptos_core::peer::satisfies(ppid, &kryptos_core::peer::trusted_browser_requirement())
 }
 
@@ -56,13 +57,25 @@ fn parent_is_browser() -> bool {
 fn parent_is_browser() -> bool {
     // No kernel-backed code signing on Linux: fall back to the executable name.
     const BROWSERS: &[&str] = &["chrome", "chromium", "brave", "msedge", "firefox", "firefox-bin", "vivaldi-bin"];
-    let ppid = unsafe { libc::getppid() };
+    let Some(ppid) = kryptos_core::peer::parent_pid() else { return false };
     kryptos_core::peer::exe_path(ppid)
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
         .is_some_and(|n| BROWSERS.contains(&n.as_str()))
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+fn parent_is_browser() -> bool {
+    const BROWSERS: &[&str] = &["chrome", "chromium", "brave", "msedge", "vivaldi", "arc", "firefox", "firefox-esr", "waterfox", "librewolf"];
+    let Some(ppid) = kryptos_core::peer::parent_pid() else { return false };
+    let Some(path) = kryptos_core::peer::exe_path(ppid) else { return false };
+    let stem_ok = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .is_some_and(|s| BROWSERS.contains(&s.to_ascii_lowercase().as_str()));
+    stem_ok && kryptos_core::peer::valid_authenticode(&path)
+}
+
+#[cfg(not(any(unix, windows)))]
 fn parent_is_browser() -> bool {
     false
 }
@@ -86,30 +99,12 @@ fn write_message(w: &mut impl Write, v: &Value) -> io::Result<()> {
     w.flush()
 }
 
-#[cfg(unix)]
 fn relay(msg: &Value) -> Result<Value, String> {
-    use std::os::unix::net::UnixStream;
-    use std::time::Duration;
-
-    let path = kryptos_core::paths::ipc_socket_path();
-    let mut stream = UnixStream::connect(&path).map_err(|_| "app_not_running".to_string())?;
     // The app answers at once, except for credentials and add_totp: those wait for
     // the user in the app window (it gives up after 170 s, see confirm.rs, otp_add.rs).
     let wait = if matches!(msg.get("type").and_then(Value::as_str), Some("credentials" | "add_totp")) { 180 } else { 10 };
-    stream.set_read_timeout(Some(Duration::from_secs(wait))).ok();
-
-    // Re-serialize: compact JSON never contains a raw newline, which frames the socket protocol.
-    let mut line = serde_json::to_vec(msg).map_err(|e| e.to_string())?;
-    line.push(b'\n');
-    stream.write_all(&line).map_err(|e| e.to_string())?;
-
-    let mut resp = String::new();
-    BufReader::new(stream.take(MAX_MSG as u64)).read_line(&mut resp).map_err(|e| e.to_string())?;
+    // Compact JSON never contains a raw newline, which frames the IPC protocol.
+    let line = serde_json::to_string(msg).map_err(|e| e.to_string())?;
+    let resp = kryptos_core::ipc::send(&line, Duration::from_secs(wait), MAX_MSG as u64)?;
     serde_json::from_str(&resp).map_err(|_| "bad reply from app".to_string())
-}
-
-#[cfg(not(unix))]
-fn relay(_msg: &Value) -> Result<Value, String> {
-    // TODO: Windows named pipe (\\.\pipe\kryptos-bridge-<user SID>).
-    Err("unsupported_platform".into())
 }

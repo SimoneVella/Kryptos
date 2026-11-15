@@ -1,13 +1,14 @@
-//! Browser bridge: a Unix domain socket served to `kryptos-native-host`.
+//! Browser bridge: a Unix domain socket (macOS/Linux) or local Named Pipe
+//! (Windows) served to `kryptos-native-host`, `kryptos-mcp`, and `kryptos`.
 //!
 //! Defences, from the outside in:
-//! 1. The socket lives in a 0700 directory and is itself 0600: only processes
-//!    of the same OS user can connect.
-//! 2. Every connection is checked: the peer must be the `kryptos-native-host`
-//!    shipped inside this app bundle (by path, with an intact code signature,
-//!    and - when the app is Developer ID signed - the same Team ID).
-//! 3. The native host itself only relays when its parent is a browser signed
-//!    by a trusted vendor and the caller is the Kryptos extension.
+//! 1. On Unix the socket lives in a 0700 directory and is itself 0600; on
+//!    Windows the pipe rejects remote clients and uses the default user DACL:
+//!    only processes of the same OS user can connect.
+//! 2. Every connection is checked: the peer must be one of our bundled
+//!    binaries (by path, and on signed builds by code signature / Authenticode).
+//! 3. The native host itself only relays when its parent is a trusted browser
+//!    and the caller is the Kryptos extension.
 //! 4. Credentials are only released for a URL that matches the entry (eTLD+1),
 //!    after the user confirms that fill in the app window (Touch ID, the Mac
 //!    password or the master password, see confirm.rs), at most
@@ -109,9 +110,12 @@ enum Peer {
 #[cfg(unix)]
 fn peer_of(stream: &std::os::unix::net::UnixStream) -> Option<Peer> {
     use std::os::fd::AsRawFd;
+    peer_for_pid(kryptos_core::peer::socket_peer_pid(stream.as_raw_fd())?)
+}
+
+fn peer_for_pid(pid: i32) -> Option<Peer> {
     use kryptos_core::peer;
 
-    let pid = peer::socket_peer_pid(stream.as_raw_fd())?;
     let exe = peer::exe_path(pid)?.canonicalize().ok()?;
     let is = |p: Result<std::path::PathBuf, String>| p.ok().and_then(|p| p.canonicalize().ok()).is_some_and(|p| p == exe);
     let who = if is(crate::browser::host_binary()) {
@@ -123,14 +127,14 @@ fn peer_of(stream: &std::os::unix::net::UnixStream) -> Option<Peer> {
     } else {
         return None;
     };
-    verified(pid).then_some(who)
+    verified(pid, &exe).then_some(who)
 }
 
-/// The binary's code signature is intact (and, for Developer ID builds, from our team).
-#[cfg(unix)]
-fn verified(pid: i32) -> bool {
+/// The binary's code signature is intact (and, for signed release builds, from us).
+fn verified(pid: i32, exe: &std::path::Path) -> bool {
     #[cfg(target_os = "macos")]
     {
+        let _ = exe;
         use kryptos_core::peer;
         if !peer::valid_signature(pid) {
             return false;
@@ -141,8 +145,15 @@ fn verified(pid: i32) -> bool {
             return peer::satisfies(pid, &format!("anchor apple generic and certificate leaf[subject.OU] = \"{team}\""));
         }
     }
-    #[cfg(not(target_os = "macos"))]
-    let _ = pid;
+    #[cfg(windows)]
+    {
+        let _ = pid;
+        if std::env::current_exe().ok().is_some_and(|me| kryptos_core::peer::valid_authenticode(&me)) {
+            return kryptos_core::peer::valid_authenticode(exe);
+        }
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
+    let _ = (pid, exe);
     true
 }
 
@@ -355,7 +366,109 @@ pub fn start(app: AppHandle) {
     });
 }
 
-#[cfg(not(unix))]
-pub fn start(_app: AppHandle) {
-    // TODO: Windows named pipe with an ACL restricted to the current user SID.
+#[cfg(windows)]
+pub fn start(app: AppHandle) {
+    use core::ffi::c_void;
+    use std::io::{BufRead, BufReader, Read, Write};
+    use std::os::windows::ffi::OsStrExt;
+    use std::os::windows::io::{AsRawHandle, FromRawHandle};
+
+    const PIPE_ACCESS_DUPLEX: u32 = 0x0000_0003;
+    const FILE_FLAG_FIRST_PIPE_INSTANCE: u32 = 0x0008_0000;
+    const PIPE_TYPE_BYTE: u32 = 0x0000_0000;
+    const PIPE_READMODE_BYTE: u32 = 0x0000_0000;
+    const PIPE_WAIT: u32 = 0x0000_0000;
+    const PIPE_REJECT_REMOTE_CLIENTS: u32 = 0x0000_0008;
+    const PIPE_UNLIMITED_INSTANCES: u32 = 255;
+    const ERROR_PIPE_CONNECTED: u32 = 535;
+    const INVALID_HANDLE: *mut c_void = (-1isize) as *mut c_void;
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn CreateNamedPipeW(
+            lpName: *const u16,
+            dwOpenMode: u32,
+            dwPipeMode: u32,
+            nMaxInstances: u32,
+            nOutBufferSize: u32,
+            nInBufferSize: u32,
+            nDefaultTimeOut: u32,
+            lpSecurityAttributes: *const c_void,
+        ) -> *mut c_void;
+        fn ConnectNamedPipe(hNamedPipe: *mut c_void, lpOverlapped: *mut c_void) -> i32;
+        fn FlushFileBuffers(hFile: *mut c_void) -> i32;
+        fn DisconnectNamedPipe(hNamedPipe: *mut c_void) -> i32;
+        fn CloseHandle(hObject: *mut c_void) -> i32;
+        fn GetLastError() -> u32;
+    }
+
+    struct PipeHandle(*mut c_void);
+    unsafe impl Send for PipeHandle {}
+
+    let pipe_name = kryptos_core::paths::ipc_pipe_name();
+    let pipe_w: Vec<u16> = std::ffi::OsStr::new(&pipe_name).encode_wide().chain(Some(0)).collect();
+
+    std::thread::spawn(move || {
+        let mut first = true;
+        loop {
+            let open_mode = PIPE_ACCESS_DUPLEX | if first { FILE_FLAG_FIRST_PIPE_INSTANCE } else { 0 };
+            let raw = unsafe {
+                CreateNamedPipeW(
+                    pipe_w.as_ptr(),
+                    open_mode,
+                    PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
+                    PIPE_UNLIMITED_INSTANCES,
+                    65_536,
+                    65_536,
+                    0,
+                    std::ptr::null(),
+                )
+            };
+            if raw == INVALID_HANDLE || raw.is_null() {
+                if first {
+                    eprintln!("bridge: CreateNamedPipeW failed ({})", unsafe { GetLastError() });
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+                continue;
+            }
+            first = false;
+
+            let connected = unsafe { ConnectNamedPipe(raw, std::ptr::null_mut()) != 0 || GetLastError() == ERROR_PIPE_CONNECTED };
+            if !connected {
+                unsafe { CloseHandle(raw) };
+                continue;
+            }
+
+            let app = app.clone();
+            let pipe_handle = PipeHandle(raw);
+            std::thread::spawn(move || {
+                let PipeHandle(raw) = pipe_handle;
+                let pipe = unsafe { std::fs::File::from_raw_handle(raw) };
+                let Some(peer) = kryptos_core::peer::pipe_client_pid(pipe.as_raw_handle()).and_then(peer_for_pid) else {
+                    let _ = (&pipe).write_all(b"{\"ok\":false,\"error\":\"untrusted_peer\"}\n");
+                    let _ = (&pipe).flush();
+                    unsafe {
+                        FlushFileBuffers(pipe.as_raw_handle());
+                        DisconnectNamedPipe(pipe.as_raw_handle());
+                    }
+                    return;
+                };
+                let mut line = String::new();
+                if BufReader::new((&pipe).take(1024 * 1024)).read_line(&mut line).is_ok() && !line.is_empty() {
+                    let mut out = serde_json::to_vec(&handle(&app, peer, line.trim_end())).unwrap_or_default();
+                    out.push(b'\n');
+                    let _ = (&pipe).write_all(&out);
+                    let _ = (&pipe).flush();
+                }
+                unsafe {
+                    FlushFileBuffers(pipe.as_raw_handle());
+                    DisconnectNamedPipe(pipe.as_raw_handle());
+                }
+            });
+        }
+    });
 }
+
+#[cfg(not(any(unix, windows)))]
+pub fn start(_app: AppHandle) {}

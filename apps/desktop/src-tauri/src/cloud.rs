@@ -96,7 +96,7 @@ fn has_member_key(dir: &Path) -> bool {
     })
 }
 
-/// Cloud folders kept in sync by their providers' apps on this Mac.
+/// Cloud folders kept in sync by their providers' apps on desktop.
 #[cfg(desktop)]
 pub fn providers() -> Vec<Provider> {
     let Some(home) = dirs::home_dir() else { return vec![] };
@@ -107,7 +107,7 @@ pub fn providers() -> Vec<Provider> {
             found.push(Provider { name: name.into(), path: path.to_string_lossy().into_owned(), has_vault });
         }
     };
-    // Google Drive, Dropbox and OneDrive mount under ~/Library/CloudStorage.
+    // Google Drive, Dropbox and OneDrive mount under ~/Library/CloudStorage on macOS.
     if let Ok(dir) = std::fs::read_dir(home.join("Library/CloudStorage")) {
         for e in dir.flatten() {
             let name = e.file_name().to_string_lossy().into_owned();
@@ -119,6 +119,36 @@ pub fn providers() -> Vec<Provider> {
                 add("Dropbox", e.path());
             } else if name.starts_with("OneDrive") {
                 add("OneDrive", e.path());
+            }
+        }
+    }
+    #[cfg(windows)]
+    {
+        for var in ["OneDriveConsumer", "OneDrive"] {
+            if let Some(p) = std::env::var_os(var) {
+                add("OneDrive", PathBuf::from(p));
+            }
+        }
+        add("OneDrive", home.join("OneDrive"));
+        for base in [dirs::data_dir(), dirs::data_local_dir()].into_iter().flatten() {
+            if let Ok(raw) = std::fs::read_to_string(base.join(r"Dropbox\info.json")) {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&raw) {
+                    for key in ["personal", "business"] {
+                        if let Some(p) = json.get(key).and_then(|v| v.get("path")).and_then(|v| v.as_str()) {
+                            add("Dropbox", PathBuf::from(p));
+                        }
+                    }
+                }
+            }
+        }
+        add("iCloud Drive", home.join("iCloudDrive"));
+        add("Google Drive", home.join("Google Drive"));
+        for letter in 'G'..='Z' {
+            let mount = PathBuf::from(format!(r"{letter}:\"));
+            if mount.join(".shortcut-targets-by-id").exists() || mount.join("My Drive").is_dir() {
+                if let Some(my_drive) = google_my_drive(&mount) {
+                    add("Google Drive", my_drive);
+                }
             }
         }
     }
@@ -594,7 +624,18 @@ mod tests {
         // Anna sees only the Kryptos folder the admin shared, under another
         // name, as Drive does with a shortcut next to her own Kryptos folder.
         let alias = dir.path().join("Kryptos (1)").to_string_lossy().into_owned();
+        #[cfg(unix)]
         std::os::unix::fs::symlink(Path::new(&folder).join(DIR), &alias).unwrap();
+        #[cfg(windows)]
+        {
+            let status = std::process::Command::new("cmd")
+                .args(["/C", "mklink", "/J"])
+                .arg(&alias)
+                .arg(Path::new(&folder).join(DIR))
+                .status()
+                .unwrap();
+            assert!(status.success());
+        }
         let path_of = |s: &AppState| if std::ptr::eq(s, &anna) { alias.clone() } else { folder.clone() };
         let round = |s: &AppState| {
             *SEEN.lock().unwrap() = None;

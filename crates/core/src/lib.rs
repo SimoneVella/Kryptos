@@ -12,6 +12,7 @@ pub mod format;
 pub mod generator;
 pub mod health;
 pub mod import;
+pub mod ipc;
 pub mod matching;
 pub mod otp_import;
 pub mod paths;

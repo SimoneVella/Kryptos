@@ -418,11 +418,11 @@ function CloudSync({ onChangeMaster, onSynced }: { onChangeMaster: () => void; o
 
 /** "Google Drive" for ~/Library/CloudStorage/GoogleDrive-…/My Drive, and so on. */
 function providerName(folder: string) {
-  if (/GoogleDrive/i.test(folder)) return "Google Drive";
-  if (/CloudDocs/i.test(folder)) return "iCloud Drive";
+  if (/GoogleDrive|Google Drive/i.test(folder)) return "Google Drive";
+  if (/CloudDocs|iCloudDrive/i.test(folder)) return "iCloud Drive";
   if (/Dropbox/i.test(folder)) return "Dropbox";
   if (/OneDrive/i.test(folder)) return "OneDrive";
-  return folder.split("/").filter(Boolean).pop() ?? folder;
+  return folder.split(/[\\/]/).filter(Boolean).pop() ?? folder;
 }
 
 /** `current`: the folder already in use, when joining the different vault found there. */
