@@ -73,8 +73,27 @@ pub fn mark_dirty() {
     DIRTY.store(true, Ordering::Relaxed);
 }
 
+/// `<folder>/Kryptos/vault.kryptos`, or `<folder>/vault.kryptos` when `folder`
+/// is itself the Kryptos folder: it holds the vault, or it has no Kryptos
+/// folder inside and holds a team member's key or is named Kryptos. That's
+/// what a folder someone shared with you looks like, under whatever name your
+/// Drive shows it (a shortcut can become "Kryptos (1)"). Same rule as CloudFolder.kt.
 pub fn vault_file(folder: &str) -> PathBuf {
-    Path::new(folder).join(DIR).join(FILE)
+    let dir = Path::new(folder);
+    let nested = dir.join(DIR);
+    if dir.join(FILE).is_file() || (!nested.is_dir() && (has_member_key(dir) || dir.file_name().is_some_and(|n| n == DIR))) {
+        return dir.join(FILE);
+    }
+    nested.join(FILE)
+}
+
+fn has_member_key(dir: &Path) -> bool {
+    std::fs::read_dir(dir).is_ok_and(|entries| {
+        entries.flatten().any(|e| {
+            let n = e.file_name().to_string_lossy().into_owned();
+            n.starts_with("member-") && n.ends_with(".key")
+        })
+    })
 }
 
 /// Cloud folders kept in sync by their providers' apps on this Mac.
@@ -175,7 +194,8 @@ impl Store {
     /// The folder is reachable (provider app installed, permission not revoked).
     pub fn available(&self) -> bool {
         match self {
-            Store::Fs(file) => file.parent().and_then(Path::parent).is_some_and(Path::is_dir),
+            // The picked folder exists (its Kryptos folder is made on first write).
+            Store::Fs(file) => file.parent().is_some_and(|d| d.is_dir() || d.parent().is_some_and(Path::is_dir)),
             #[cfg(target_os = "android")]
             Store::Saf(tree) => crate::android::saf::usable(tree),
         }
@@ -534,6 +554,29 @@ mod tests {
     }
 
     #[test]
+    fn the_kryptos_folder_itself_can_be_picked() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("My Drive");
+        let kryptos = root.join(DIR);
+        std::fs::create_dir_all(kryptos.join(DIR)).unwrap();
+        let s = |p: &Path| p.to_string_lossy().into_owned();
+        // A provider's root: its Kryptos folder.
+        assert_eq!(vault_file(&s(&root)), kryptos.join(FILE));
+        // The Kryptos folder itself, even with a stray Kryptos folder inside
+        // (as CloudFolder.kt reads it: the vault next to it wins).
+        std::fs::write(kryptos.join(FILE), b"x").unwrap();
+        assert_eq!(vault_file(&s(&kryptos)), kryptos.join(FILE));
+        // A shared team folder under another name, before the vault arrives.
+        let shared = dir.path().join("Team (1)");
+        std::fs::create_dir_all(&shared).unwrap();
+        std::fs::write(shared.join("member-abc.key"), b"x").unwrap();
+        assert_eq!(vault_file(&s(&shared)), shared.join(FILE));
+        // An empty folder for a new team: the Kryptos folder goes inside.
+        let empty = dir.path().join("Empty");
+        assert_eq!(vault_file(&s(&empty)), empty.join(DIR).join(FILE));
+    }
+
+    #[test]
     fn a_team_syncs_and_a_removed_member_stops_while_the_others_follow() {
         let _guard = SERIAL.lock().unwrap();
         let dir = tempfile::tempdir().unwrap();
@@ -548,20 +591,25 @@ mod tests {
         };
         let (admin, marco, anna) = (device("admin", "admin password"), device("marco", "marco password"), device("anna", "anna password"));
         let store = Store::of(&folder);
+        // Anna sees only the Kryptos folder the admin shared, under another
+        // name, as Drive does with a shortcut next to her own Kryptos folder.
+        let alias = dir.path().join("Kryptos (1)").to_string_lossy().into_owned();
+        std::os::unix::fs::symlink(Path::new(&folder).join(DIR), &alias).unwrap();
+        let path_of = |s: &AppState| if std::ptr::eq(s, &anna) { alias.clone() } else { folder.clone() };
         let round = |s: &AppState| {
             *SEEN.lock().unwrap() = None;
             mark_dirty();
-            sync(s, &folder)
+            sync(s, &path_of(s))
         };
 
         admin.mutate(|v| v.team_create("Oikos", "Simone").map_err(|e| e.to_string())).unwrap();
         admin.mutate(|v| v.add(entry("server")).map_err(|e| e.to_string())).unwrap();
         round(&admin).unwrap();
         for member in [&marco, &anna] {
-            let code = kryptos_core::team::member_code(&member.mutate(|v| Ok(v.ensure_identity())).unwrap());
+            let code = member.mutate(|v| Ok(v.member_code())).unwrap();
             let (file, sealed) = admin.mutate(|v| v.team_invite(&code, "x").map_err(|e| e.to_string())).unwrap();
             store.write_named(&file, &sealed).unwrap();
-            let got = store.read_named(&file).unwrap();
+            let got = Store::of(&path_of(member)).read_named(&file).unwrap();
             member.mutate(|v| v.team_join(&got).map_err(|e| e.to_string())).unwrap();
             round(member).unwrap();
             assert_eq!(member.read(|v| Ok(titles(v))).unwrap(), ["server"]);
@@ -581,6 +629,13 @@ mod tests {
         assert_eq!(storage::read(&vault_file(&folder)).unwrap(), shared, "a removed member must not write");
         round(&anna).unwrap();
         assert!(anna.read(|v| Ok(titles(v))).unwrap().contains(&"after removal".to_owned()));
+        // Her edits reach the admin, signed by her, through the same file.
+        anna.mutate(|v| v.add(entry("Anna")).map_err(|e| e.to_string())).unwrap();
+        round(&anna).unwrap();
+        round(&admin).unwrap();
+        let id = admin.read(|v| Ok(v.list().into_iter().find(|e| e.title == "Anna").unwrap().id)).unwrap();
+        assert_eq!(admin.read(|v| Ok(v.entry_author(id).unwrap().name)).unwrap(), "x");
+        assert!(!Path::new(&alias).join(DIR).exists(), "no Kryptos folder nested in the shared one");
     }
 
     #[test]

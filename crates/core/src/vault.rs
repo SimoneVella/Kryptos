@@ -7,7 +7,7 @@ use crate::entry::{now, BackupCode, Entry, EntryInput, EntrySummary, PasswordCha
 use crate::envs::{self, EnvFile, EnvSummary, EnvVersion};
 use crate::error::{Error, Result};
 use crate::format::{self, Header, WRAP_AAD};
-use crate::team::{self, Invite, Key32, Member, Team};
+use crate::team::{self, Invite, ItemSig, Key32, Member, Team};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct VaultData {
@@ -40,6 +40,15 @@ struct VaultData {
     /// Who's in the team, as the admin last wrote it.
     #[serde(default)]
     members: Vec<Member>,
+    /// The admin's signature of `members`, and its version (it only grows).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    roster_sig: Option<ItemSig>,
+    #[serde(default)]
+    roster_version: u64,
+    /// Who last changed each item of a team's shared copy ("entry:<id>"...),
+    /// kept only while the signature still matches the item.
+    #[serde(default)]
+    sigs: std::collections::HashMap<String, ItemSig>,
 }
 
 /// What goes in a team's shared copy: everyone's data, nobody's keys.
@@ -51,6 +60,29 @@ struct SharedData<'a> {
     usage: &'a std::collections::HashMap<Uuid, u64>,
     envs: &'a [EnvFile],
     members: &'a [Member],
+    roster_sig: &'a Option<ItemSig>,
+    roster_version: u64,
+    sigs: std::collections::HashMap<String, ItemSig>,
+}
+
+/// Who last changed an entry or environment of a team, as shown in the app.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Author {
+    pub name: String,
+    /// This person (also for edits not yet signed, made on this device).
+    pub me: bool,
+    /// They were removed from the team since.
+    pub removed: bool,
+}
+
+fn content<T: Serialize>(item: &T) -> Vec<u8> {
+    serde_json::to_vec(item).expect("vault serialization is infallible")
+}
+
+/// A signer and the time of what they signed are valid if they were a member
+/// then: someone removed can't sign anything dated after their removal.
+fn signer<'a>(members: &'a [Member], by: &str, at: u64) -> Option<&'a Member> {
+    members.iter().find(|m| !m.sign.is_empty() && m.sign == by && (m.removed_at == 0 || at <= m.removed_at))
 }
 
 /// How far ahead of this clock a timestamp from a merge may be. Last edit wins
@@ -163,7 +195,18 @@ impl UnlockedVault {
     pub fn to_cloud_bytes(&self) -> Result<Vec<u8>> {
         let Some(t) = &self.data.team else { return Ok(self.to_bytes()) };
         let d = &self.data;
-        let shared = SharedData { entries: &d.entries, tombstones: &d.tombstones, trash: &d.trash, usage: &d.usage, envs: &d.envs, members: &d.members };
+        let sigs = self.signed_items()?;
+        let shared = SharedData {
+            entries: &d.entries,
+            tombstones: &d.tombstones,
+            trash: &d.trash,
+            usage: &d.usage,
+            envs: &d.envs,
+            members: &d.members,
+            roster_sig: &d.roster_sig,
+            roster_version: d.roster_version,
+            sigs,
+        };
         let plain = Zeroizing::new(serde_json::to_vec(&shared).expect("vault serialization is infallible"));
         // No wrapped key: no password can open this file (format::is_team_file).
         let header = Header { vault_id: t.id, kdf: self.header.kdf, salt: crypto::random_bytes::<SALT_LEN>().to_vec(), wrap_nonce: Vec::new(), wrapped_key: Vec::new() };
@@ -183,13 +226,143 @@ impl UnlockedVault {
         }
         let plain = crypto::open(&key, parsed.nonce, parsed.body, parsed.aad).ok_or(Error::InvalidInput("team_key_outdated"))?;
         let data: VaultData = serde_json::from_slice(&plain).map_err(|_| Error::Corrupt("bad body"))?;
-        let other = Self { header: parsed.header, key, data };
-        let report = self.merge_from(&other);
-        // The list is the admin's: only they change it, the others just follow.
-        if self.identity_public().as_deref() != Some(admin.as_str()) && !other.data.members.is_empty() {
-            self.data.members = other.data.members.clone();
+        let mut other = Self { header: parsed.header, key, data };
+        if !self.signing() {
+            // A team from before signatures: the list is the admin's, the others follow.
+            let report = self.merge_from(&other);
+            if self.identity_public().as_deref() != Some(admin.as_str()) && !other.data.members.is_empty() {
+                self.data.members = other.data.members.clone();
+            }
+            return Ok(report);
         }
+        self.adopt_roster(&other.data);
+        self.drop_unsigned(&mut other.data);
+        let report = self.merge_from(&other);
+        self.adopt_sigs(&other.data.sigs);
         Ok(report)
+    }
+
+    /// Whether this team signs its changes (teams made before signatures don't).
+    fn signing(&self) -> bool {
+        self.data.team.as_ref().is_some_and(|t| !t.admin_sign.is_empty())
+    }
+
+    /// Every signable item of the shared copy: its name, its time and its content.
+    fn items(d: &VaultData) -> Vec<(String, u64, Vec<u8>)> {
+        let mut v = Vec::with_capacity(d.entries.len() + d.envs.len() + d.tombstones.len() + d.trash.len());
+        v.extend(d.entries.iter().map(|e| (format!("entry:{}", e.id), e.updated_at, content(e))));
+        v.extend(d.envs.iter().map(|e| (format!("env:{}", e.id), e.updated_at, content(e))));
+        v.extend(d.tombstones.iter().map(|t| (format!("tomb:{}", t.id), t.deleted_at, content(t))));
+        v.extend(d.trash.iter().map(|t| (format!("trash:{}", t.entry.id), t.deleted_at, content(t))));
+        v
+    }
+
+    /// Whether `sigs` holds a valid signature of this item by a member.
+    fn verified<'a>(&'a self, sigs: &std::collections::HashMap<String, ItemSig>, key: &str, at: u64, bytes: &[u8]) -> Option<&'a Member> {
+        let t = self.data.team.as_ref()?;
+        let s = sigs.get(key)?;
+        let m = signer(&self.data.members, &s.by, at)?;
+        team::verify_item(s, t.id, key, bytes).then_some(m)
+    }
+
+    /// The signatures to publish: kept where they still match, made by this
+    /// person for whatever changed here since (an item received from someone
+    /// else was checked on arrival, so a mismatch means a local edit).
+    fn signed_items(&self) -> Result<std::collections::HashMap<String, ItemSig>> {
+        let mut out = std::collections::HashMap::new();
+        let (Some(t), Some(me)) = (&self.data.team, &self.data.identity) else { return Ok(out) };
+        if !self.signing() {
+            return Ok(out);
+        }
+        for (key, at, bytes) in Self::items(&self.data) {
+            let s = match self.verified(&self.data.sigs, &key, at, &bytes) {
+                Some(_) => self.data.sigs[&key].clone(),
+                None => team::sign_item(me, t.id, &key, &bytes)?,
+            };
+            out.insert(key, s);
+        }
+        Ok(out)
+    }
+
+    /// Takes the member list from the shared copy if the pinned admin signed a
+    /// newer one. A list any member could write would let them sign as anyone.
+    fn adopt_roster(&mut self, other: &VaultData) {
+        let Some(t) = &self.data.team else { return };
+        if self.identity_public().as_deref() == Some(t.admin.as_str()) || other.roster_version <= self.data.roster_version {
+            return;
+        }
+        let Some(s) = &other.roster_sig else { return };
+        if team::verify_roster(s, &t.admin_sign, t.id, other.roster_version, &other.members) {
+            self.data.members = other.members.clone();
+            self.data.roster_version = other.roster_version;
+            self.data.roster_sig = Some(s.clone());
+        }
+    }
+
+    /// Leaves out of a shared copy what no member validly signed, and anything
+    /// dated in the future: the merge would rewrite that date, so it couldn't
+    /// keep its signature, and a forged edit must not become this person's.
+    fn drop_unsigned(&self, other: &mut VaultData) {
+        let limit = now() + MAX_SKEW;
+        let sigs = std::mem::take(&mut other.sigs);
+        let ok = |key: String, at: u64, bytes: Vec<u8>| at <= limit && self.verified(&sigs, &key, at, &bytes).is_some();
+        other.entries.retain(|e| ok(format!("entry:{}", e.id), e.updated_at, content(e)));
+        other.envs.retain(|e| ok(format!("env:{}", e.id), e.updated_at, content(e)));
+        other.tombstones.retain(|t| ok(format!("tomb:{}", t.id), t.deleted_at, content(t)));
+        other.trash.retain(|t| ok(format!("trash:{}", t.entry.id), t.deleted_at, content(t)));
+        other.sigs = sigs;
+    }
+
+    /// After a merge: keeps each received signature that matches the item now
+    /// here, and forgets those of items that changed or went away.
+    fn adopt_sigs(&mut self, theirs: &std::collections::HashMap<String, ItemSig>) {
+        let mut sigs = std::collections::HashMap::new();
+        for (key, at, bytes) in Self::items(&self.data) {
+            for source in [theirs, &self.data.sigs] {
+                if self.verified(source, &key, at, &bytes).is_some() {
+                    sigs.insert(key.clone(), source[&key].clone());
+                    break;
+                }
+            }
+        }
+        self.data.sigs = sigs;
+    }
+
+    fn author(&self, key: &str, at: u64, bytes: &[u8]) -> Option<Author> {
+        if !self.signing() {
+            return None;
+        }
+        let mine = self.data.identity.as_ref().map(team::sign_public_of);
+        Some(match self.verified(&self.data.sigs, key, at, bytes) {
+            Some(m) => Author { name: m.name.clone(), me: Some(&m.sign) == mine.as_ref(), removed: m.removed_at != 0 },
+            // Not signed yet: changed on this device since the last sync.
+            None => {
+                let me = self.data.members.iter().find(|m| Some(&m.sign) == mine.as_ref());
+                Author { name: me.map(|m| m.name.clone()).unwrap_or_default(), me: true, removed: false }
+            }
+        })
+    }
+
+    /// Who last changed this entry, in a team that signs its changes.
+    pub fn entry_author(&self, id: Uuid) -> Option<Author> {
+        let e = self.data.entries.iter().find(|e| e.id == id)?;
+        self.author(&format!("entry:{id}"), e.updated_at, &content(e))
+    }
+
+    /// Who last changed this environment, in a team that signs its changes.
+    pub fn env_author(&self, id: Uuid) -> Option<Author> {
+        let e = self.data.envs.iter().find(|e| e.id == id)?;
+        self.author(&format!("env:{id}"), e.updated_at, &content(e))
+    }
+
+    /// Admin: signs the member list after a change, at a new version.
+    fn sign_roster(&mut self) -> Result<()> {
+        let (Some(me), Some(t)) = (&self.data.identity, &self.data.team) else { return Err(Error::InvalidInput("team_not_admin")) };
+        let version = self.data.roster_version + 1;
+        let s = team::sign_roster(me, t.id, version, &self.data.members)?;
+        self.data.roster_version = version;
+        self.data.roster_sig = Some(s);
+        Ok(())
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -413,8 +586,21 @@ impl UnlockedVault {
         self.data.team.as_ref()
     }
 
-    pub fn members(&self) -> &[Member] {
-        &self.data.members
+    /// Who's in the team now (removed members stay listed only for signatures).
+    pub fn members(&self) -> Vec<&Member> {
+        self.data.members.iter().filter(|m| m.removed_at == 0).collect()
+    }
+
+    /// The code to send the admin (makes the identity on first use).
+    pub fn member_code(&mut self) -> String {
+        let public = self.ensure_identity();
+        let sign = self.data.identity.as_ref().map(team::sign_public_of).unwrap_or_default();
+        team::member_code(&public, &sign)
+    }
+
+    /// This person's signing key (hex), once they have an identity.
+    pub fn sign_public(&self) -> Option<String> {
+        self.data.identity.as_ref().map(team::sign_public_of)
     }
 
     pub fn is_admin(&self) -> bool {
@@ -429,25 +615,33 @@ impl UnlockedVault {
         }
         let name = envs::clean_name(name).ok_or(Error::InvalidInput("invalid_name"))?;
         let public = self.ensure_identity();
+        let sign = self.sign_public().unwrap_or_default();
         // What was deleted before the team isn't the team's.
         self.data.trash.clear();
-        self.data.members = vec![Member { public: public.clone(), name: me.trim().to_owned(), added_at: now() }];
-        self.data.team = Some(Team { id: Uuid::new_v4(), name, key: Key32::random(), epoch: 1, admin: public });
-        Ok(())
+        self.data.sigs.clear();
+        self.data.members = vec![Member { public: public.clone(), name: me.trim().to_owned(), added_at: now(), sign: sign.clone(), removed_at: 0 }];
+        self.data.team = Some(Team { id: Uuid::new_v4(), name, key: Key32::random(), epoch: 1, admin: public, admin_sign: sign });
+        self.data.roster_version = 0;
+        self.sign_roster()
     }
 
     /// Admin: seals the team key to a new member. Returns (file name, content).
     pub fn team_invite(&mut self, code: &str, name: &str) -> Result<(String, Vec<u8>)> {
-        let public = team::parse_code(code)?;
+        let (public, sign) = team::parse_code(code)?;
         let name = envs::clean_name(name).ok_or(Error::InvalidInput("invalid_name"))?;
         if !self.is_admin() {
             return Err(Error::InvalidInput("team_not_admin"));
         }
-        if self.data.members.iter().any(|m| m.public == public) {
+        if self.data.members.iter().any(|m| m.removed_at == 0 && (m.public == public || m.sign == sign)) {
             return Err(Error::InvalidInput("team_member_exists"));
         }
         let sealed = self.seal_for(&public)?;
-        self.data.members.push(Member { public: public.clone(), name, added_at: now() });
+        // Someone removed and invited again: a new entry, the old one keeps
+        // dating what they signed before.
+        self.data.members.push(Member { public: public.clone(), name, added_at: now(), sign, removed_at: 0 });
+        if self.signing() {
+            self.sign_roster()?;
+        }
         Ok((team::invite_file(&public), sealed))
     }
 
@@ -463,15 +657,21 @@ impl UnlockedVault {
         if !self.is_admin() {
             return Err(Error::InvalidInput("team_not_admin"));
         }
-        if self.identity_public().as_deref() == Some(public) || !self.data.members.iter().any(|m| m.public == public) {
+        if self.identity_public().as_deref() == Some(public) || !self.data.members.iter().any(|m| m.public == public && m.removed_at == 0) {
             return Err(Error::InvalidInput("not_found"));
         }
-        self.data.members.retain(|m| m.public != public);
+        if self.signing() {
+            let t = now();
+            self.data.members.iter_mut().filter(|m| m.public == public && m.removed_at == 0).for_each(|m| m.removed_at = t);
+            self.sign_roster()?;
+        } else {
+            self.data.members.retain(|m| m.public != public);
+        }
         let t = self.data.team.as_mut().ok_or(Error::InvalidInput("team_not_admin"))?;
         t.key = Key32::random();
         t.epoch += 1;
         let me = self.identity_public();
-        let others: Vec<String> = self.data.members.iter().map(|m| m.public.clone()).filter(|p| Some(p) != me.as_ref()).collect();
+        let others: Vec<String> = self.members().iter().map(|m| m.public.clone()).filter(|p| Some(p) != me.as_ref()).collect();
         let files = others.iter().map(|p| Ok((team::invite_file(p), self.seal_for(p)?))).collect::<Result<Vec<_>>>()?;
         Ok((files, team::invite_file(public)))
     }
@@ -495,7 +695,11 @@ impl UnlockedVault {
         self.data.trash.clear();
         self.data.tombstones.clear();
         self.data.usage.clear();
-        self.data.team = Some(Team { id: i.id, name: i.name, key: i.key, epoch: i.epoch, admin: i.sender });
+        self.data.sigs.clear();
+        self.data.members.clear();
+        self.data.roster_sig = None;
+        self.data.roster_version = 0;
+        self.data.team = Some(Team { id: i.id, name: i.name, key: i.key, epoch: i.epoch, admin: i.sender, admin_sign: i.sign });
         Ok(())
     }
 
@@ -504,7 +708,7 @@ impl UnlockedVault {
     pub fn team_update(&mut self, bytes: &[u8]) -> Result<bool> {
         let i = self.team_peek(bytes)?;
         let Some(t) = self.data.team.as_mut() else { return Ok(false) };
-        if i.sender != t.admin || i.id != t.id || i.epoch <= t.epoch {
+        if i.sender != t.admin || i.sign != t.admin_sign || i.id != t.id || i.epoch <= t.epoch {
             return Ok(false);
         }
         t.key = i.key;
@@ -520,6 +724,9 @@ impl UnlockedVault {
         }
         self.data.team = None;
         self.data.members.clear();
+        self.data.sigs.clear();
+        self.data.roster_sig = None;
+        self.data.roster_version = 0;
         Ok(())
     }
 
@@ -1068,7 +1275,7 @@ mod tests {
         login(&mut admin, "server");
         admin.team_create("Oikos", "Simone").unwrap();
         let mut marco = UnlockedVault::create("marco's password", KdfParams::TEST).unwrap();
-        let code = crate::team::member_code(&marco.ensure_identity());
+        let code = marco.member_code();
         let (_, sealed) = admin.team_invite(&code, "Marco").unwrap();
         marco.team_join(&sealed).unwrap();
         marco.sync_from(&admin.to_cloud_bytes().unwrap()).unwrap();
@@ -1117,7 +1324,7 @@ mod tests {
     fn a_removed_member_is_locked_out_and_the_others_follow() {
         let (mut admin, mut marco) = team_of_two();
         let mut anna = UnlockedVault::create("anna's password", KdfParams::TEST).unwrap();
-        let code = crate::team::member_code(&anna.ensure_identity());
+        let code = anna.member_code();
         let (_, sealed) = admin.team_invite(&code, "Anna").unwrap();
         anna.team_join(&sealed).unwrap();
         anna.sync_from(&admin.to_cloud_bytes().unwrap()).unwrap();
@@ -1151,9 +1358,10 @@ mod tests {
         let (admin, mut marco) = team_of_two();
         // Marco knows the current team key and forges a newer epoch for Anna.
         let mut anna = UnlockedVault::create("anna's password", KdfParams::TEST).unwrap();
-        let anna_public = anna.ensure_identity();
+        let anna_code = anna.member_code();
+        let anna_public = anna.identity_public().unwrap();
         let mut admin = admin;
-        let (_, sealed) = admin.team_invite(&crate::team::member_code(&anna_public), "Anna").unwrap();
+        let (_, sealed) = admin.team_invite(&anna_code, "Anna").unwrap();
         anna.team_join(&sealed).unwrap();
         let before = anna.team().unwrap().key.bytes().to_owned();
 
@@ -1165,7 +1373,7 @@ mod tests {
         assert_eq!(anna.team().unwrap().key.bytes(), &before);
         // An old key from the real admin doesn't apply either.
         assert!(!anna.team_update(&sealed).unwrap());
-        assert!(marco.team_invite(&crate::team::member_code(&anna_public), "x").is_err());
+        assert!(marco.team_invite(&anna_code, "x").is_err());
     }
 
     #[test]
@@ -1173,7 +1381,7 @@ mod tests {
         let (mut admin, mut marco) = team_of_two();
         let mut full = vault();
         login(&mut full, "personal");
-        let code = crate::team::member_code(&full.ensure_identity());
+        let code = full.member_code();
         let (_, sealed) = admin.team_invite(&code, "Full").unwrap();
         assert!(matches!(full.team_join(&sealed), Err(Error::InvalidInput("team_vault_not_empty"))));
         assert!(admin.team_leave().is_err());
@@ -1205,7 +1413,7 @@ mod tests {
         login(&mut marco, "marco's bank");
         let id = marco.list()[0].id;
         marco.delete(id).unwrap();
-        let code = crate::team::member_code(&marco.ensure_identity());
+        let code = marco.member_code();
         let (_, sealed) = admin.team_invite(&code, "Marco").unwrap();
         marco.team_join(&sealed).unwrap();
         assert!(marco.trash().is_empty());
@@ -1240,6 +1448,206 @@ mod tests {
         admin.sync_from(&marco.to_cloud_bytes().unwrap()).unwrap();
         assert_eq!(admin.get(id).unwrap().password, "rotated");
         assert_eq!(marco.get(id).unwrap().password, "rotated");
+    }
+
+    /// What a modified client could put in the shared folder: `v`'s shared
+    /// copy, changed by `f` after signing, sealed again with the team key.
+    fn forge(v: &UnlockedVault, f: impl FnOnce(&mut serde_json::Value)) -> Vec<u8> {
+        let key = v.team().unwrap().key.secret_key().unwrap();
+        let bytes = v.to_cloud_bytes().unwrap();
+        let parsed = format::decode(&bytes).unwrap();
+        let plain = crypto::open(&key, parsed.nonce, parsed.body, parsed.aad).unwrap();
+        let mut data: serde_json::Value = serde_json::from_slice(&plain).unwrap();
+        f(&mut data);
+        let (nonce, ct) = crypto::seal(&key, &serde_json::to_vec(&data).unwrap(), &format::encode_prefix(&parsed.header));
+        format::encode(&parsed.header, &nonce, &ct)
+    }
+
+    fn author(v: &UnlockedVault, id: Uuid) -> (String, bool, bool) {
+        let a = v.entry_author(id).unwrap();
+        (a.name, a.me, a.removed)
+    }
+
+    #[test]
+    fn everyone_sees_who_changed_an_entry() {
+        let (mut admin, mut marco) = team_of_two();
+        let id = admin.list()[0].id;
+        assert_eq!(author(&marco, id), ("Simone".into(), false, false));
+
+        let mut input = EntryInput::default();
+        input.title = "server".into();
+        input.password = "rotated by marco".into();
+        marco.update(id, input).unwrap();
+        // Not synced yet: marked as this person's own edit.
+        assert_eq!(author(&marco, id), ("Marco".into(), true, false));
+        admin.sync_from(&marco.to_cloud_bytes().unwrap()).unwrap();
+        assert_eq!(admin.get(id).unwrap().password, "rotated by marco");
+        assert_eq!(author(&admin, id), ("Marco".into(), false, false));
+        // The attribution survives a save and comes back to Marco signed.
+        let admin = UnlockedVault::unlock(&admin.to_bytes(), "correct horse").unwrap();
+        assert_eq!(author(&admin, id).0, "Marco");
+        marco.sync_from(&admin.to_cloud_bytes().unwrap()).unwrap();
+        assert_eq!(author(&marco, id), ("Marco".into(), true, false));
+    }
+
+    #[test]
+    fn every_kind_of_change_reaches_the_others_signed() {
+        let (mut admin, mut marco) = team_of_two();
+        let server = admin.list()[0].id;
+        login(&mut marco, "new login");
+        let new = marco.list().iter().find(|e| e.title == "new login").unwrap().id;
+        marco.rename(server, "server renamed").unwrap();
+        marco.set_backup_code_used(server, 0, true).ok();
+        marco.set_totp(new, "JBSWY3DPEHPK3PXP").unwrap();
+        let env = marco.env_put("api", "dev", "A=1").unwrap();
+        marco.env_update(env, "A=2").unwrap();
+        marco.env_set_ai(env, true).unwrap();
+        let gone = marco.env_put("api", "old", "B=1").unwrap();
+        marco.env_delete(gone).unwrap();
+        login(&mut marco, "to delete");
+        let del = marco.list().iter().find(|e| e.title == "to delete").unwrap().id;
+        marco.delete(del).unwrap();
+        marco.save_login("https://saved.test", "saved", "me", "pw").unwrap();
+
+        admin.sync_from(&marco.to_cloud_bytes().unwrap()).unwrap();
+        let titles: Vec<String> = admin.list().iter().map(|e| e.title.clone()).collect();
+        assert!(titles.contains(&"server renamed".to_string()) && titles.contains(&"new login".to_string()) && titles.contains(&"saved".to_string()));
+        assert!(!titles.contains(&"to delete".to_string()));
+        assert!(admin.trash().iter().any(|t| t.entry.id == del));
+        assert_eq!(admin.env(env).unwrap().content, "A=2");
+        assert!(admin.env(gone).unwrap().deleted_at != 0);
+        for e in admin.list() {
+            let expected = if e.title == "server renamed" || e.title == "new login" || e.title == "saved" { "Marco" } else { "Simone" };
+            assert_eq!(author(&admin, e.id).0, expected, "{}", e.title);
+        }
+        assert_eq!(admin.env_author(env).unwrap().name, "Marco");
+        // What arrived kept its signatures: nothing was re-signed as the admin's.
+        for key in [format!("entry:{new}"), format!("env:{env}"), format!("tomb:{del}"), format!("trash:{del}")] {
+            assert_eq!(admin.data.sigs[&key].by, marco.sign_public().unwrap(), "{key}");
+        }
+        let signed = admin.signed_items().unwrap();
+        for (key, at, bytes) in UnlockedVault::items(&admin.data) {
+            assert!(admin.verified(&signed, &key, at, &bytes).is_some(), "{key}");
+        }
+    }
+
+    #[test]
+    fn a_member_cannot_pass_an_edit_off_as_someone_elses() {
+        let (mut admin, mut marco) = team_of_two();
+        let id = admin.list()[0].id;
+        let admin_sign = admin.sign_public().unwrap();
+
+        // Marco changes the password and claims the admin signed it.
+        let mut input = EntryInput::default();
+        input.title = "server".into();
+        input.password = "phished".into();
+        marco.update(id, input).unwrap();
+        let forged = forge(&marco, |d| {
+            d["sigs"][format!("entry:{id}")]["by"] = admin_sign.clone().into();
+        });
+        let r = admin.sync_from(&forged).unwrap();
+        assert_eq!(r.merge.updated, 0);
+        assert_eq!(admin.get(id).unwrap().password, "server");
+
+        // Or changes content and keeps the admin's signature on it.
+        let tampered = forge(&admin, |d| {
+            d["entries"][0]["password"] = "phished".into();
+            d["entries"][0]["updated_at"] = (now() + 10).into();
+        });
+        assert_eq!(admin.sync_from(&tampered).unwrap().merge.updated, 0);
+        assert_eq!(admin.get(id).unwrap().password, "server");
+
+        // An unsigned deletion doesn't delete anything.
+        let deletion = forge(&marco, |d| {
+            d["tombstones"] = serde_json::json!([{ "id": id, "deleted_at": now() + 10 }]);
+        });
+        admin.sync_from(&deletion).unwrap();
+        assert!(admin.get(id).is_ok());
+    }
+
+    #[test]
+    fn a_member_list_not_signed_by_the_admin_is_ignored() {
+        let (mut admin, mut marco) = team_of_two();
+        let mut anna = UnlockedVault::create("anna's password", KdfParams::TEST).unwrap();
+        let (_, sealed) = admin.team_invite(&anna.member_code(), "Anna").unwrap();
+        anna.team_join(&sealed).unwrap();
+        anna.sync_from(&admin.to_cloud_bytes().unwrap()).unwrap();
+        marco.sync_from(&admin.to_cloud_bytes().unwrap()).unwrap();
+
+        // Marco makes up "Luca", with a key of his own, and signs as Luca.
+        let mut luca = UnlockedVault::create("luca's password", KdfParams::TEST).unwrap();
+        let luca_code = luca.member_code();
+        let (lp, ls) = crate::team::parse_code(&luca_code).unwrap();
+        login(&mut marco, "planted");
+        let planted = marco.list().iter().find(|e| e.title == "planted").unwrap().id;
+        let team_id = marco.team().unwrap().id;
+        let luca_identity = luca.data.identity.clone().unwrap();
+        let forged = forge(&marco, |d| {
+            let members = d["members"].as_array_mut().unwrap();
+            members.push(serde_json::json!({ "public": lp, "name": "Luca", "added_at": now(), "sign": ls, "removed_at": 0 }));
+            d["roster_version"] = 99.into();
+            let entry = d["entries"].as_array().unwrap().iter().find(|e| e["id"] == planted.to_string()).unwrap().clone();
+            let e: Entry = serde_json::from_value(entry).unwrap();
+            let s = crate::team::sign_item(&luca_identity, team_id, &format!("entry:{planted}"), &content(&e)).unwrap();
+            d["sigs"][format!("entry:{planted}")] = serde_json::to_value(s).unwrap();
+        });
+        anna.sync_from(&forged).unwrap();
+        assert_eq!(anna.members().len(), 3, "no Luca");
+        assert!(anna.get(planted).is_err(), "an edit signed by a non-member is refused");
+        drop(luca);
+    }
+
+    #[test]
+    fn a_removed_members_past_edits_still_show_their_name() {
+        let (mut admin, mut marco) = team_of_two();
+        login(&mut marco, "by marco");
+        admin.sync_from(&marco.to_cloud_bytes().unwrap()).unwrap();
+        let id = admin.list().iter().find(|e| e.title == "by marco").unwrap().id;
+        admin.team_remove(&marco.identity_public().unwrap()).unwrap();
+        assert_eq!(author(&admin, id), ("Marco".into(), false, true));
+        assert_eq!(admin.members().len(), 1);
+
+        // Someone who joins later sees it too.
+        let mut anna = UnlockedVault::create("anna's password", KdfParams::TEST).unwrap();
+        let (_, sealed) = admin.team_invite(&anna.member_code(), "Anna").unwrap();
+        anna.team_join(&sealed).unwrap();
+        anna.sync_from(&admin.to_cloud_bytes().unwrap()).unwrap();
+        assert_eq!(author(&anna, id), ("Marco".into(), false, true));
+    }
+
+    #[test]
+    fn a_team_from_before_signatures_still_invites_and_changes_keys() {
+        let mut admin = vault();
+        login(&mut admin, "server");
+        admin.team_create("Oikos", "Simone").unwrap();
+        // As written by a version before signatures.
+        admin.data.team.as_mut().unwrap().admin_sign.clear();
+        let mut marco = UnlockedVault::create("marco's password", KdfParams::TEST).unwrap();
+        let (_, sealed) = admin.team_invite(&marco.member_code(), "Marco").unwrap();
+        marco.team_join(&sealed).unwrap();
+        marco.sync_from(&admin.to_cloud_bytes().unwrap()).unwrap();
+        assert_eq!(marco.list()[0].title, "server");
+        assert!(marco.entry_author(marco.list()[0].id).is_none());
+
+        let mut anna = UnlockedVault::create("anna's password", KdfParams::TEST).unwrap();
+        let (_, sealed) = admin.team_invite(&anna.member_code(), "Anna").unwrap();
+        anna.team_join(&sealed).unwrap();
+        let (files, _) = admin.team_remove(&marco.identity_public().unwrap()).unwrap();
+        assert!(anna.team_update(&files[0].1).unwrap(), "the remaining member takes the new key");
+        anna.sync_from(&admin.to_cloud_bytes().unwrap()).unwrap();
+        assert_eq!(anna.list()[0].title, "server");
+    }
+
+    #[test]
+    fn a_team_from_before_signatures_keeps_working_unsigned() {
+        let (mut admin, mut marco) = team_of_two();
+        for v in [&mut admin, &mut marco] {
+            v.data.team.as_mut().unwrap().admin_sign.clear();
+        }
+        login(&mut marco, "old style");
+        admin.sync_from(&marco.to_cloud_bytes().unwrap()).unwrap();
+        let id = admin.list().iter().find(|e| e.title == "old style").unwrap().id;
+        assert!(admin.entry_author(id).is_none());
     }
 
     #[test]

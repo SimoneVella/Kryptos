@@ -49,12 +49,17 @@ pub fn handle(app: &AppHandle, state: &AppState, op: &str, project: &str, env: &
             Ok(json!({ "ok": true, "environments": list }))
         }),
         "get" => {
+            let session = state.session();
             let (id, title, production) = state.read(|v| {
                 let e = v.env_named(project, env).ok_or("env_not_found")?;
                 Ok((e.id, format!("{} · {}", e.project, e.name), envs::is_production(&e.name)))
             })?;
             if production || !recently_confirmed(state, id) {
-                confirm(app, state, &title, "read")?;
+                let answer = confirm(app, state, &title, "read");
+                if state.session() != session {
+                    return Err("locked".into());
+                }
+                answer?;
                 if !production {
                     remember(state, id);
                 }
@@ -74,8 +79,13 @@ pub fn handle(app: &AppHandle, state: &AppState, op: &str, project: &str, env: &
             let project = envs::clean_name(project).ok_or("invalid_name")?;
             let env = envs::clean_name(env).ok_or("invalid_name")?;
             let title = format!("{project} · {env}");
+            let session = state.session();
             state.read(|_| Ok(()))?;
-            confirm(app, state, &title, "write")?;
+            let answer = confirm(app, state, &title, "write");
+            if state.session() != session {
+                return Err("locked".into());
+            }
+            answer?;
             state.mutate(|v| v.env_put(&project, &env, content).map_err(crate::commands::code))?;
             let _ = app.emit("env-used", json!({ "title": title, "op": "write" }));
             Ok(json!({ "ok": true }))

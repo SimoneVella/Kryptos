@@ -96,7 +96,7 @@ for https is never offered to an http page.
 | Attack | Defense | Verified |
 |---|---|---|
 | A program connects directly to the app's socket | The app identifies the connecting process (`LOCAL_PEERPID`) and only accepts `kryptos-native-host` from its own bundle, with an intact code signature and, if the app is Developer ID signed, the same Team ID | `untrusted_peer` |
-| A program launches the legitimate native host and writes requests to it | The native host only replies if the process that launched it is a browser with a valid Apple signature from a trusted vendor (Google, Mozilla, Microsoft, Brave) and the browser declares our extension's ID as the caller | `untrusted_caller` |
+| A program launches the legitimate native host and writes requests to it | The native host only replies if the process that launched it is a browser with a valid Apple signature from a trusted vendor (Google, Mozilla, Microsoft, Brave, The Browser Company, Vivaldi) and the browser declares our extension's ID as the caller | `untrusted_caller` |
 | Another extension calls the native host | `allowed_origins` in the manifest: the browser only launches it for our ID | — |
 | A malicious page, an iframe from another site, or a page that changed in the meantime | Fill checks `location.origin` in every frame. On pages, `content.js` only reacts to a trusted click on a login field: it reads no values, and the list is an extension page in a closed shadow root | — |
 | Lookalike sites (`example.com.evil.io`, `alice.github.io` vs. `mallory.github.io`) | eTLD+1 matching with the Public Suffix List. Https is never offered to http | unit tests |
@@ -113,7 +113,7 @@ for https is never offered to an http page.
   content on subdomains of the same domain is a residual risk, mitigated by the domain always being shown
   in the popup before filling.
 - On Linux, browser verification relies on the executable name, since there's no code signing there.
-- Additional browsers (Arc, Vivaldi…) need to be added to `TRUSTED_BROWSER_TEAMS` in
+- Additional browsers need to be added to `TRUSTED_BROWSER_TEAMS` in
   `crates/core/src/peer.rs` after reading their Team ID with `codesign -dv`.
 
 ## Mobile (Tauri 2)
@@ -340,8 +340,26 @@ HKDF-SHA256, XChaCha20-Poly1305) in `member-<hash>.key` next to the shared copy,
 Removing someone makes a new team key, sealed to those who stay. Key updates count only if sealed by the
 pinned admin, so a removed member can't push a key. A member's password and fingerprint unlock don't depend
 on the team key. An old-key copy found in the folder is never merged: the admin overwrites it and the others
-wait for the new one. So edits another member made during a key change can be lost, and the member list can
-be altered by any current member (it's for display: key updates depend only on the pinned admin).
+wait for the new one. So edits another member made during a key change can be lost.
+
+### Signatures
+
+Each identity also derives an Ed25519 key (HKDF-SHA256 from the X25519 secret, so nothing new is stored). The
+member code carries both public keys and the safety code hashes both, so swapping either one shows. The admin's
+signing key travels inside the sealed invitation and is pinned next to the admin, and key updates must carry it.
+
+The admin signs the member list, at a version that only grows; the others take a list only with that signature.
+Removed members stay in it, marked with the time of removal. Every entry, environment, deletion and trash item in
+the shared copy carries the signature of whoever changed it last (team id, item name, time and content). Before
+merging, a device drops whatever no current or then-current member signed, or that is dated more than a day
+ahead: a member can't pass an edit off as someone else's, nor delete anonymously. The app shows who changed each
+entry and environment. On export, an item whose signature no longer matches was changed on this device (what
+arrives is checked first), so it is signed by this person.
+
+Members can still write anything: what changes is that it's always known who did. Teams made before signatures
+(no admin signing key) keep syncing unsigned, without names; to get them, make a new team. An item serialized
+differently by another version of Kryptos doesn't verify and is left out, so every member should run the same
+version.
 
 There's one admin, who can't leave or be replaced. What someone already read can't be taken back: secrets they
 saw must be changed.

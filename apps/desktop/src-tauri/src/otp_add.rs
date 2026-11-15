@@ -53,6 +53,13 @@ pub fn answer(id: u64, choice: Option<String>) {
     }
 }
 
+/// Cancels any waiting request (e.g. when the vault locks or switches profile).
+pub fn cancel() {
+    if let Some(p) = PENDING.lock().unwrap().take() {
+        let _ = p.tx.send(None);
+    }
+}
+
 /// Asks in the app window where the 2FA code `uri` read on page `url` goes, and
 /// stores it there. Returns the entry's title.
 pub fn add(app: &AppHandle, state: &AppState, url: &str, uri: &str) -> Result<String, String> {
@@ -63,6 +70,7 @@ pub fn add(app: &AppHandle, state: &AppState, url: &str, uri: &str) -> Result<St
         return Err("bad_url".into());
     }
     let host = page.host_str().unwrap_or_default().trim_start_matches("www.").to_owned();
+    let session = state.session();
     let candidates = state.read(|v| {
         Ok(v.entries()
             .iter()
@@ -97,6 +105,9 @@ pub fn add(app: &AppHandle, state: &AppState, url: &str, uri: &str) -> Result<St
         let _ = app.hide();
     }
 
+    if state.session() != session {
+        return Err("locked".into());
+    }
     let choice = match choice {
         Ok(Some(c)) => c,
         Ok(None) => return Err("denied".into()),

@@ -121,6 +121,8 @@ pub const TRUSTED_BROWSER_TEAMS: &[(&str, &str)] = &[
     ("Firefox", "43AQ936H96"),
     ("Microsoft Edge", "UBF8T346G9"),
     ("Brave", "KL8N8XSYF4"),
+    ("Arc", "S6N382Y83G"),
+    ("Vivaldi", "4XF3XNRN6Y"),
 ];
 
 /// Requirement matching any trusted browser: a Developer ID (or Apple) signature

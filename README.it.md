@@ -242,7 +242,15 @@ Per lavorare in gruppo ci sono due strade:
 - **Inviti personali (Beta).** Ognuno ha la propria chiave, generata sul suo dispositivo. La persona ti manda
   il suo codice pubblico, confrontate a voce il codice di sicurezza e tu approvi. Quando se ne va, la chiave
   del team cambia e non legge gli aggiornamenti successivi. Quello che ha già visto, però, lo conosce: cambia
-  le chiavi API e le password interessate.
+  le chiavi API e le password interessate. Ogni modifica è firmata: in ogni voce e `.env` vedi chi l'ha
+  cambiata per ultimo, e nessuno può far passare una modifica per quella di un altro.
+
+**Una cartella condivisa su Google Drive (Mac).** Crea una cartella, avvia il team su quella e condividi con
+ogni persona, come **Editor**, la cartella `Kryptos` che Kryptos crea al suo interno. Le cartelle «Condivisi con
+me» non compaiono sul Mac: l'altra persona aggiunge una scorciatoia nel suo Drive (dal web: tasto destro →
+Organizza → Aggiungi scorciatoia) e sceglie quella cartella in Kryptos, qualunque nome le dia Drive. Controlla i
+nomi dei menu sul tuo Drive: Google li cambia. Funziona anche un Drive condiviso (Google Workspace), che compare da
+solo. Windows non è ancora supportato.
 
 ## Assistenti IA (MCP)
 

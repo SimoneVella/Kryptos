@@ -88,14 +88,16 @@ object CloudFolder {
 
   /**
    * `<picked folder>/Kryptos`, created on first write. If the user picked the
-   * Kryptos folder itself (made by another device), that folder is used as is:
-   * nesting a second one there would leave each device with its own vault.
+   * Kryptos folder itself (made by another device, or shared by a team admin
+   * under any name), that folder is used as is: nesting a second one there
+   * would leave each device with its own vault. Same rule as cloud.rs.
    */
   private fun dir(tree: String, create: Boolean): Uri? {
     val treeUri = Uri.parse(tree)
     val root = DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri))
     val names = children(root).map { it.first }
-    if (FILE in names || (DIR !in names && query(root, Document.COLUMN_DISPLAY_NAME) { it.getString(0) } == DIR)) return root
+    val memberKey = names.any { it.startsWith("member-") && it.endsWith(".key") }
+    if (FILE in names || (DIR !in names && (memberKey || query(root, Document.COLUMN_DISPLAY_NAME) { it.getString(0) } == DIR))) return root
     return child(root, DIR) ?: if (create) DocumentsContract.createDocument(app.contentResolver, root, Document.MIME_TYPE_DIR, DIR) else null
   }
 

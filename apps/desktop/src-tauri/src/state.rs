@@ -41,6 +41,12 @@ impl Activity {
     }
 }
 
+#[cfg(desktop)]
+fn cancel_pending() {
+    crate::confirm::cancel();
+    crate::otp_add::cancel();
+}
+
 impl AppState {
     pub fn new(vault_path: PathBuf, settings_path: PathBuf) -> Self {
         let settings = Settings::load(&settings_path);
@@ -58,14 +64,18 @@ impl AppState {
     /// Moves to another profile: the open vault is locked and dropped first.
     pub fn switch(&self, vault_path: PathBuf, settings_path: PathBuf) {
         let settings = Settings::load(&settings_path);
-        let mut g = self.inner.lock().unwrap();
-        g.vault = None;
-        g.session += 1;
-        g.vault_path = vault_path;
-        g.settings_path = settings_path;
-        g.settings = settings;
-        g.background_since = None;
-        g.last_activity = Activity::now();
+        {
+            let mut g = self.inner.lock().unwrap();
+            g.vault = None;
+            g.session += 1;
+            g.vault_path = vault_path;
+            g.settings_path = settings_path;
+            g.settings = settings;
+            g.background_since = None;
+            g.last_activity = Activity::now();
+        }
+        #[cfg(desktop)]
+        cancel_pending();
     }
 
     pub fn is_unlocked(&self) -> bool {
@@ -79,7 +89,7 @@ impl AppState {
         g.session += 1;
     }
 
-    #[cfg_attr(not(all(unix, desktop)), allow(dead_code))]
+    #[cfg_attr(not(desktop), allow(dead_code))]
     pub fn session(&self) -> u64 {
         self.inner.lock().unwrap().session
     }
@@ -87,9 +97,14 @@ impl AppState {
     /// Drops the decrypted vault; `UnlockedVault` zeroizes keys and entries on drop.
     /// Returns whether it was unlocked.
     pub fn lock(&self) -> bool {
-        let mut g = self.inner.lock().unwrap();
-        g.session += 1;
-        g.vault.take().is_some()
+        let locked = {
+            let mut g = self.inner.lock().unwrap();
+            g.session += 1;
+            g.vault.take().is_some()
+        };
+        #[cfg(desktop)]
+        cancel_pending();
+        locked
     }
 
     pub fn touch(&self) {
@@ -117,12 +132,21 @@ impl AppState {
 
     /// Locks once the app has been out of sight for `grace`.
     pub fn lock_if_background(&self, grace: Duration) -> bool {
-        let mut g = self.inner.lock().unwrap();
-        if g.vault.is_some() && g.background_since.is_some_and(|b| b.elapsed() >= grace) {
-            g.vault = None;
-            return true;
+        let locked = {
+            let mut g = self.inner.lock().unwrap();
+            if g.vault.is_some() && g.background_since.is_some_and(|b| b.elapsed() >= grace) {
+                g.vault = None;
+                g.session += 1;
+                true
+            } else {
+                false
+            }
+        };
+        #[cfg(desktop)]
+        if locked {
+            cancel_pending();
         }
-        false
+        locked
     }
 
     /// Raw vault key while unlocked, for sealing under biometrics.
@@ -132,13 +156,22 @@ impl AppState {
     }
 
     pub fn lock_if_idle(&self) -> bool {
-        let mut g = self.inner.lock().unwrap();
-        let limit = Duration::from_secs(g.settings.auto_lock_minutes * 60);
-        if g.vault.is_some() && g.last_activity.elapsed() >= limit {
-            g.vault = None;
-            return true;
+        let locked = {
+            let mut g = self.inner.lock().unwrap();
+            let limit = Duration::from_secs(g.settings.auto_lock_minutes * 60);
+            if g.vault.is_some() && g.last_activity.elapsed() >= limit {
+                g.vault = None;
+                g.session += 1;
+                true
+            } else {
+                false
+            }
+        };
+        #[cfg(desktop)]
+        if locked {
+            cancel_pending();
         }
-        false
+        locked
     }
 
     /// Read access. Does not count as user activity (the browser bridge uses this).
@@ -220,5 +253,25 @@ mod tests {
         state.mutate(|_| Ok(())).unwrap();
         assert!(file("b", "vault.kryptos").exists());
         assert!(!file("a", "vault.kryptos").exists());
+    }
+
+    #[test]
+    fn auto_locks_advance_session() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = AppState::new(dir.path().join("vault.kryptos"), dir.path().join("settings.json"));
+
+        state.set_unlocked(UnlockedVault::create("password one", KdfParams::TEST).unwrap());
+        let s1 = state.session();
+        state.inner.lock().unwrap().settings.auto_lock_minutes = 0;
+        assert!(state.lock_if_idle());
+        assert!(!state.is_unlocked());
+        assert_ne!(state.session(), s1);
+
+        state.set_unlocked(UnlockedVault::create("password one", KdfParams::TEST).unwrap());
+        let s2 = state.session();
+        state.set_foreground(false);
+        assert!(state.lock_if_background(Duration::ZERO));
+        assert!(!state.is_unlocked());
+        assert_ne!(state.session(), s2);
     }
 }

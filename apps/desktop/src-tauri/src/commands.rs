@@ -449,7 +449,7 @@ fn identity(state: &AppState) -> CmdResult<String> {
 /// The safety code of a pasted member code, to compare with that person.
 #[tauri::command]
 pub fn team_code_safety(code_text: String) -> CmdResult<String> {
-    kryptos_core::team::parse_code(&code_text).map(|p| kryptos_core::team::safety_code(&p)).map_err(code)
+    kryptos_core::team::parse_code(&code_text).map(|(p, s)| kryptos_core::team::safety_code(&p, &s)).map_err(code)
 }
 
 /// This person's code, and their team if they're in one.
@@ -458,19 +458,36 @@ pub fn team_status(state: State<'_, AppState>) -> CmdResult<serde_json::Value> {
     use kryptos_core::team;
     let me = identity(&state)?;
     state.with(|v| {
+        let sign = v.sign_public().unwrap_or_default();
         let t = v.team().map(|t| {
             let members: Vec<TeamMember> = v
                 .members()
                 .iter()
-                .map(|m| TeamMember { public: m.public.clone(), name: m.name.clone(), safety: team::safety_code(&m.public), added_at: m.added_at, me: m.public == me, admin: m.public == t.admin })
+                .map(|m| TeamMember { public: m.public.clone(), name: m.name.clone(), safety: team::safety_code(&m.public, &m.sign), added_at: m.added_at, me: m.public == me, admin: m.public == t.admin })
                 .collect();
-            serde_json::json!({ "name": t.name, "is_admin": t.admin == me, "admin_safety": team::safety_code(&t.admin), "members": members })
+            // `signed`: false for a team made before signatures (no author shown).
+            serde_json::json!({ "name": t.name, "is_admin": t.admin == me, "admin_safety": team::safety_code(&t.admin, &t.admin_sign), "members": members, "signed": !t.admin_sign.is_empty() })
         });
-        Ok(serde_json::json!({ "code": team::member_code(&me), "safety": team::safety_code(&me), "team": t }))
+        Ok(serde_json::json!({ "code": team::member_code(&me, &sign), "safety": team::safety_code(&me, &sign), "team": t }))
     })
 }
 
-/// A folder for a team. Picking the `Kryptos` folder itself means its parent.
+/// Who last changed an entry, in a team that signs its changes (null otherwise).
+#[tauri::command]
+pub fn entry_author(state: State<'_, AppState>, id: String) -> CmdResult<Option<kryptos_core::Author>> {
+    let id = parse_id(&id)?;
+    state.with(|v| Ok(v.entry_author(id)))
+}
+
+/// Who last changed an environment, in a team that signs its changes.
+#[tauri::command]
+pub fn env_author(state: State<'_, AppState>, id: String) -> CmdResult<Option<kryptos_core::Author>> {
+    let id = parse_id(&id)?;
+    state.with(|v| Ok(v.env_author(id)))
+}
+
+/// A folder for a team: any folder, or the one that holds the team's files
+/// (shared with you, whatever its name: see `cloud::vault_file`).
 #[tauri::command]
 pub async fn team_pick_folder(app: AppHandle) -> Option<crate::cloud::Provider> {
     #[cfg(target_os = "android")]
@@ -478,7 +495,6 @@ pub async fn team_pick_folder(app: AppHandle) -> Option<crate::cloud::Provider> 
     #[cfg(not(target_os = "android"))]
     {
         let dir = app.dialog().file().set_title("Kryptos").blocking_pick_folder()?.into_path().ok()?;
-        let dir = if dir.file_name().is_some_and(|n| n == "Kryptos") { dir.parent()?.to_path_buf() } else { dir };
         let path = dir.to_string_lossy().into_owned();
         let name = dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         Some(crate::cloud::Provider { has_vault: crate::cloud::has_vault(&path), name, path })
@@ -551,7 +567,7 @@ pub fn team_peek(state: State<'_, AppState>, folder: String) -> CmdResult<serde_
     let sealed = invite_in(&state, &folder)?;
     state.with(|v| {
         let i = v.team_peek(&sealed).map_err(code)?;
-        Ok(serde_json::json!({ "name": i.name, "admin_safety": kryptos_core::team::safety_code(&i.sender), "ticket": kryptos_core::team::ticket(&sealed) }))
+        Ok(serde_json::json!({ "name": i.name, "admin_safety": kryptos_core::team::safety_code(&i.sender, &i.sign), "ticket": kryptos_core::team::ticket(&sealed) }))
     })
 }
 

@@ -89,9 +89,15 @@ fn environment(app: &AppHandle, state: &AppState, client: &str, id: uuid::Uuid) 
         }
         Ok((format!("{} · {}", e.project, e.name), e.content.clone()))
     };
+    let session = state.session();
     let (title, _) = state.read(shared)?;
     let mode = state.settings().fill_confirm;
-    if let Err(e) = crate::confirm::ask(app, title.clone(), String::new(), String::new(), &mode, "ai", client.to_owned()) {
+    let answer = crate::confirm::ask(app, title.clone(), String::new(), String::new(), &mode, "ai", client.to_owned());
+    if state.session() != session {
+        record(client, &title, "env", "locked");
+        return Err("locked".into());
+    }
+    if let Err(e) = answer {
         record(client, &title, "env", &e);
         return Err(e);
     }
@@ -147,10 +153,16 @@ pub fn handle(app: &AppHandle, state: &AppState, code: &str, client: &str, op: &
         let site = e.urls.first().and_then(|u| kryptos_core::import::host_of(u)).unwrap_or_default();
         Ok((e.title.clone(), e.username.clone(), site))
     };
+    let session = state.session();
     let (title, username, site) = state.read(shared)?;
 
     let mode = state.settings().fill_confirm;
-    if let Err(e) = crate::confirm::ask(app, title.clone(), username, site, &mode, "ai", client.to_owned()) {
+    let answer = crate::confirm::ask(app, title.clone(), username, site, &mode, "ai", client.to_owned());
+    if state.session() != session {
+        record(client, &title, op, "locked");
+        return Err("locked".into());
+    }
+    if let Err(e) = answer {
         record(client, &title, op, &e);
         return Err(e);
     }

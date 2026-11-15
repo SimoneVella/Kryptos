@@ -99,7 +99,7 @@ per https non viene mai offerta a una pagina http.
 | Attacco | Difesa | Verificato |
 |---|---|---|
 | Un programma si collega direttamente al socket dell'app | L'app identifica il processo collegato (`LOCAL_PEERPID`) e accetta solo il `kryptos-native-host` del proprio bundle, con firma di codice intatta e, se l'app è firmata Developer ID, dello stesso Team ID | `untrusted_peer` |
-| Un programma avvia il native host legittimo e gli scrive richieste | Il native host risponde solo se il processo che l'ha avviato è un browser con firma Apple valida di un produttore fidato (Google, Mozilla, Microsoft, Brave) e se il browser dichiara come chiamante l'ID della nostra estensione | `untrusted_caller` |
+| Un programma avvia il native host legittimo e gli scrive richieste | Il native host risponde solo se il processo che l'ha avviato è un browser con firma Apple valida di un produttore fidato (Google, Mozilla, Microsoft, Brave, The Browser Company, Vivaldi) e se il browser dichiara come chiamante l'ID della nostra estensione | `untrusted_caller` |
 | Un'altra estensione chiama il native host | `allowed_origins` nel manifest: il browser lo avvia solo per il nostro ID | — |
 | Una pagina ostile, un iframe di un altro sito o una pagina cambiata nel frattempo | La compilazione controlla `location.origin` in ogni frame. Sulle pagine `content.js` reagisce solo a un clic reale su un campo di accesso: non legge valori, e la tendina è una pagina dell'estensione in una closed shadow root | — |
 | Siti simili (`example.com.evil.io`, `alice.github.io` rispetto a `mallory.github.io`) | Corrispondenza per eTLD+1 con la Public Suffix List. Https non viene mai offerto a http | test unitari |
@@ -114,7 +114,7 @@ per https non viene mai offerta a una pagina http.
   pubblicati da utenti su sottodomini dello stesso dominio sono un rischio residuo, attenuato dal fatto che il
   dominio è sempre mostrato nel popup prima della compilazione.
 - Su Linux la verifica del browser si basa sul nome dell'eseguibile, perché lì non c'è la firma di codice.
-- Browser aggiuntivi (Arc, Vivaldi…) vanno aggiunti a `TRUSTED_BROWSER_TEAMS` in `crates/core/src/peer.rs`
+- Browser aggiuntivi vanno aggiunti a `TRUSTED_BROWSER_TEAMS` in `crates/core/src/peer.rs`
   dopo averne letto il Team ID con `codesign -dv`.
 
 ## Mobile (Tauri 2)
@@ -348,8 +348,28 @@ La rimozione crea una nuova chiave team, sigillata solo per chi resta. Gli aggio
 sigillati dall'amministratore registrato, quindi un membro rimosso non può imporre una chiave. Password e impronta
 di un membro non dipendono dalla chiave team. Una copia con la vecchia chiave trovata nella cartella non viene mai
 unita: l'amministratore la sovrascrive e gli altri aspettano quella nuova. Quindi le modifiche fatte da un altro
-membro durante un cambio chiave possono andare perse, e l'elenco dei membri può essere alterato da qualsiasi
-membro attuale (serve solo a mostrarlo: gli aggiornamenti di chiave dipendono solo dall'amministratore).
+membro durante un cambio chiave possono andare perse.
+
+### Firme
+
+Ogni identità ricava anche una chiave Ed25519 (HKDF-SHA256 dal segreto X25519, quindi niente di nuovo da
+conservare). Il codice del membro contiene entrambe le chiavi pubbliche e il codice di sicurezza le copre
+entrambe, quindi sostituirne una si vede. La chiave di firma dell'amministratore viaggia dentro l'invito sigillato
+e viene registrata insieme a lui, e gli aggiornamenti di chiave devono riportarla.
+
+L'amministratore firma l'elenco dei membri, con una versione che cresce soltanto; gli altri accettano un elenco
+solo con quella firma. I membri rimossi restano nell'elenco, con l'ora della rimozione. Ogni voce, ambiente,
+cancellazione ed elemento del cestino nella copia condivisa porta la firma di chi l'ha cambiato per ultimo (id del
+team, nome dell'elemento, ora e contenuto). Prima di unire, un dispositivo scarta ciò che non è firmato da un
+membro (attuale o di allora) o che ha una data più avanti di un giorno: un membro non può far passare una modifica
+per quella di un altro, né cancellare in modo anonimo. La app mostra chi ha cambiato ogni voce e ambiente.
+All'esportazione, un elemento la cui firma non corrisponde più è stato cambiato su questo dispositivo (ciò che
+arriva viene controllato prima), quindi lo firma questa persona.
+
+I membri possono comunque scrivere qualsiasi cosa: cambia che si sa sempre chi è stato. I team creati prima delle
+firme (senza chiave di firma dell'amministratore) continuano a sincronizzare senza firme e senza nomi; per averle
+serve un team nuovo. Un elemento serializzato in modo diverso da un'altra versione di Kryptos non si verifica e
+viene scartato, quindi conviene che tutti i membri usino la stessa versione.
 
 C'è un solo amministratore, che non può uscire né essere sostituito. Quello che qualcuno ha già letto non si può
 riprendere: i segreti visti vanno cambiati.

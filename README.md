@@ -242,7 +242,14 @@ There are two ways to work as a group:
 - **Personal invitations (Beta).** Each person has their own key, generated on their device. They send you
   their public code, you compare the safety code out loud, and you approve. When they leave, the team key
   changes and they can't read later updates. What they already saw, they still know: change the API keys and
-  passwords involved.
+  passwords involved. Every change is signed, so each entry and `.env` shows who changed it last, and nobody
+  can pass an edit off as someone else's.
+
+**A shared folder on Google Drive (Mac).** Make a folder, start the team on it, and share the `Kryptos` folder
+Kryptos creates inside with each person as **Editor**. Folders under "Shared with me" don't appear on the Mac:
+the other person adds a shortcut to it in their Drive (on the web: right-click → Organize → Add shortcut) and
+picks that folder in Kryptos, whatever name Drive gives it. Check the menu names on your setup: Google changes
+them. A shared drive (Google Workspace) also works and shows up on its own. Windows isn't supported yet.
 
 ## AI assistants (MCP)
 

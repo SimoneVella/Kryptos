@@ -34,6 +34,11 @@ export default function TeamSheet({ onClose }: { onClose: () => void }) {
               <span className="row-sub">{t(team.is_admin ? "team.youAdmin" : "team.youMember")}</span>
             </span>
           </div>
+          {team.signed ? (
+            <p className="muted" style={{ display: "flex", gap: 8, alignItems: "center", margin: "12px 0 0" }}><Icon name="verified_user" size={18} /> {t("team.signedNote")}</p>
+          ) : (
+            <aside className="guide-note" style={{ marginTop: 12 }}><Icon name="warning" size={20} /><p>{t("team.unsigned")}</p></aside>
+          )}
           <div className="detail-list" style={{ marginTop: 14 }}>
             {team.members.map((m) => (
               <div key={m.public} className="detail-item">

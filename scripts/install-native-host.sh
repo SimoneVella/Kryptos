@@ -27,6 +27,7 @@ case "$(uname -s)" in
       "$HOME/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts"
       "$HOME/Library/Application Support/Microsoft Edge/NativeMessagingHosts"
       "$HOME/Library/Application Support/Arc/User Data/NativeMessagingHosts"
+      "$HOME/Library/Application Support/Vivaldi/NativeMessagingHosts"
     )
     FIREFOX_DIR="$HOME/Library/Application Support/Mozilla/NativeMessagingHosts"
     ;;
@@ -37,6 +38,7 @@ case "$(uname -s)" in
       "$HOME/.config/chromium/NativeMessagingHosts"
       "$HOME/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
       "$HOME/.config/microsoft-edge/NativeMessagingHosts"
+      "$HOME/.config/vivaldi/NativeMessagingHosts"
     )
     FIREFOX_DIR="$HOME/.mozilla/native-messaging-hosts"
     ;;

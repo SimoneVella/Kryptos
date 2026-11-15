@@ -103,6 +103,8 @@ pub fn run() {
             commands::team_peek,
             commands::team_join,
             commands::team_leave,
+            commands::entry_author,
+            commands::env_author,
             commands::profile_list,
             commands::profile_switch,
             commands::profile_create,

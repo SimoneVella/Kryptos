@@ -54,7 +54,7 @@ export type OtpAddRequest = {
 };
 
 export type TeamMember = { public: string; name: string; safety: string; added_at: number; me: boolean; admin: boolean };
-export type TeamStatus = { code: string; safety: string; team: { name: string; is_admin: boolean; admin_safety: string; members: TeamMember[] } | null };
+export type TeamStatus = { code: string; safety: string; team: { name: string; is_admin: boolean; admin_safety: string; members: TeamMember[]; signed: boolean } | null };
 
 export type EnvSummary = {
   id: string;
@@ -68,7 +68,9 @@ export type EnvSummary = {
   /** Unix seconds, 0 unless in the trash. */
   deleted_at: number;
 };
-export type EnvFile = { id: string; project: string; name: string; content: string; ai_access: boolean; history: { content: string; replaced_at: number }[] };
+export type EnvFile = { id: string; project: string; name: string; content: string; ai_access: boolean; updated_at: number; history: { content: string; replaced_at: number }[] };
+/** Who last changed an entry or environment of a team that signs its changes. */
+export type Author = { name: string; me: boolean; removed: boolean };
 export type EnvDiff = { only_a: string[]; only_b: string[]; different: string[] };
 export type FoundEnv = { path: string; project: string; name: string; vars: number };
 
@@ -173,6 +175,8 @@ export const api = {
   teamPeek: (folder: string) => invoke<{ name: string; admin_safety: string; ticket: string }>("team_peek", { folder }),
   teamJoin: (folder: string, ticket: string) => invoke<void>("team_join", { folder, ticket }),
   teamLeave: () => invoke<void>("team_leave"),
+  entryAuthor: (id: string) => invoke<Author | null>("entry_author", { id }),
+  envAuthor: (id: string) => invoke<Author | null>("env_author", { id }),
   profileList: () => invoke<Profiles>("profile_list"),
   profileSwitch: (id: string) => invoke<void>("profile_switch", { id }),
   profileCreate: (name: string, password: string) => invoke<void>("profile_create", { name, password }),

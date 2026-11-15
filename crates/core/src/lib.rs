@@ -27,4 +27,4 @@ pub use entry::{BackupCode, Entry, EntryInput, EntrySummary, PasswordChange};
 pub use envs::{EnvDiff, EnvFile, EnvSummary};
 pub use error::{Error, Result};
 pub use generator::GeneratorOptions;
-pub use vault::{MergeReport, OtpImportReport, SaveOutcome, SyncReport, UnlockedVault};
+pub use vault::{Author, MergeReport, OtpImportReport, SaveOutcome, SyncReport, UnlockedVault};

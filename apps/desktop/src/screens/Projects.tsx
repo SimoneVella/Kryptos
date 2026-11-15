@@ -2,7 +2,8 @@
 import Guide from "./Guide";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "../components/Icon";
-import { api, type EnvDiff, type EnvFile, type EnvSummary, type FoundEnv } from "../lib/api";
+import { api, type Author, type EnvDiff, type EnvFile, type EnvSummary, type FoundEnv } from "../lib/api";
+import { modified } from "./EntrySheet";
 import { Sheet, Switch, useToast } from "../components/ui";
 import { isMobile } from "../lib/utils";
 import { useT, type TKey } from "../i18n";
@@ -225,8 +226,12 @@ function EnvSheet({ id, siblings, onClose, onChanged }: { id: string; siblings: 
   const [shown, setShown] = useState<Set<string>>(new Set());
   const [compare, setCompare] = useState<{ name: string; diff: EnvDiff } | null>(null);
   const [history, setHistory] = useState(false);
+  const [author, setAuthor] = useState<Author | null>(null);
 
-  const load = useCallback(() => api.envGet(id).then(setEnv), [id]);
+  const load = useCallback(() => {
+    api.envAuthor(id).then(setAuthor, () => setAuthor(null));
+    return api.envGet(id).then(setEnv);
+  }, [id]);
   useEffect(() => {
     load();
   }, [load]);
@@ -295,6 +300,7 @@ function EnvSheet({ id, siblings, onClose, onChanged }: { id: string; siblings: 
           <button className="btn btn-secondary btn-sm" onClick={() => setHistory(!history)}><Icon name="history" size={16} /> {t("projects.versions", { n: env.history.length })}</button>
         )}
       </div>
+      {author && <p className="muted" style={{ fontSize: 12, margin: "10px 0 0" }}>{modified(t, "projects", author, formatDate(env.updated_at))}</p>}
 
       {history && (
         <div className="detail-list" style={{ marginTop: 12 }}>

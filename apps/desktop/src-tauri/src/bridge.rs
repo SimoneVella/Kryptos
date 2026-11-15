@@ -256,10 +256,15 @@ fn credentials(app: &AppHandle, state: &AppState, id: &str, url: &str) -> Result
         }
         Ok(e.clone())
     };
+    let session = state.session();
     let (title, username) = state.read(|v| entry(v).map(|e| (e.title.clone(), e.username.clone())))?;
     let host = url::Url::parse(url).ok().and_then(|u| u.host_str().map(str::to_owned)).unwrap_or_default();
 
-    crate::confirm::ask(app, title, username, host.clone(), &state.settings().fill_confirm, "browser", String::new())?;
+    let answer = crate::confirm::ask(app, title, username, host.clone(), &state.settings().fill_confirm, "browser", String::new());
+    if state.session() != session {
+        return Err("locked".into());
+    }
+    answer?;
 
     let e = state.read(entry)?; // Entry wipes itself on drop
     let _ = state.mutate(|v| {

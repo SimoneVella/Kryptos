@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../components/Icon";
-import { api, type Entry, type EntryInput, type TotpCode } from "../lib/api";
+import { api, type Author, type Entry, type EntryInput, type TotpCode } from "../lib/api";
 import { Action, Avatar, Sheet, useToast } from "../components/ui";
 import { hostOf, isMac, isMobile } from "../lib/utils";
 import { useT } from "../i18n";
@@ -20,6 +20,7 @@ export default function EntrySheet(props: {
 }) {
   const { t, formatDate } = useT();
   const [entry, setEntry] = useState<Entry | null>(null);
+  const [author, setAuthor] = useState<Author | null>(null);
   const [reveal, setReveal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const toast = useToast();
@@ -29,6 +30,7 @@ export default function EntrySheet(props: {
     setReveal(false);
     setConfirmDelete(false);
     api.getEntry(props.id).then(setEntry).catch(props.onClose);
+    api.entryAuthor(props.id).then(setAuthor, () => setAuthor(null));
   }, [props.id]);
 
   // Desktop shortcuts for the open entry, as in other password managers:
@@ -145,7 +147,7 @@ export default function EntrySheet(props: {
         <p className="ai-badge"><Icon name="smart_toy" size={16} /> {t("entry.aiAllowed")}</p>
       )}
       <p className="muted" style={{ fontSize: 12, textAlign: "center", margin: "16px 0" }}>
-        {t("entry.modifiedOn", { date: formatDate(entry.updated_at) })}
+        {modified(t, "entry", author, formatDate(entry.updated_at))}
       </p>
       {!isMobile() && (
         <p className="shortcuts muted">
@@ -340,4 +342,12 @@ function Item({ icon, label, value, onCopy }: { icon: ReactElement; label: strin
       )}
     </div>
   );
+}
+
+/** "Modified on …", or by whom in a team that signs its changes. */
+export function modified(t: ReturnType<typeof useT>["t"], scope: "entry" | "projects", author: Author | null, date: string): string {
+  if (!author) return t("entry.modifiedOn", { date });
+  if (author.me) return t(scope === "entry" ? "entry.modifiedByYou" : "projects.modifiedByYou", { date });
+  const text = t(scope === "entry" ? "entry.modifiedBy" : "projects.modifiedBy", { name: author.name, date });
+  return author.removed ? `${text} ${t("entry.authorLeft")}` : text;
 }

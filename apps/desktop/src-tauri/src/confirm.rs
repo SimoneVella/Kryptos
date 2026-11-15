@@ -132,6 +132,13 @@ pub fn answer(id: u64, ok: bool) {
     }
 }
 
+/// Cancels any waiting confirmation (e.g. when the vault locks or switches profile).
+pub fn cancel() {
+    if let Some(p) = PENDING.lock().unwrap().take() {
+        let _ = p.tx.send(false);
+    }
+}
+
 pub fn is_pending(id: u64) -> bool {
     PENDING.lock().unwrap().as_ref().is_some_and(|p| p.id == id)
 }
