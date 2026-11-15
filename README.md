@@ -48,7 +48,7 @@
       <td><b>AArch64 (ARM64)</b><br><sub>Apple Silicon · ARM</sub></td>
       <td align="center"><a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_aarch64.dmg"><b>DMG</b></a><br><sub>Notarized</sub></td>
       <td align="center"><a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_x64-setup.exe">EXE</a> · <a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_x64_en-US.msi">MSI</a><br><sub>via x64 emulation</sub></td>
-      <td align="center"><a href="#build"><b>APK</b></a><br><sub>Build from source</sub></td>
+      <td align="center"><a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_aarch64.apk"><b>APK</b></a><br><sub>Signed · ARM64</sub></td>
       <td align="center" rowspan="2"><a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_browser-extension.zip"><b>ZIP (MV3)</b></a><br><sub>Chrome · Arc · Brave<br>Edge · Vivaldi · Firefox</sub></td>
       <td align="center"><a href="#build">Source</a><br><sub>Experimental</sub></td>
       <td align="center"><sub>Planned</sub></td>
@@ -57,7 +57,7 @@
       <td><b>x86-64 (64-bit)</b><br><sub>Intel · AMD</sub></td>
       <td align="center"><a href="#build">Source</a></td>
       <td align="center"><a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_x64-setup.exe"><b>EXE</b></a> · <a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_x64_en-US.msi"><b>MSI</b></a><br><sub>NSIS · WiX</sub></td>
-      <td align="center"><a href="#build">Universal APK</a><br><sub>Build from source</sub></td>
+      <td align="center"><a href="#build">Source</a></td>
       <td align="center"><a href="#build">Source</a><br><sub>Experimental</sub></td>
       <td align="center">—</td>
     </tr>
