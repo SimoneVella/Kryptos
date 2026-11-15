@@ -33,29 +33,14 @@ export function Avatar({ name, urls, size = "md" }: { name: string; urls?: strin
 }
 
 /**
- * The Kryptos mark, a safe's combination dial (docs/assets/brand). Small sizes use
- * the simplified version (bezel and wheel only); `large` draws the full dial, whose
- * graduations and wheel turn slowly, and spin while `spinning` (unlocking).
+ * The Kryptos mark, a safe's combination dial (docs/assets/brand). Both default
+ * and `large` sizes draw the full dial, whose graduations and wheel turn slowly,
+ * and spin while `spinning` (unlocking).
  */
 export function Logo({ large, spinning }: { large?: boolean; spinning?: boolean }) {
-  if (!large) {
-    return (
-      <svg className="logo" viewBox="0 0 1024 1024" role="img" aria-label="Kryptos">
-        <rect width="1024" height="1024" rx="230" fill="#0B0C0E" />
-        <circle cx="512" cy="512" r="370" fill="none" stroke="#D6A166" strokeWidth="64" />
-        <g stroke="#D6A166" strokeWidth="72" strokeLinecap="round">
-          <line x1="512" y1="512" x2="512" y2="300" />
-          <line x1="512" y1="512" x2="328" y2="618" />
-          <line x1="512" y1="512" x2="696" y2="618" />
-        </g>
-        <circle cx="512" cy="512" r="96" fill="#D6A166" />
-        <circle cx="512" cy="512" r="38" fill="#0B0C0E" />
-      </svg>
-    );
-  }
   const graduations = Array.from({ length: 24 }, (_, i) => i * 15).filter((a) => a !== 0);
   return (
-    <svg className={`logo logo-lg dial-logo ${spinning ? "spinning" : ""}`} viewBox="0 0 1024 1024" role="img" aria-label="Kryptos">
+    <svg className={`logo ${large ? "logo-lg" : ""} dial-logo ${spinning ? "spinning" : ""}`} viewBox="0 0 1024 1024" role="img" aria-label="Kryptos">
       <rect width="1024" height="1024" rx="218" fill="#0B0C0E" />
       <circle cx="512" cy="512" r="344" fill="none" stroke="#D6A166" strokeWidth="18" />
       <circle cx="512" cy="512" r="317" fill="none" stroke="#D6A166" strokeWidth="5" opacity="0.92" />
