@@ -29,9 +29,55 @@
 > flows have only been tried in test environments. Don't use it as the **only** copy of important
 > passwords. Please report vulnerabilities privately: see [SECURITY.md](SECURITY.md).
 
-**Platforms:** macOS, Windows and Android (iOS later; Linux compiles the core and IPC bridge cleanly as well,
-though untested end-to-end). Biometric unlock and confirmation work with Touch ID on macOS, Windows Hello
-on Windows, and fingerprint on Android.
+## Downloads
+
+<table align="center">
+  <thead>
+    <tr>
+      <th align="left">Architecture</th>
+      <th align="center">macOS</th>
+      <th align="center">Windows</th>
+      <th align="center">Android</th>
+      <th align="center">Browser Extension</th>
+      <th align="center">Linux</th>
+      <th align="center">iOS</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>AArch64 (ARM64)</b><br><sub>Apple Silicon · ARM</sub></td>
+      <td align="center"><a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_aarch64.dmg"><b>DMG</b></a><br><sub>Notarized</sub></td>
+      <td align="center"><a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_x64-setup.exe">EXE</a> · <a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_x64_en-US.msi">MSI</a><br><sub>via x64 emulation</sub></td>
+      <td align="center"><a href="#build"><b>APK</b></a><br><sub>Build from source</sub></td>
+      <td align="center" rowspan="2"><a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_browser-extension.zip"><b>ZIP (MV3)</b></a><br><sub>Chrome · Arc · Brave<br>Edge · Vivaldi · Firefox</sub></td>
+      <td align="center"><a href="#build">Source</a><br><sub>Experimental</sub></td>
+      <td align="center"><sub>Planned</sub></td>
+    </tr>
+    <tr>
+      <td><b>x86-64 (64-bit)</b><br><sub>Intel · AMD</sub></td>
+      <td align="center"><a href="#build">Source</a></td>
+      <td align="center"><a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_x64-setup.exe"><b>EXE</b></a> · <a href="https://github.com/SimoneVella/Kryptos/releases/download/v0.2.0/Kryptos_0.2.0_x64_en-US.msi"><b>MSI</b></a><br><sub>NSIS · WiX</sub></td>
+      <td align="center"><a href="#build">Universal APK</a><br><sub>Build from source</sub></td>
+      <td align="center"><a href="#build">Source</a><br><sub>Experimental</sub></td>
+      <td align="center">—</td>
+    </tr>
+    <tr>
+      <td><b>Biometrics &amp; Autofill</b></td>
+      <td align="center">Touch ID<br><sub>+ Native Host</sub></td>
+      <td align="center">Windows Hello<br><sub>+ Native Host</sub></td>
+      <td align="center">Fingerprint<br><sub>+ AutofillService</sub></td>
+      <td align="center">Inline dropdown<br><sub>+ QR 2FA &amp; anti-phishing</sub></td>
+      <td align="center">Master password</td>
+      <td align="center">—</td>
+    </tr>
+  </tbody>
+</table>
+
+<p align="center">
+  <a href="https://github.com/SimoneVella/Kryptos/releases/tag/v0.2.0"><img src="https://img.shields.io/badge/release-v0.2.0-d6a166" alt="Release v0.2.0"></a>
+  <img src="https://img.shields.io/badge/network-0%20bytes%20(100%25%20offline)-2ea043" alt="100% Offline">
+  <a href="docs/ARCHITECTURE.md"><img src="https://img.shields.io/badge/crypto-Argon2id%20%2B%20XChaCha20--Poly1305-blue" alt="Cryptography"></a>
+</p>
 
 **Cryptography:** Argon2id (256 MiB on desktop, 64 MiB on mobile) and XChaCha20-Poly1305, with a random
 vault key encrypted by the master password. Public, standard algorithms: security depends on your master
