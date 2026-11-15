@@ -197,6 +197,19 @@ def build_dmg_background() -> None:
             fill=(*GOLD_LIGHT, 55),
             width=1 * SCALE,
         )
+        # Bright white/ivory label pill behind Finder's black icon label text (y=274..285)
+        lbl_w, lbl_h = 124, 25
+        lx0 = (cx - lbl_w // 2) * SCALE
+        ly0 = 266 * SCALE
+        lx1 = (cx + lbl_w // 2) * SCALE
+        ly1 = (266 + lbl_h) * SCALE
+        draw.rounded_rectangle(
+            (lx0, ly0, lx1, ly1),
+            radius=(lbl_h // 2) * SCALE,
+            fill=(246, 243, 236, 248),
+            outline=(*GOLD, 210),
+            width=1 * SCALE,
+        )
 
     # Center arrow linking Kryptos.app -> Applications
     arrow_y = 204 * SCALE
@@ -267,13 +280,13 @@ def build_dmg_background() -> None:
         draw,
         330,
         74,
-        "Trascina Kryptos in Applications  ·  Drag to Applications to install",
+        "Drag Kryptos to Applications to install",
         sub_font,
         TEXT_MUTED,
     )
 
     # Small label under arrow
-    draw_centered_text(draw, 330, 222, "INSTALLA", hint_font, (*GOLD, 210))
+    draw_centered_text(draw, 330, 222, "INSTALL", hint_font, (*GOLD, 210))
 
     # Footer security badge safely inside both 660x400 and 660x420 heights
     draw_pill(
