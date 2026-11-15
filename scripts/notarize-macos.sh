@@ -3,7 +3,7 @@
 #
 # Usage: scripts/notarize-macos.sh [path/to/Kryptos.dmg]
 #
-# Authentication (provide one of):
+# Authentication (checked in order):
 #   1. App Store Connect API Key:
 #        APPLE_API_KEY       Key ID
 #        APPLE_API_ISSUER    Issuer UUID
@@ -12,6 +12,8 @@
 #        APPLE_ID            Apple ID email
 #        APPLE_PASSWORD      App-specific password from account.apple.com
 #        APPLE_TEAM_ID       Optional, defaults to LVTY7AGJGB
+#   3. macOS Keychain profile (`xcrun notarytool store-credentials`):
+#        APPLE_KEYCHAIN_PROFILE  Defaults to "notarytool"
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -33,10 +35,13 @@ if [[ -n "${APPLE_API_KEY:-}" && -n "${APPLE_API_ISSUER:-}" && -n "${APPLE_API_K
   AUTH_ARGS=(--key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER")
 elif [[ -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" ]]; then
   AUTH_ARGS=(--apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "${APPLE_TEAM_ID:-LVTY7AGJGB}")
+elif xcrun notarytool history --keychain-profile "${APPLE_KEYCHAIN_PROFILE:-notarytool}" >/dev/null 2>&1; then
+  AUTH_ARGS=(--keychain-profile "${APPLE_KEYCHAIN_PROFILE:-notarytool}")
 else
   echo "Missing notarization credentials." >&2
-  echo "Set either APPLE_API_KEY + APPLE_API_ISSUER + APPLE_API_KEY_PATH," >&2
-  echo "or APPLE_ID + APPLE_PASSWORD (app-specific password; APPLE_TEAM_ID defaults to LVTY7AGJGB)." >&2
+  echo "Store a macOS Keychain profile once:" >&2
+  echo "  xcrun notarytool store-credentials \"${APPLE_KEYCHAIN_PROFILE:-notarytool}\" --apple-id \"<email>\" --team-id \"${APPLE_TEAM_ID:-LVTY7AGJGB}\"" >&2
+  echo "Or pass APPLE_API_KEY + APPLE_API_ISSUER + APPLE_API_KEY_PATH, or APPLE_ID + APPLE_PASSWORD." >&2
   exit 1
 fi
 
