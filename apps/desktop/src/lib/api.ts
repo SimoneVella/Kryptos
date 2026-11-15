@@ -267,14 +267,14 @@ export const api = {
   /** Android: opens the system prompt to select Kryptos as autofill service. */
   openAutofillSettings: () => invoke<void>("open_autofill_settings"),
 
-  /** Fingerprint unlock (Android). The prompt calls reject with a code such as
+  /** Biometric unlock (Android fingerprint / macOS Touch ID). The prompt calls reject with a code such as
    *  "cancelled", "use_master", "lockout", "invalidated", "master_required". */
   biometricStatus: () => invoke<BiometricStatus>("biometric_status"),
   /** Android: saves a login the user accepted to keep while the vault was locked. */
   applyPendingSave: () => invoke<string | null>("apply_pending_save"),
-  biometricEnable: () => invoke<void>("biometric_enable"),
+  biometricEnable: (reason?: string) => invoke<void>("biometric_enable", { reason }),
   biometricDisable: () => invoke<void>("biometric_disable"),
-  biometricUnlock: () => invoke<void>("biometric_unlock"),
+  biometricUnlock: (reason?: string) => invoke<void>("biometric_unlock", { reason }),
 
   /** Sync without network: pick a backup / hand over a copy received as QR codes
    *  (base64), then merge it with that copy's master password. */

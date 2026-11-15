@@ -56,7 +56,7 @@ export default function Settings({ onImported, onProfileChanged }: { onImported:
 
   const [bio, setBio] = useState<BiometricStatus | null>(null);
   useEffect(() => {
-    if (isMobile()) api.biometricStatus().then(setBio);
+    if (isMobile() || isMac()) api.biometricStatus().then(setBio);
   }, []);
 
   if (!s) return null;
@@ -64,7 +64,7 @@ export default function Settings({ onImported, onProfileChanged }: { onImported:
   const toggleBiometric = async (on: boolean) => {
     try {
       if (on) {
-        await api.biometricEnable();
+        await api.biometricEnable(t("settings.biometricTitle"));
         toast(t("settings.biometricOnToast"));
       } else {
         await api.biometricDisable();
@@ -175,7 +175,7 @@ export default function Settings({ onImported, onProfileChanged }: { onImported:
         <Row icon={<Icon name="key" size={20} />} title={t("settings.masterPasswordTitle")} sub={t("settings.masterPasswordSub")}>
           <button className="btn btn-secondary btn-sm" onClick={() => setChanging(true)}>{t("settings.change")}</button>
         </Row>
-        {isMobile() && bio && (
+        {(isMobile() || (isMac() && bio !== "unavailable")) && bio && (
           <Row
             icon={<Icon name="fingerprint" size={20} />}
             title={t("settings.biometricTitle")}

@@ -90,11 +90,16 @@ pub async fn unlock(app: AppHandle, state: State<'_, AppState>, password: String
 }
 
 /// The master password was just typed correctly: biometric unlock may be used
-/// again for the next 7 days (Android; nothing to do elsewhere yet).
+/// again for the next 7 days.
 async fn master_verified(app: AppHandle) {
     #[cfg(target_os = "android")]
     let _ = tauri::async_runtime::spawn_blocking(move || crate::android::master_unlocked(&app)).await;
-    #[cfg(not(target_os = "android"))]
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        let _ = tauri::async_runtime::spawn_blocking(crate::biometric::master_unlocked).await;
+    }
+    #[cfg(not(any(target_os = "android", target_os = "macos")))]
     let _ = app;
 }
 
@@ -261,10 +266,15 @@ pub async fn change_master_password(app: AppHandle, state: State<'_, AppState>, 
     if !folder.is_empty() {
         let _ = crate::cloud::force_push(&state, &folder);
     }
-    // The fingerprint sealed the old key.
+    // Biometric unlock sealed the old key.
     #[cfg(target_os = "android")]
     let _ = tauri::async_runtime::spawn_blocking(move || crate::android::biometric_disable(&app)).await;
-    #[cfg(not(target_os = "android"))]
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        let _ = tauri::async_runtime::spawn_blocking(crate::biometric::disable).await;
+    }
+    #[cfg(not(any(target_os = "android", target_os = "macos")))]
     let _ = app;
     Ok(())
 }
@@ -414,6 +424,11 @@ pub async fn profile_delete(state: State<'_, AppState>, id: String, password: St
     })
     .await
     .map_err(|e| e.to_string())??;
+    #[cfg(target_os = "macos")]
+    {
+        let pid = id.clone();
+        let _ = tauri::async_runtime::spawn_blocking(move || crate::biometric::disable_for(&pid)).await;
+    }
     reg.profiles.retain(|p| p.id != id);
     reg.save()
 }
@@ -1049,12 +1064,19 @@ pub async fn cloud_enable(
         s.cloud_folder = folder.clone();
         st.set_settings(s)?;
         crate::cloud::push_now(&st, &folder)?;
-        // Joining replaced the vault key: the fingerprint sealed the old one.
+        // Joining replaced the vault key: biometric unlock sealed the old one.
         #[cfg(target_os = "android")]
         if done.outcome == "joined" {
             crate::android::biometric_disable(&app);
         }
-        #[cfg(not(target_os = "android"))]
+        #[cfg(target_os = "macos")]
+        {
+            let _ = app;
+            if done.outcome == "joined" {
+                crate::biometric::disable();
+            }
+        }
+        #[cfg(not(any(target_os = "android", target_os = "macos")))]
         let _ = app;
         Ok(done)
     })
@@ -1207,7 +1229,7 @@ pub async fn open_autofill_settings(app: AppHandle) {
     let _ = app;
 }
 
-// Biometric unlock (Android fingerprint for now). Status is one of
+// Biometric unlock (Android fingerprint / macOS Touch ID). Status is one of
 // "unavailable" | "off" | "on" | "master_required". The prompt commands block
 // until the user answers, so they run on a blocking thread.
 
@@ -1227,45 +1249,90 @@ pub async fn biometric_status(app: AppHandle) -> String {
     return tauri::async_runtime::spawn_blocking(move || crate::android::biometric_status(&app))
         .await
         .unwrap_or_else(|_| "unavailable".into());
-    #[cfg(not(target_os = "android"))]
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        return tauri::async_runtime::spawn_blocking(crate::biometric::status)
+            .await
+            .unwrap_or_else(|_| "unavailable".into());
+    }
+    #[cfg(not(any(target_os = "android", target_os = "macos")))]
     {
         let _ = app;
         "unavailable".into()
     }
 }
 
-/// Seals the vault key under the fingerprint. The vault must be unlocked.
+/// Seals the vault key under the fingerprint / Touch ID. The vault must be unlocked.
 #[tauri::command]
-pub async fn biometric_enable(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
+pub async fn biometric_enable(app: AppHandle, state: State<'_, AppState>, reason: Option<String>) -> CmdResult<()> {
     if !state.is_unlocked() {
         return Err("locked".into());
     }
-    biometric_prompt(app, "biometricEnable").await
+    #[cfg(target_os = "android")]
+    {
+        let _ = reason;
+        return biometric_prompt(app, "biometricEnable").await;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        let st = state.inner().clone();
+        return tauri::async_runtime::spawn_blocking(move || {
+            crate::biometric::enable(&st, reason.as_deref().unwrap_or("Touch ID"))
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(any(target_os = "android", target_os = "macos")))]
+    {
+        let _ = (app, reason);
+        Err("unavailable".into())
+    }
 }
 
 #[tauri::command]
-pub async fn biometric_unlock(app: AppHandle) -> CmdResult<()> {
-    biometric_prompt(app, "biometricUnlock").await
+pub async fn biometric_unlock(app: AppHandle, state: State<'_, AppState>, reason: Option<String>) -> CmdResult<()> {
+    #[cfg(target_os = "android")]
+    {
+        let _ = (state, reason);
+        return biometric_prompt(app, "biometricUnlock").await;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        let st = state.inner().clone();
+        return tauri::async_runtime::spawn_blocking(move || {
+            crate::biometric::unlock(&st, reason.as_deref().unwrap_or("Touch ID"))
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(any(target_os = "android", target_os = "macos")))]
+    {
+        let _ = (app, state, reason);
+        Err("unavailable".into())
+    }
 }
 
 #[tauri::command]
 pub async fn biometric_disable(app: AppHandle) {
     #[cfg(target_os = "android")]
     let _ = tauri::async_runtime::spawn_blocking(move || crate::android::biometric_disable(&app)).await;
-    #[cfg(not(target_os = "android"))]
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        let _ = tauri::async_runtime::spawn_blocking(crate::biometric::disable).await;
+    }
+    #[cfg(not(any(target_os = "android", target_os = "macos")))]
     let _ = app;
 }
 
+#[cfg(target_os = "android")]
 async fn biometric_prompt(app: AppHandle, method: &'static str) -> CmdResult<()> {
-    #[cfg(target_os = "android")]
-    return tauri::async_runtime::spawn_blocking(move || crate::android::biometric_prompt(&app, method))
+    tauri::async_runtime::spawn_blocking(move || crate::android::biometric_prompt(&app, method))
         .await
-        .map_err(|e| e.to_string())?;
-    #[cfg(not(target_os = "android"))]
-    {
-        let _ = (app, method);
-        Err("unavailable".into())
-    }
+        .map_err(|e| e.to_string())?
 }
 
 // Confirmation of a browser fill (desktop), answered in the app window. `id` is

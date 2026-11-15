@@ -31,8 +31,11 @@ Password manager offline e zero-knowledge. Nessun componente apre socket di rete
 | Codici 2FA | TOTP (RFC 6238, SHA-1/256/512, 6–8 cifre) calcolato in locale in `totp.rs` dal segreto salvato nella voce (chiave base32 o link `otpauth://`), verificato con i vettori della RFC. Importato dai CSV di Bitwarden/1Password/Dashlane e dalle esportazioni delle app di autenticazione (`otp_import.rs`). |
 
 Cambiare la master password richiede solo un nuovo wrap della vault key. Lo sblocco biometrico
-salverà la vault key (non la password) nel Keychain / Secure Enclave / Android Keystore:
-l'API è già pronta (`raw_key()` / `unlock_with_key()`).
+salva la vault key (mai la master password): su macOS (`biometric.rs`, con app firmata Developer ID)
+genera un segreto casuale nel Portachiavi combinato con HKDF-SHA256 e `LAContext::evaluatedPolicyDomainState`
+del Secure Enclave (usando `raw_key()` / `unlock_with_key()`), mentre su Android usa l'Android Keystore.
+Se cambiano le impronte registrate la chiave si invalida, e la master password resta obbligatoria dopo
+ogni riavvio (`kern.boottime` su macOS) e ogni 7 giorni.
 
 ### Differenze rispetto al piano originale
 
@@ -282,7 +285,7 @@ gestisce): la condivisione è pensata per credenziali di lavoro o di test, non p
 - [x] Android: autofill end-to-end in Chrome, con i suggerimenti dentro la tastiera
 - [x] Android: sblocco con impronta (chiave legata al Keystore), blocco a schermo spento e all'uscita dall'app
 - [x] Android: import CSV e backup cifrato (selettore file di sistema, URI `content://` tramite il plugin fs)
-- [ ] macOS: sblocco con Touch ID, vault key nel Portachiavi (serve l'app firmata)
+- [x] macOS: sblocco con Touch ID, vault key nel Portachiavi (serve l'app firmata)
 - [ ] iOS: Credential Provider Extension (richiede Xcode)
 - [x] Android: salvataggio dei nuovi login da app e browser (`onSaveRequest`)
 - [x] Salvataggio dei nuovi login dall'estensione del browser su desktop (pulsante nel popup)

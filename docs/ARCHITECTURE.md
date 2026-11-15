@@ -30,9 +30,12 @@ Offline, zero-knowledge password manager. No component opens a network socket.
 | Disk | Atomic write (tmp → fsync → rename), 0600 permissions, one `.bak` backup. |
 | 2FA codes | TOTP (RFC 6238, SHA-1/256/512, 6–8 digits) computed locally in `totp.rs` from the secret stored in the entry (base32 key or `otpauth://` link), tested against the RFC vectors. Imported from Bitwarden/1Password/Dashlane CSVs and from authenticator exports (`otp_import.rs`). |
 
-Changing the master password only requires re-wrapping the vault key. Biometric unlock will store the
-vault key (not the password) in the Keychain / Secure Enclave / Android Keystore: the API is already in
-place (`raw_key()` / `unlock_with_key()`).
+Changing the master password only requires re-wrapping the vault key. Biometric unlock stores the
+vault key (never the master password): on macOS (`biometric.rs`, with a Developer ID signed app) it
+generates a random Keychain secret combined via HKDF-SHA256 with the Secure Enclave's
+`LAContext::evaluatedPolicyDomainState` (using `raw_key()` / `unlock_with_key()`), and on Android it
+uses the Android Keystore. Changing enrolled fingerprints invalidates the sealed key, and the master
+password stays required after every reboot (`kern.boottime` on macOS) and every 7 days.
 
 ### Differences from the original plan
 
@@ -276,7 +279,7 @@ servers): sharing is meant for work or test credentials, not a bank or the main 
 - [x] Android: end-to-end autofill in Chrome, with suggestions inside the keyboard
 - [x] Android: fingerprint unlock (Keystore-bound key), lock on screen-off and when leaving the app
 - [x] Android: CSV import and encrypted backup (system file picker, `content://` URIs via the fs plugin)
-- [ ] macOS: Touch ID unlock with the vault key in the Keychain (needs a signed app)
+- [x] macOS: Touch ID unlock with the vault key in the Keychain (needs a signed app)
 - [ ] iOS: Credential Provider Extension (needs Xcode)
 - [x] Android: saving new logins from apps and browsers (`onSaveRequest`)
 - [x] Saving new logins from the desktop browser extension (button in the popup)

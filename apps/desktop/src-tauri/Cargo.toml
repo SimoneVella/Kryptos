@@ -29,10 +29,12 @@ tauri-plugin-opener = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.10"
-# Touch ID / Mac password to confirm browser fills (confirm.rs). Same objc2 family Tauri already uses.
+security-framework = "3"
+libc = "0.2"
+# Touch ID / Mac password to confirm browser fills (confirm.rs) and Touch ID vault unlock (biometric.rs).
 objc2 = "0.6"
 block2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSError"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSError", "NSData"] }
 objc2-local-authentication = { version = "0.3", default-features = false, features = ["std", "block2", "LAContext", "LAError"] }
 
 [target.'cfg(target_os = "android")'.dependencies]

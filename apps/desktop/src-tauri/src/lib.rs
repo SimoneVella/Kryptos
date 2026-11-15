@@ -15,6 +15,8 @@ mod projects;
 mod ai;
 #[cfg(target_os = "android")]
 mod android;
+#[cfg(target_os = "macos")]
+mod biometric;
 mod profiles;
 mod settings;
 mod state;

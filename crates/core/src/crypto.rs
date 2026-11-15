@@ -93,6 +93,16 @@ pub fn derive_key(password: &[u8], salt: &[u8], params: &KdfParams) -> Result<Se
     Ok(SecretKey(out))
 }
 
+/// Derives a 256-bit key from high-entropy input material via HKDF-SHA256.
+pub fn hkdf_key(ikm: &[u8], salt: &[u8], info: &[u8]) -> SecretKey {
+    use hkdf::Hkdf;
+    use sha2::Sha256;
+    let hk = Hkdf::<Sha256>::new(Some(salt), ikm);
+    let mut out = Zeroizing::new([0u8; KEY_LEN]);
+    hk.expand(info, out.as_mut()).expect("KEY_LEN is a valid HKDF-SHA256 length");
+    SecretKey(out)
+}
+
 pub fn seal(key: &SecretKey, plaintext: &[u8], aad: &[u8]) -> ([u8; NONCE_LEN], Vec<u8>) {
     let cipher = XChaCha20Poly1305::new(key.as_bytes().into());
     let nonce = random_bytes::<NONCE_LEN>();
@@ -141,5 +151,15 @@ mod tests {
     fn rejects_weak_params() {
         let weak = KdfParams { m_cost_kib: 1024, t_cost: 1, p_cost: 1 };
         assert!(matches!(derive_key(b"pw", &[0; SALT_LEN], &weak), Err(Error::InvalidKdfParams)));
+    }
+
+    #[test]
+    fn hkdf_key_is_domain_separated() {
+        let a = hkdf_key(b"ikm1", b"salt1", b"info1");
+        let a2 = hkdf_key(b"ikm1", b"salt1", b"info1");
+        assert_eq!(a.as_bytes(), a2.as_bytes());
+        assert_ne!(a.as_bytes(), hkdf_key(b"ikm2", b"salt1", b"info1").as_bytes());
+        assert_ne!(a.as_bytes(), hkdf_key(b"ikm1", b"salt2", b"info1").as_bytes());
+        assert_ne!(a.as_bytes(), hkdf_key(b"ikm1", b"salt1", b"info2").as_bytes());
     }
 }

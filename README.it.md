@@ -128,6 +128,13 @@ cargo test -p kryptos-core
 cd apps/desktop && npx tauri build            # macOS .app / .dmg (include il native host)
 ```
 
+Per firmare e notarizzare la release macOS con il certificato Developer ID installato nel Portachiavi:
+
+```bash
+cd apps/desktop && APPLE_SIGNING_IDENTITY="Developer ID Application: Simone Vella (LVTY7AGJGB)" npx tauri build
+./scripts/notarize-macos.sh                   # richiede APPLE_ID + APPLE_PASSWORD (o chiave App Store Connect)
+```
+
 ```bash
 cd apps/desktop && npx tauri android build --apk --target aarch64
 ```
