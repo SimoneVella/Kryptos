@@ -6,7 +6,7 @@ import { api, type AiStatus, type BiometricStatus, type CloudProvider, type Clou
 import { MergeSheet, ScanQrSheet, SendQrSheet } from "./Sync";
 import { TrashSheet } from "./Cleanup";
 import { PasswordInput, Sheet, StrengthBar, Switch, useToast } from "../components/ui";
-import { estimateBits, isMac, isMobile, strengthOf } from "../lib/utils";
+import { estimateBits, isMac, isMobile, isWindows, strengthOf } from "../lib/utils";
 import { useT, LOCALES, type TKey } from "../i18n";
 
 const LOCK_OPTIONS: [number, TKey][] = [
@@ -56,7 +56,7 @@ export default function Settings({ onImported, onProfileChanged }: { onImported:
 
   const [bio, setBio] = useState<BiometricStatus | null>(null);
   useEffect(() => {
-    if (isMobile() || isMac()) api.biometricStatus().then(setBio);
+    if (isMobile() || isMac() || isWindows()) api.biometricStatus().then(setBio);
   }, []);
 
   if (!s) return null;
@@ -175,7 +175,7 @@ export default function Settings({ onImported, onProfileChanged }: { onImported:
         <Row icon={<Icon name="key" size={20} />} title={t("settings.masterPasswordTitle")} sub={t("settings.masterPasswordSub")}>
           <button className="btn btn-secondary btn-sm" onClick={() => setChanging(true)}>{t("settings.change")}</button>
         </Row>
-        {(isMobile() || (isMac() && bio !== "unavailable")) && bio && (
+        {(isMobile() || ((isMac() || isWindows()) && bio !== "unavailable")) && bio && (
           <Row
             icon={<Icon name="fingerprint" size={20} />}
             title={t("settings.biometricTitle")}
@@ -244,10 +244,10 @@ export default function Settings({ onImported, onProfileChanged }: { onImported:
           <Row
             icon={<Icon name="password" size={20} />}
             title={t("settings.fillConfirmTitle")}
-            sub={isMac() ? t("settings.fillConfirmSubMac") : t("settings.fillConfirmSubOther")}
+            sub={(isMac() || isWindows()) ? t("settings.fillConfirmSubMac") : t("settings.fillConfirmSubOther")}
           >
             {/* Touch ID / Mac password only exist on macOS: elsewhere it's always the master password. */}
-            {isMac() && <Segmented options={FILL_CONFIRM_OPTIONS} value={s.fill_confirm} onChange={(v) => save({ fill_confirm: v })} />}
+            {(isMac() || isWindows()) && <Segmented options={FILL_CONFIRM_OPTIONS} value={s.fill_confirm} onChange={(v) => save({ fill_confirm: v })} />}
           </Row>
         </Group>
       )}
@@ -659,7 +659,7 @@ function Segmented<T extends string | number>({ options, value, onChange }: { op
     <div className="segmented">
       {options.map(([v, label]) => (
         <button key={v} className={value === v ? "active" : ""} onClick={() => onChange(v)}>
-          {t(label)}
+          {isWindows() && label === "settings.fillConfirmSystem" ? "Windows Hello" : t(label)}
         </button>
       ))}
     </div>

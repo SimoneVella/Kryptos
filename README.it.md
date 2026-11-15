@@ -30,8 +30,8 @@
 > importanti. Le vulnerabilità vanno segnalate in privato: vedi [SECURITY.md](SECURITY.md).
 
 **Piattaforme:** macOS, Windows e Android (iOS arriverà più avanti; anche Linux compila core e bridge
-senza dipendenze extra, ma non è provato end-to-end). Touch ID esiste solo su macOS e l'impronta su Android;
-su Windows sblocco e conferme usano la master password.
+senza dipendenze extra, ma non è provato end-to-end). Sblocco e conferme biometriche funzionano con
+Touch ID su macOS, Windows Hello su Windows e impronta su Android.
 
 **Crittografia:** Argon2id (256 MiB su desktop, 64 MiB su mobile) e XChaCha20-Poly1305, con una vault key
 casuale cifrata dalla master password. Algoritmi pubblici e standard: la sicurezza dipende dalla tua
@@ -42,9 +42,9 @@ master password, non dalla segretezza del codice. Dettagli e modello di minaccia
 
 - **Password e 2FA nello stesso vault:** codici a 6 cifre, codici di backup, cronologia delle password,
   cestino, preferiti, ricerca da tastiera.
-- **Una conferma per ogni compilazione:** Touch ID, password del Mac o master password sul computer,
-  impronta su Android.
-- **Estensione del browser** per Chrome, Arc, Brave, Edge e Firefox, con tendina sotto i campi di accesso,
+- **Una conferma per ogni compilazione:** Touch ID / password del Mac, Windows Hello o master password sul
+  computer, impronta su Android.
+- **Estensione del browser** per Chrome, Arc, Brave, Edge, Vivaldi e Firefox, con tendina sotto i campi di accesso,
   avviso sulle pagine che imitano un sito salvato e lettura dei QR della 2FA.
 - **Autofill su Android** in tutte le app e i browser. L'app non ha il permesso di accedere a internet.
 - **Progetti e `.env`:** file `.env` nel vault, divisi per progetto e ambiente, con versioni e confronto.
@@ -101,7 +101,7 @@ apps/desktop                App Tauri 2 condivisa desktop + mobile
   src/                      UI React (unica per tutte le piattaforme)
   src-tauri/src/            Comandi Rust, bridge browser (desktop), JNI autofill (Android)
   src-tauri/gen/android/    Progetto Android: AutofillService in Kotlin
-extension/                  Estensione browser MV3 (Chrome, Arc, Brave, Edge, Firefox)
+extension/                  Estensione browser MV3 (Chrome, Arc, Brave, Edge, Vivaldi, Firefox)
 docs/sito/                  Sito del progetto
 docs/store/                 Testi e immagini per gli store
 ```

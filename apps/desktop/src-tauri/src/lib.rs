@@ -15,7 +15,7 @@ mod projects;
 mod ai;
 #[cfg(target_os = "android")]
 mod android;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 mod biometric;
 mod profiles;
 mod settings;

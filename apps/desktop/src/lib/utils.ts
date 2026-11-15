@@ -53,3 +53,4 @@ export function setPlatform(p: string) {
 }
 export const isMobile = () => platform === "android" || platform === "ios";
 export const isMac = () => platform === "macos";
+export const isWindows = () => platform === "windows";

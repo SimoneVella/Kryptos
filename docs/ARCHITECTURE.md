@@ -33,9 +33,12 @@ Offline, zero-knowledge password manager. No component opens a network socket.
 Changing the master password only requires re-wrapping the vault key. Biometric unlock stores the
 vault key (never the master password): on macOS (`biometric.rs`, with a Developer ID signed app) it
 generates a random Keychain secret combined via HKDF-SHA256 with the Secure Enclave's
-`LAContext::evaluatedPolicyDomainState` (using `raw_key()` / `unlock_with_key()`), and on Android it
-uses the Android Keystore. Changing enrolled fingerprints invalidates the sealed key, and the master
-password stays required after every reboot (`kern.boottime` on macOS) and every 7 days.
+`LAContext::evaluatedPolicyDomainState` (using `raw_key()` / `unlock_with_key()`); on Windows
+(`biometric.rs`) it gates access behind `UserConsentVerifier` (Windows Hello) and seals a random
+wrapping secret with user-scoped DPAPI (`CryptProtectData`, stored locally in Windows Credential
+Manager); and on Android it uses the Android Keystore. Changing enrolled Touch ID fingerprints invalidates
+the macOS sealed key, and the master password stays required after every reboot (`kern.boottime` on macOS,
+volatile registry key `HKCU\Software\Kryptos\BootSession` on Windows) and every 7 days.
 
 ### Differences from the original plan
 
@@ -56,9 +59,10 @@ password stays required after every reboot (`kern.boottime` on macOS) and every 
 1. The user opens the popup (or presses ⌘⇧L). The only script on pages is `content.js`, which offers logins under a login field (see below).
 2. The popup sends `{type:"logins", url}` and the app replies with entries matching the site.
 3. On click, the popup hands the fill to `background.js` and the system prompt (or the app window, in master password mode) asks to **confirm
-   this fill** (`confirm.rs`): Touch ID or the Mac password (LocalAuthentication, `DeviceOwnerAuthentication`),
-   or the master password, verified against the vault file with Argon2id. Settings → Browser → *Confirm each
-   fill* picks which; outside macOS it is always the master password. Neither ever reaches the browser.
+   this fill** (`confirm.rs`): Touch ID or the Mac password (`LocalAuthentication`, `DeviceOwnerAuthentication`) on macOS,
+   Windows Hello (`UserConsentVerifier`) on Windows, or the master password, verified against the vault file
+   with Argon2id. Settings → Browser → *Confirm each fill* picks which; on Linux it is always the master
+   password. Neither ever reaches the browser.
    The popup closes as soon as Kryptos takes the focus, which is why the wait happens in the background
    script, over a `connectNative` port that also keeps the service worker alive.
 4. Only then does `{type:"credentials", id, url}` return credentials, and **only if** the URL matches the
@@ -262,8 +266,8 @@ and never reads the vault: each tool call (`kryptos_list_credentials`, `kryptos_
    SHA-256 (constant-time compare), it expires (1 hour to 30 days) and can be revoked.
 4. **Per-entry sharing**: only entries with *Available to AI assistants* on are listed (names and
    usernames only).
-5. **Confirmation of every secret**: each password or 2FA code needs Touch ID / the Mac password or the
-   master password in the app window, which says which assistant asks (its self-reported name, a hint
+5. **Confirmation of every secret**: each password or 2FA code needs Touch ID / the Mac password,
+   Windows Hello, or the master password in the app window, which says which assistant asks (its self-reported name, a hint
    only). The entry is read again after the answer.
 6. **Limits and traces**: 10 requests a minute; every request is logged in memory (never on disk, so
    entry names aren't written in clear) and announced in the app.
@@ -281,7 +285,7 @@ servers): sharing is meant for work or test credentials, not a bank or the main 
 - [x] Android: end-to-end autofill in Chrome, with suggestions inside the keyboard
 - [x] Android: fingerprint unlock (Keystore-bound key), lock on screen-off and when leaving the app
 - [x] Android: CSV import and encrypted backup (system file picker, `content://` URIs via the fs plugin)
-- [x] macOS: Touch ID unlock with the vault key in the Keychain (needs a signed app)
+- [x] macOS and Windows: biometric unlock with Touch ID (Keychain) and Windows Hello (DPAPI + Credential Manager)
 - [ ] iOS: Credential Provider Extension (needs Xcode)
 - [x] Android: saving new logins from apps and browsers (`onSaveRequest`)
 - [x] Saving new logins from the desktop browser extension (button in the popup)

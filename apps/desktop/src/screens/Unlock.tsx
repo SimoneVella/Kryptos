@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { Icon } from "../components/Icon";
 import { api, type BiometricStatus, type Profiles } from "../lib/api";
 import { Logo, PasswordInput } from "../components/ui";
-import { isMac, isMobile } from "../lib/utils";
+import { isMac, isMobile, isWindows } from "../lib/utils";
 import { useT, type TKey } from "../i18n";
 import { useProfileName } from "./Profiles";
 
@@ -22,7 +22,7 @@ export default function Unlock({ onDone }: { onDone: () => void }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [shake, setShake] = useState(0);
-  const [bio, setBio] = useState<BiometricStatus | null>(isMobile() || isMac() ? null : "unavailable");
+  const [bio, setBio] = useState<BiometricStatus | null>(isMobile() || isMac() || isWindows() ? null : "unavailable");
 
   const label = useProfileName();
   const [reg, setReg] = useState<Profiles | null>(null);
@@ -46,7 +46,7 @@ export default function Unlock({ onDone }: { onDone: () => void }) {
   // (the vault may lock while Kryptos is in the background).
   const offered = useRef(false);
   useEffect(() => {
-    if (!isMobile() && !isMac()) return;
+    if (!isMobile() && !isMac() && !isWindows()) return;
     let status: BiometricStatus | null = null;
     const offer = () => {
       if (status !== "on" || offered.current || document.visibilityState !== "visible") return;

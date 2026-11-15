@@ -15,7 +15,7 @@ e solo tu hai la chiave.
 - **Zero rete.** Su Android l'app non ha nemmeno il permesso di accedere a internet: non *può* inviare
   niente, neanche volendo.
 - **Gratis e open source.** Licenza GPL-3.0: il codice è pubblico, chiunque può leggerlo e verificarlo.
-- **Una conferma per ogni password.** Ogni compilazione chiede la tua impronta o Touch ID. Una password
+- **Una conferma per ogni password.** Ogni compilazione chiede la tua impronta, Touch ID o Windows Hello. Una password
   non esce mai senza che tu lo sappia.
 
 ---
@@ -34,8 +34,7 @@ e solo tu hai la chiave.
   tua master password.
 
 ### Una conferma per ogni compilazione
-- **Sul computer:** quando l'estensione del browser chiede una password, Kryptos ti chiede **Touch ID** o
-  la password del Mac (oppure la master password, se preferisci). Ogni volta, non solo all'avvio.
+- **Sul computer:** quando l'estensione del browser chiede una password, Kryptos ti chiede **Touch ID** / la password del Mac o **Windows Hello** (oppure la master password, se preferisci). Ogni volta, non solo all'avvio.
 - **Su Android:** con lo sblocco a impronta attivo, **ogni suggerimento chiede l'impronta** prima di
   compilare. Il controllo lo impone l'hardware sicuro del telefono (Android Keystore), non un semplice
   pulsante "OK".
@@ -84,7 +83,7 @@ e solo tu hai la chiave.
 Kryptos tiene allineati i tuoi dispositivi **senza un server suo**:
 
 - **Con il tuo cloud.** Scegli Google Drive, iCloud Drive, Dropbox o OneDrive: Kryptos ci mette una copia
-  **cifrata** del vault e da quel momento allinea da solo Mac e telefono. Il fornitore del cloud conserva
+  **cifrata** del vault e da quel momento allinea da solo computer e telefono. Il fornitore del cloud conserva
   solo dati illeggibili; Kryptos continua a non collegarsi a internet, il file lo sposta l'app del cloud.
   Per attivarla Kryptos richiede una master password fortissima.
 - **Senza nessun cloud.** Trasferisci il vault con un file di backup, oppure con una sequenza di **codici
@@ -98,7 +97,7 @@ Kryptos tiene allineati i tuoi dispositivi **senza un server suo**:
 
 ## Tutto quello che serve, già incluso
 
-- **Compilazione automatica** nel browser (estensione per Chrome, Arc, Brave, Edge, Firefox, con la tendina sotto i campi di accesso) e in tutte le
+- **Compilazione automatica** nel browser (estensione per Chrome, Arc, Brave, Edge, Vivaldi, Firefox, con la tendina sotto i campi di accesso) e in tutte le
   app e i browser di Android, con i suggerimenti direttamente nella tastiera.
 - **Salvataggio dei nuovi login:** quando ti registri o cambi password, Kryptos propone di salvarla o di
   aggiornare quella vecchia, su Android e dal browser.
@@ -131,11 +130,11 @@ Kryptos tiene allineati i tuoi dispositivi **senza un server suo**:
 | Account da creare | **No** | Sì | Sì (l'account Google/Apple) |
 | Chi ruba l'account vede le password | **Non c'è un account** | Dipende dal servizio | Sì, salvo cifratura aggiuntiva da attivare |
 | L'app può collegarsi a internet | **No (su Android neanche il permesso)** | Sì | Sì |
-| Conferma con impronta / Touch ID a ogni compilazione | **Sì** | Di solito solo allo sblocco | Di solito solo allo sblocco |
+| Conferma con impronta / Touch ID / Windows Hello a ogni compilazione | **Sì** | Di solito solo allo sblocco | Di solito solo allo sblocco |
 | Codici 2FA integrati | **Sì, inclusi** | Spesso solo a pagamento | In genere no |
 | Codici di backup della 2FA | **Sì** | Raramente | No |
 | Sincronizzazione | **Sul tuo cloud, cifrata, o senza rete** | Sul loro server | Sul loro server |
-| Funziona tra Mac e Android | **Sì** | Sì | Non sempre |
+| Funziona tra Mac, Windows e Android | **Sì** | Sì | Non sempre |
 | Loghi dei siti senza contattare server | **Sì** | Spesso no | — |
 | Codice sorgente pubblico | **Sì (GPL-3.0)** | Alcuni sì, altri no | No |
 | Prezzo | **Gratis** | Spesso in abbonamento | Gratis |
@@ -146,7 +145,7 @@ Kryptos tiene allineati i tuoi dispositivi **senza un server suo**:
 
 - Per chi **non vuole affidare le proprie password a un'azienda**.
 - Per chi vuole **sapere esattamente dove sono** i propri dati.
-- Per chi usa **Mac e Android insieme** e non vuole restare legato a un solo ecosistema.
+- Per chi usa **Mac, Windows e Android insieme** e non vuole restare legato a un solo ecosistema.
 - Per chi vuole **password, codici 2FA e codici di backup in un unico posto**, protetti da una sola
   master password e da una conferma a ogni uso.
 

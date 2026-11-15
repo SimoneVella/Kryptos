@@ -3,6 +3,7 @@ import { Icon } from "../components/Icon";
 import { api, type FillRequest } from "../lib/api";
 import { Avatar, PasswordInput, Sheet } from "../components/ui";
 import { useT } from "../i18n";
+import { isWindows } from "../lib/utils";
 
 /**
  * Desktop: a request that needs the app window before a password or `.env` is
@@ -112,7 +113,7 @@ function Dialog({ req, onClose }: { req: FillRequest; onClose: () => void }) {
           {error && <p className="error">{error}</p>}
           <button className="btn btn-primary btn-block" disabled={busy} onClick={askSystem}>
             <Icon name="fingerprint" size={20} />
-            {busy ? t("fill.waiting") : t("fill.confirmSystem")}
+            {busy ? t("fill.waiting") : isWindows() ? t("fill.confirmSystem").replace(/Touch ID|触控 ID/, "Windows Hello") : t("fill.confirmSystem")}
           </button>
           <button className="btn btn-secondary btn-block" disabled={busy} onClick={() => (setError(""), setMode("master"))}>
             {t("fill.useMaster")}

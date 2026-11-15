@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kryptos — Il password manager che non si collega a internet</title>
-<meta name="description" content="Kryptos è un password manager 100% offline per Mac e Android. Nessun server, nessun account, nessuna rete: il vault cifrato resta sui tuoi dispositivi. Gratis e open source.">
+<meta name="description" content="Kryptos è un password manager 100% offline per Mac, Windows e Android. Nessun server, nessun account, nessuna rete: il vault cifrato resta sui tuoi dispositivi. Gratis e open source.">
 <meta name="theme-color" content="#0b0c0e">
 <meta property="og:title" content="Kryptos — Le tue password, solo sui tuoi dispositivi">
 <meta property="og:description" content="Il password manager che non si collega a internet. Nessun server, nessun account, gratis e open source.">
@@ -51,8 +51,9 @@
     </div>
     <div class="hero-note rv" style="--d:.3s">
       <span><span class="ms">laptop_mac</span>macOS</span>
+      <span><span class="ms">desktop_windows</span>Windows</span>
       <span><span class="ms">phone_android</span>Android</span>
-      <span><span class="ms">extension</span>Chrome · Arc · Brave · Edge · Firefox</span>
+      <span><span class="ms">extension</span>Chrome · Arc · Brave · Edge · Vivaldi · Firefox</span>
     </div>
 
     <div class="stage rv" style="--d:.34s">
@@ -150,9 +151,9 @@
     <div class="rv" style="--d:.1s">
       <div class="eyebrow" data-i="fill.eye">Compilazione</div>
       <h2><span data-i="fill.h2a">Una conferma</span> <span class="grad" data-i="fill.h2b">per ogni password.</span></h2>
-      <p class="lead" style="margin-top:22px" data-i="fill.lead">Ogni compilazione chiede la tua impronta o Touch ID. Una password non esce mai senza che tu lo sappia.</p>
+      <p class="lead" style="margin-top:22px" data-i="fill.lead">Ogni compilazione chiede la tua impronta, Touch ID o Windows Hello. Una password non esce mai senza che tu lo sappia.</p>
       <div class="fill-points">
-        <div class="pt"><div class="ico"><span class="ms">fingerprint</span></div><div><h3 data-i="fill.p1h">Imposto dall’hardware</h3><p data-i="fill.p1">Su Android il controllo lo impone il Keystore del telefono, non un semplice pulsante “OK”. Su Mac, Touch ID o password di sistema, ogni volta.</p></div></div>
+        <div class="pt"><div class="ico"><span class="ms">fingerprint</span></div><div><h3 data-i="fill.p1h">Imposto dall’hardware</h3><p data-i="fill.p1">Su Android il controllo lo impone il Keystore del telefono, non un semplice pulsante “OK”. Su Mac e Windows, Touch ID, Windows Hello o password di sistema, ogni volta.</p></div></div>
         <div class="pt"><div class="ico"><span class="ms">travel_explore</span></div><div><h3 data-i="fill.p2h">Anti-phishing</h3><p data-i="fill.p2">Le password vengono offerte solo sul dominio giusto, con la Public Suffix List inclusa: <span class="mono" style="color:var(--bad);font-size:.9em">paypal.com.sito-falso.io</span> non riceve niente.</p></div></div>
         <div class="pt"><div class="ico"><span class="ms">visibility_off</span></div><div><h3 data-i="fill.p3h">Estensione discreta</h3><p data-i="fill.p3">Sulle pagine c’è solo un piccolo script che nota il clic su un campo di accesso e apre la tendina: non legge cosa scrivi, e puoi spegnerlo dal popup. La tendina è isolata dal sito. Nessuna porta di rete aperta sul computer.</p></div></div>
       </div>
@@ -246,7 +247,7 @@
       <div class="ai-l">
         <div class="eyebrow" data-i="ai.eye">Assistenti AI (MCP)</div>
         <h3 class="h-lg" data-i="ai.h">Claude può chiedere una password. Tu decidi.</h3>
-        <p data-i="ai.p">Un assistente AI (Claude Desktop, Claude Code, qualsiasi client MCP) può usare <b>solo i login che scegli</b>, e ogni volta serve il tuo OK con Touch ID o la master password.</p>
+        <p data-i="ai.p">Un assistente AI (Claude Desktop, Claude Code, qualsiasi client MCP) può usare <b>solo i login che scegli</b>, e ogni volta serve il tuo OK con Touch ID, Windows Hello o la master password.</p>
         <ul class="checks tight">
           <li><span class="ms">toggle_off</span><div><b data-i="ai1b">Spento di default.</b> <span data-i="ai1">Lo attivi tu dalle impostazioni.</span></div></li>
           <li><span class="ms">key</span><div><b data-i="ai2b">Codice d’accesso a scadenza.</b> <span data-i="ai2">Da 1 ora a 30 giorni, mostrato una volta sola e revocabile.</span></div></li>
@@ -316,7 +317,7 @@
     <div class="sync-grid">
       <div class="sync-card hl rv"><span class="tg" data-i="sy.rec">Consigliata</span>
         <div class="sync-art"><div class="node"><span class="ms">laptop_mac</span></div><div class="wire"></div><div class="node cloud"><span class="ms">lock</span></div><div class="wire r"></div><div class="node"><span class="ms">phone_android</span></div></div>
-        <h3 data-i="sy1h">Con il tuo cloud</h3><p data-i="sy1p">Google Drive, iCloud Drive, Dropbox o OneDrive: ci mette una copia <b>cifrata</b> del vault e allinea da solo Mac e telefono. Il fornitore conserva solo dati illeggibili, e il file lo sposta l’app del cloud, non Kryptos.</p></div>
+        <h3 data-i="sy1h">Con il tuo cloud</h3><p data-i="sy1p">Google Drive, iCloud Drive, Dropbox o OneDrive: ci mette una copia <b>cifrata</b> del vault e allinea da solo computer e telefono. Il fornitore conserva solo dati illeggibili, e il file lo sposta l’app del cloud, non Kryptos.</p></div>
       <div class="sync-card rv" style="--d:.08s">
         <div class="sync-art"><div class="node"><span class="ms">phone_android</span></div><div class="wire"></div><div class="qr" aria-hidden="true"></div><div class="wire r"></div><div class="node"><span class="ms">laptop_mac</span></div></div>
         <h3 data-i="sy2h">Con i codici QR</h3><p data-i="sy2p">Una sequenza di codici QR mostrati su uno schermo e letti con la fotocamera dell’altro dispositivo. Niente rete, niente cavi.</p></div>
@@ -342,7 +343,7 @@
         <tr><td data-i="cm.r5">Codici 2FA integrati</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.r5u">Sì, inclusi</span></span></td><td data-i="cm.r5c">Spesso solo a pagamento</td><td data-i="cm.r5d">In genere no</td></tr>
         <tr><td data-i="cm.r6">Codici di backup della 2FA</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.yes">Sì</span></span></td><td data-i="cm.r6c">Raramente</td><td data-i="cm.no">No</td></tr>
         <tr><td data-i="cm.r7">Sincronizzazione</td><td class="us" data-i="cm.r7u">Sul tuo cloud, cifrata, o senza rete</td><td data-i="cm.r7c">Sul loro server</td><td data-i="cm.r7c">Sul loro server</td></tr>
-        <tr><td data-i="cm.r8">Mac e Android insieme</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.yes">Sì</span></span></td><td data-i="cm.yes">Sì</td><td data-i="cm.r8c">Non sempre</td></tr>
+        <tr><td data-i="cm.r8">Mac, Windows e Android insieme</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.yes">Sì</span></span></td><td data-i="cm.yes">Sì</td><td data-i="cm.r8c">Non sempre</td></tr>
         <tr><td data-i="cm.r9">Codice sorgente pubblico</td><td class="us"><span class="y"><span class="ms fill">check_circle</span><span data-i="cm.r9u">Sì (GPL-3.0)</span></span></td><td data-i="cm.r9c">Alcuni sì, altri no</td><td data-i="cm.no">No</td></tr>
         <tr><td data-i="cm.r10">Prezzo</td><td class="us" data-i="cm.r10u">Gratis</td><td data-i="cm.r10c">Spesso in abbonamento</td><td data-i="cm.r10d">Gratis</td></tr>
       </tbody></table></div>
@@ -356,7 +357,7 @@
     <div class="who">
       <div class="card rv"><div class="ico"><span class="ms">balance</span></div><h3 data-i="wh1">Non vuole affidare le password a un’azienda</h3></div>
       <div class="card rv" style="--d:.06s"><div class="ico"><span class="ms">travel_explore</span></div><h3 data-i="wh2">Vuole sapere esattamente dove sono i suoi dati</h3></div>
-      <div class="card rv" style="--d:.12s"><div class="ico"><span class="ms">devices</span></div><h3 data-i="wh3">Usa Mac e Android insieme, senza un solo ecosistema</h3></div>
+      <div class="card rv" style="--d:.12s"><div class="ico"><span class="ms">devices</span></div><h3 data-i="wh3">Usa Mac, Windows e Android insieme, senza un solo ecosistema</h3></div>
       <div class="card rv" style="--d:.18s"><div class="ico"><span class="ms">key</span></div><h3 data-i="wh4">Vuole password, 2FA e codici di backup in un posto solo</h3></div>
     </div>
   </div>
@@ -370,8 +371,8 @@
       <details><summary><span data-i="fq1q">Se dimentico la master password?</span><span class="ms">expand_more</span></summary><p data-i="fq1a">Non esiste un recupero: non c’è nessun server né account che possa reimpostarla, ed è esattamente ciò che rende il vault inaccessibile a chiunque altro. Scegli una master password forte e conserva il backup cifrato.</p></details>
       <details><summary><span data-i="fq2q">Come fa Kryptos a sincronizzare se non si collega a internet?</span><span class="ms">expand_more</span></summary><p data-i="fq2a">Kryptos non apre mai connessioni: scrive una copia cifrata in una cartella e sarà l’app del tuo cloud (Drive, iCloud, Dropbox, OneDrive) a spostarla. In alternativa usi backup o codici QR, senza alcuna rete.</p></details>
       <details><summary><span data-i="fq3q">È sicuro usarlo adesso?</span><span class="ms">expand_more</span></summary><p data-i="fq3a">È la versione 0.1, sperimentale: il codice non ha ancora una revisione di sicurezza indipendente. Tieni un’altra copia delle password importanti finché il progetto non matura. Le vulnerabilità vanno segnalate in privato.</p></details>
-      <details><summary><span data-i="fq4q">Quali piattaforme e browser sono supportati?</span><span class="ms">expand_more</span></summary><p data-i="fq4a">macOS e Android. Windows e Linux non sono ancora provati né supportati; iOS arriverà più avanti. L’estensione funziona con Chrome, Arc, Brave, Edge e Firefox; su Android l’autofill funziona in tutte le app e i browser.</p></details>
-      <details><summary><span data-i="fq6q">Un assistente AI può leggere tutte le mie password?</span><span class="ms">expand_more</span></summary><p data-i="fq6a">No. L’accesso è spento di default; quando lo attivi, l’assistente vede solo le voci che hai condiviso e ogni password o codice richiede la tua conferma con Touch ID o master password. Le variabili di produzione non si condividono mai.</p></details>
+      <details><summary><span data-i="fq4q">Quali piattaforme e browser sono supportati?</span><span class="ms">expand_more</span></summary><p data-i="fq4a">macOS, Windows e Android (Linux non è ancora provato end-to-end; iOS arriverà più avanti). L’estensione funziona con Chrome, Arc, Brave, Edge, Vivaldi e Firefox; su Android l’autofill funziona in tutte le app e i browser.</p></details>
+      <details><summary><span data-i="fq6q">Un assistente AI può leggere tutte le mie password?</span><span class="ms">expand_more</span></summary><p data-i="fq6a">No. L’accesso è spento di default; quando lo attivi, l’assistente vede solo le voci che hai condiviso e ogni password o codice richiede la tua conferma con Touch ID, Windows Hello o master password. Le variabili di produzione non si condividono mai.</p></details>
       <details><summary><span data-i="fq7q">Posso usarlo con il mio team?</span><span class="ms">expand_more</span></summary><p data-i="fq7a">Sì: con una password di team su una cartella cloud condivisa, oppure con gli inviti personali (in beta), dove ogni persona ha la sua chiave e non si condivide nessuna password.</p></details>
       <details><summary><span data-i="fq5q">Quanto costa?</span><span class="ms">expand_more</span></summary><p data-i="fq5a">Niente: è gratis, senza abbonamenti né funzioni a pagamento, con licenza GPL-3.0. Chiunque può leggere e verificare il codice.</p></details>
     </div>
@@ -386,7 +387,7 @@
     <h2><span data-i="fn.h2a">Le tue password,</span> <span class="grad" data-i="fn.h2b">solo sui tuoi dispositivi.</span></h2>
     <p class="lead" data-i="fn.lead">Scarica Kryptos: gratis, open source, senza account.</p>
     <div class="cta"><a class="btn btn-gold" href="https://github.com/SimoneVella/Kryptos/releases"><span class="ms">download</span><span data-i="hero.cta1">Scarica Kryptos</span></a><a class="btn btn-ghost" href="https://github.com/SimoneVella/Kryptos"><span class="ms">code</span><span data-i="fn.src">Leggi il codice</span></a></div>
-    <div class="plat"><span><span class="ms">laptop_mac</span>macOS</span><span><span class="ms">phone_android</span>Android</span></div>
+    <div class="plat"><span><span class="ms">laptop_mac</span>macOS</span><span><span class="ms">desktop_windows</span>Windows</span><span><span class="ms">phone_android</span>Android</span></div>
     <p class="warn"><span class="ms">info</span><span data-i="fn.warn">Versione 0.1, software sperimentale: non usarlo come unica copia delle password importanti.</span></p>
   </div>
 </section>

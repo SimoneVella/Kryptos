@@ -1,7 +1,7 @@
 //! Confirmation of every browser fill.
 //!
 //! The bridge thread that received a `credentials` request blocks in [`ask`].
-//! Browser fills with Touch ID or the Mac password (LocalAuthentication) show
+//! Browser fills with Touch ID / Mac password or Windows Hello show
 //! only the system prompt, which names the site, and leave the user in the
 //! browser. The app window comes forward for the master password, if the system
 //! prompt can't be used, and for AI and command line requests, which say who's
@@ -25,7 +25,7 @@ pub struct FillRequest {
     pub title: String,
     pub username: String,
     pub host: String,
-    /// "system" (Touch ID / Mac password) or "master".
+    /// "system" (Touch ID / Mac password / Windows Hello) or "master".
     pub mode: &'static str,
     /// Who asks: "browser" (the extension) or "ai" (an assistant through the MCP server).
     pub source: &'static str,
@@ -58,11 +58,13 @@ fn release(id: u64) {
     }
 }
 
-/// Whether Touch ID / the Mac password can confirm fills on this computer.
+/// Whether Touch ID / Mac password or Windows Hello can confirm fills on this computer.
 pub fn system_available() -> bool {
     #[cfg(target_os = "macos")]
     return macos::can_evaluate();
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    return winhello::can_evaluate();
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     false
 }
 
@@ -143,13 +145,16 @@ pub fn is_pending(id: u64) -> bool {
     PENDING.lock().unwrap().as_ref().is_some_and(|p| p.id == id)
 }
 
-/// Shows the system prompt (Touch ID, or the Mac password) with `reason`
-/// and blocks until it is answered, for `TIMEOUT` at most. Error codes: "cancelled"
-/// (by the user), "interrupted" (by the system), "timeout", "unavailable", "failed".
+/// Shows the system prompt (Touch ID / Mac password, or Windows Hello) with
+/// `reason` and blocks until it is answered, for `TIMEOUT` at most. Error
+/// codes: "cancelled" (by the user), "interrupted" (by the system), "timeout",
+/// "unavailable", "failed".
 pub fn system_auth(reason: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     return macos::evaluate(reason, TIMEOUT);
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    return winhello::evaluate(reason, TIMEOUT);
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         let _ = reason;
         Err("unavailable".into())
@@ -202,6 +207,121 @@ mod macos {
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 unsafe { ctx.invalidate() };
                 Err("timeout".into())
+            }
+            _ => Err("failed".into()),
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) mod winhello {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    use windows::core::{factory, HSTRING};
+    use windows::Security::Credentials::UI::{
+        UserConsentVerificationResult, UserConsentVerifier, UserConsentVerifierAvailability,
+    };
+    use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
+    use windows::Win32::System::WinRT::{
+        IUserConsentVerifierInterop, RoInitialize, RoUninitialize, RO_INIT_MULTITHREADED,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum Availability {
+        Available,
+        Busy,
+        Unavailable,
+    }
+
+    struct RoGuard(bool);
+
+    impl RoGuard {
+        fn init() -> Result<Self, ()> {
+            match unsafe { RoInitialize(RO_INIT_MULTITHREADED) } {
+                Ok(()) => Ok(Self(true)),
+                Err(e) if e.code() == RPC_E_CHANGED_MODE => Ok(Self(false)),
+                Err(_) => Err(()),
+            }
+        }
+    }
+
+    impl Drop for RoGuard {
+        fn drop(&mut self) {
+            if self.0 {
+                unsafe { RoUninitialize() };
+            }
+        }
+    }
+
+    pub fn check_availability() -> Availability {
+        let Ok(_ro) = RoGuard::init() else {
+            return Availability::Unavailable;
+        };
+        let Ok(op) = UserConsentVerifier::CheckAvailabilityAsync() else {
+            return Availability::Unavailable;
+        };
+        match op.join() {
+            Ok(v) if v == UserConsentVerifierAvailability::Available => Availability::Available,
+            Ok(v) if v == UserConsentVerifierAvailability::DeviceBusy => Availability::Busy,
+            _ => Availability::Unavailable,
+        }
+    }
+
+    pub fn can_evaluate() -> bool {
+        check_availability() == Availability::Available
+    }
+
+    pub fn evaluate(reason: &str, timeout: Duration) -> Result<(), String> {
+        let msg = if reason.trim().is_empty() { "Windows Hello" } else { reason }.to_string();
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(evaluate_sync(&msg));
+        });
+        match rx.recv_timeout(timeout) {
+            Ok(r) => r,
+            Err(mpsc::RecvTimeoutError::Timeout) => Err("timeout".into()),
+            Err(_) => Err("failed".into()),
+        }
+    }
+
+    fn evaluate_sync(msg: &str) -> Result<(), String> {
+        let Ok(_ro) = RoGuard::init() else {
+            return Err("unavailable".into());
+        };
+        match UserConsentVerifier::CheckAvailabilityAsync().and_then(|op| op.join()) {
+            Ok(v) if v == UserConsentVerifierAvailability::Available => {}
+            Ok(v) if v == UserConsentVerifierAvailability::DeviceBusy => return Err("interrupted".into()),
+            _ => return Err("unavailable".into()),
+        }
+        let hmsg = HSTRING::from(msg);
+        let hwnd = unsafe { GetForegroundWindow() };
+        let attempt = |use_window: bool| -> windows::core::Result<UserConsentVerificationResult> {
+            let op = if use_window {
+                let interop = factory::<UserConsentVerifier, IUserConsentVerifierInterop>()?;
+                unsafe { interop.RequestVerificationForWindowAsync(hwnd, &hmsg)? }
+            } else {
+                UserConsentVerifier::RequestVerificationAsync(&hmsg)?
+            };
+            op.join()
+        };
+        let res = (if !hwnd.0.is_null() {
+            attempt(true).or_else(|_| attempt(false))
+        } else {
+            attempt(false)
+        })
+        .map_err(|_| "failed".to_string())?;
+        match res {
+            r if r == UserConsentVerificationResult::Verified => Ok(()),
+            r if r == UserConsentVerificationResult::Canceled => Err("cancelled".into()),
+            r if r == UserConsentVerificationResult::RetriesExhausted => Err("lockout".into()),
+            r if r == UserConsentVerificationResult::DeviceBusy => Err("interrupted".into()),
+            r if r == UserConsentVerificationResult::DeviceNotPresent
+                || r == UserConsentVerificationResult::NotConfiguredForUser
+                || r == UserConsentVerificationResult::DisabledByPolicy =>
+            {
+                Err("unavailable".into())
             }
             _ => Err("failed".into()),
         }

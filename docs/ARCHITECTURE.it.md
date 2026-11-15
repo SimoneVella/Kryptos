@@ -33,9 +33,12 @@ Password manager offline e zero-knowledge. Nessun componente apre socket di rete
 Cambiare la master password richiede solo un nuovo wrap della vault key. Lo sblocco biometrico
 salva la vault key (mai la master password): su macOS (`biometric.rs`, con app firmata Developer ID)
 genera un segreto casuale nel Portachiavi combinato con HKDF-SHA256 e `LAContext::evaluatedPolicyDomainState`
-del Secure Enclave (usando `raw_key()` / `unlock_with_key()`), mentre su Android usa l'Android Keystore.
-Se cambiano le impronte registrate la chiave si invalida, e la master password resta obbligatoria dopo
-ogni riavvio (`kern.boottime` su macOS) e ogni 7 giorni.
+del Secure Enclave (usando `raw_key()` / `unlock_with_key()`); su Windows (`biometric.rs`) richiede
+`UserConsentVerifier` (Windows Hello) e cifra un segreto di wrapping casuale con DPAPI legato all'utente
+(`CryptProtectData`, salvato in locale in Credential Manager); su Android usa l'Android Keystore.
+Se cambiano le impronte registrate su macOS la chiave si invalida, e la master password resta obbligatoria
+dopo ogni riavvio (`kern.boottime` su macOS, chiave volatile `HKCU\Software\Kryptos\BootSession` su
+Windows) e ogni 7 giorni.
 
 ### Differenze rispetto al piano originale
 
@@ -56,10 +59,10 @@ ogni riavvio (`kern.boottime` su macOS) e ogni 7 giorni.
 1. L'utente apre il popup (o preme ⌘⇧L). L'unico script sulle pagine è `content.js`, che propone i login sotto i campi di accesso (vedi sotto).
 2. Il popup invia `{type:"logins", url}` e l'app risponde con le voci che corrispondono al sito.
 3. Al click, il popup passa la compilazione a `background.js` e la richiesta di sistema (o la finestra dell'app, in modalità master password) chiede di
-   **confermare questa compilazione** (`confirm.rs`): Touch ID o la password del Mac (LocalAuthentication,
-   `DeviceOwnerAuthentication`), oppure la master password, verificata sul file del vault con Argon2id.
-   Impostazioni → Browser → *Conferma ogni compilazione* sceglie quale; fuori da macOS è sempre la master
-   password. Nessuna delle due arriva mai al browser. Il popup si chiude appena Kryptos prende il focus, per
+   **confermare questa compilazione** (`confirm.rs`): Touch ID o la password del Mac (`LocalAuthentication`,
+   `DeviceOwnerAuthentication`) su macOS, Windows Hello (`UserConsentVerifier`) su Windows, oppure la master
+   password, verificata sul file del vault con Argon2id. Impostazioni → Browser → *Conferma ogni compilazione*
+   sceglie quale; su Linux è sempre la master password. Nessuna delle due arriva mai al browser. Il popup si chiude appena Kryptos prende il focus, per
    questo l'attesa avviene nello script in background, su una porta `connectNative` che tiene anche in vita
    il service worker.
 4. Solo allora `{type:"credentials", id, url}` restituisce le credenziali, e **solo se** l'URL corrisponde
@@ -268,8 +271,8 @@ segreti e non legge mai il vault: ogni chiamata (`kryptos_list_credentials`, `kr
    e si può revocare.
 4. **Condivisione per voce**: compaiono solo le voci con *Disponibile per gli assistenti IA* attivo (solo
    nomi e utenti).
-5. **Conferma di ogni segreto**: ogni password o codice 2FA richiede Touch ID / la password del Mac o la
-   master password nella finestra dell'app, che dice quale assistente chiede (il nome che dichiara lui,
+5. **Conferma di ogni segreto**: ogni password o codice 2FA richiede Touch ID / la password del Mac,
+   Windows Hello o la master password nella finestra dell'app, che dice quale assistente chiede (il nome che dichiara lui,
    solo indicativo). La voce viene riletta dopo la risposta.
 6. **Limiti e tracce**: 10 richieste al minuto; ogni richiesta è registrata in memoria (mai su disco, così
    i nomi delle voci non finiscono in chiaro) e annunciata nell'app.
@@ -287,7 +290,7 @@ gestisce): la condivisione è pensata per credenziali di lavoro o di test, non p
 - [x] Android: autofill end-to-end in Chrome, con i suggerimenti dentro la tastiera
 - [x] Android: sblocco con impronta (chiave legata al Keystore), blocco a schermo spento e all'uscita dall'app
 - [x] Android: import CSV e backup cifrato (selettore file di sistema, URI `content://` tramite il plugin fs)
-- [x] macOS: sblocco con Touch ID, vault key nel Portachiavi (serve l'app firmata)
+- [x] macOS e Windows: sblocco biometrico con Touch ID (Portachiavi) e Windows Hello (DPAPI + Credential Manager)
 - [ ] iOS: Credential Provider Extension (richiede Xcode)
 - [x] Android: salvataggio dei nuovi login da app e browser (`onSaveRequest`)
 - [x] Salvataggio dei nuovi login dall'estensione del browser su desktop (pulsante nel popup)

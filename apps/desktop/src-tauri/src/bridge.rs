@@ -404,6 +404,11 @@ pub fn start(app: AppHandle) {
 
     struct PipeHandle(*mut c_void);
     unsafe impl Send for PipeHandle {}
+    impl PipeHandle {
+        fn into_raw(self) -> *mut c_void {
+            self.0
+        }
+    }
 
     let pipe_name = kryptos_core::paths::ipc_pipe_name();
     let pipe_w: Vec<u16> = std::ffi::OsStr::new(&pipe_name).encode_wide().chain(Some(0)).collect();
@@ -443,7 +448,7 @@ pub fn start(app: AppHandle) {
             let app = app.clone();
             let pipe_handle = PipeHandle(raw);
             std::thread::spawn(move || {
-                let PipeHandle(raw) = pipe_handle;
+                let raw = pipe_handle.into_raw();
                 let pipe = unsafe { std::fs::File::from_raw_handle(raw) };
                 let Some(peer) = kryptos_core::peer::pipe_client_pid(pipe.as_raw_handle()).and_then(peer_for_pid) else {
                     let _ = (&pipe).write_all(b"{\"ok\":false,\"error\":\"untrusted_peer\"}\n");

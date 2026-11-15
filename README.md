@@ -30,8 +30,8 @@
 > passwords. Please report vulnerabilities privately: see [SECURITY.md](SECURITY.md).
 
 **Platforms:** macOS, Windows and Android (iOS later; Linux compiles the core and IPC bridge cleanly as well,
-though untested end-to-end). Touch ID unlock exists on macOS and fingerprint unlock on Android; Windows
-unlocks and confirms actions with the master password.
+though untested end-to-end). Biometric unlock and confirmation work with Touch ID on macOS, Windows Hello
+on Windows, and fingerprint on Android.
 
 **Cryptography:** Argon2id (256 MiB on desktop, 64 MiB on mobile) and XChaCha20-Poly1305, with a random
 vault key encrypted by the master password. Public, standard algorithms: security depends on your master
@@ -42,9 +42,9 @@ password, not on keeping the code secret. Details and threat model in
 
 - **Passwords and 2FA in one vault:** 6-digit codes, backup codes, password history, trash, favorites,
   keyboard search.
-- **One confirmation for every fill:** Touch ID, Mac password or master password on the computer,
-  fingerprint on Android.
-- **Browser extension** for Chrome, Arc, Brave, Edge and Firefox, with a list under login fields, a warning
+- **One confirmation for every fill:** Touch ID / Mac password, Windows Hello or master password on the
+  computer, fingerprint on Android.
+- **Browser extension** for Chrome, Arc, Brave, Edge, Vivaldi and Firefox, with a list under login fields, a warning
   on pages that imitate a saved site, and 2FA QR reading.
 - **Android autofill** in all apps and browsers. The app has no internet permission.
 - **Projects and `.env`:** `.env` files in the vault, split by project and environment, with versions and
@@ -102,7 +102,7 @@ apps/desktop                Tauri 2 app shared by desktop and mobile
   src/                      React UI (one for all platforms)
   src-tauri/src/            Rust commands, browser bridge (desktop), autofill JNI (Android)
   src-tauri/gen/android/    Android project: Kotlin AutofillService
-extension/                  MV3 browser extension (Chrome, Arc, Brave, Edge, Firefox)
+extension/                  MV3 browser extension (Chrome, Arc, Brave, Edge, Vivaldi, Firefox)
 docs/sito/                  Project website
 docs/store/                 Store texts and images
 ```
