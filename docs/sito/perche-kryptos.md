@@ -102,9 +102,10 @@ Kryptos tiene allineati i tuoi dispositivi **senza un server suo**:
 - **Salvataggio dei nuovi login:** quando ti registri o cambi password, Kryptos propone di salvarla o di
   aggiornare quella vecchia, su Android e dal browser.
 - **Codici 2FA (TOTP) integrati:** il codice a 6 cifre viene compilato insieme a username e password. Niente
-  più app separata da aprire per ogni accesso.
+  più app separata da aprire per ogni accesso. Aggiungi un nuovo codice in un attimo dalla scheda della voce o da Sicurezza (incolla screenshot del QR con `⌘V` / `Ctrl+V`, carica immagine, fotocamera o chiave).
 - **Codici di backup della 2FA:** salvali nella voce, copiali con un tocco e segna quelli già usati. Puoi
   anche caricarli direttamente dal file che il sito ti fa scaricare.
+- **Più account dello stesso sito:** raggruppati nella lista con cambio rapido nella scheda di dettaglio, mantenendo username, password e 2FA separati per ciascuno.
 - **Importazione facile:**
   - password da Google/Chrome, Bitwarden, 1Password, Firefox, Dashlane e altri (CSV);
   - codici 2FA da Aegis, 2FAS, Google Authenticator e qualsiasi elenco `otpauth://`.
@@ -117,7 +118,7 @@ Kryptos tiene allineati i tuoi dispositivi **senza un server suo**:
 - **Profili:** vault separati sullo stesso dispositivo (personale, lavoro, gruppo), uno aperto alla volta.
 - **Team con inviti (Beta):** ogni persona entra con la propria chiave, senza passarsi una password.
 - **Assistenti IA (MCP):** un assistente vede solo i login che condividi, e ogni segreto chiede il tuo OK.
-- **Lettura del QR 2FA:** l'estensione legge il QR sulla pagina e lo aggiunge alla voce che scegli.
+- **Lettura del QR 2FA:** nell'app (incollando uno screenshot con `⌘V`/`Ctrl+V`, caricando un'immagine o inquadrando con la fotocamera) oppure tramite l'estensione del browser sulla pagina.
 - **9 lingue:** italiano, inglese, spagnolo, francese, tedesco, portoghese, russo, ucraino, cinese.
 
 ---

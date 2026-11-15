@@ -33,7 +33,7 @@ Argon2id e XChaCha20-Poly1305. Blocco automatico, appunti che si svuotano da sol
 ANCHE
 Profili separati, team con password condivisa o inviti personali (Beta), generatore di password e passphrase, 9 lingue. Codice aperto, licenza GPL-3.0.
 
-Kryptos è alla versione 0.1, sperimentale: il codice non ha avuto una revisione di sicurezza indipendente. Non usarlo come unica copia di password importanti. Se dimentichi la master password non esiste recupero.
+Kryptos è alla versione 0.2, sperimentale: il codice non ha avuto una revisione di sicurezza indipendente. Non usarlo come unica copia di password importanti. Se dimentichi la master password non esiste recupero.
 
 ## English
 
@@ -63,7 +63,7 @@ Argon2id and XChaCha20-Poly1305. Auto-lock, a clipboard that clears itself, no s
 ALSO
 Separate profiles, teams with a shared password or personal invitations (Beta), password and passphrase generator, 9 languages. Open source, GPL-3.0.
 
-Kryptos is at version 0.1 and experimental: the code has not had an independent security review. Don't use it as the only copy of important passwords. If you forget your master password, there is no recovery.
+Kryptos is at version 0.2 and experimental: the code has not had an independent security review. Don't use it as the only copy of important passwords. If you forget your master password, there is no recovery.
 
 ## Immagini
 

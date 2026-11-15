@@ -247,9 +247,14 @@ Google Drive mounts (`My Drive` on `G:\`..`Z:\`), so turning it on is one choice
   open arbitrary URLs (the opener plugin isn't exposed to JS).
 - **Passphrases**: words from the bundled EFF large wordlist (7776 words, about 12.9 bits each), for
   master passwords.
-- **2FA QR from the camera** in the entry editor (phones), **Quick Settings tile** on Android
-  (`KryptosTileService`, only opens the app), keyboard shortcuts on the desktop (⌘K search and copy, ⌘C
-  username, ⇧⌘C password, ⌥⌘C 2FA code).
+- **Quick 2FA setup** from the entry card or **Security** view, in addition to the editor: QR capture via
+  **clipboard screenshot paste (`⌘V`/`Ctrl+V`)**, **image upload**, **camera scan**, or **manual key entry**
+  (`otpauth://`/Base32).
+- **Same-site account grouping** in the home list: multiple accounts for the same site/app remain separate
+  vault entries (separate username, password, and TOTP) and are grouped with a quick account switcher
+  in the detail card.
+- **Quick Settings tile** on Android (`KryptosTileService`, only opens the app), keyboard shortcuts on the
+  desktop (⌘K search and copy, ⌘C username, ⇧⌘C password, ⌥⌘C 2FA code).
 
 ## AI assistants (MCP)
 

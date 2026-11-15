@@ -17,7 +17,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/licenza-GPL--3.0-blue" alt="Licenza GPL-3.0"></a>
   <img src="https://img.shields.io/badge/core-Rust-orange" alt="Core in Rust">
   <img src="https://img.shields.io/badge/app-Tauri%202-24c8db" alt="Tauri 2">
-  <img src="https://img.shields.io/badge/stato-0.1%20sperimentale-yellow" alt="Stato: sperimentale">
+  <img src="https://img.shields.io/badge/stato-0.2%20sperimentale-yellow" alt="Stato: sperimentale">
 </p>
 
 <p align="center">
@@ -25,7 +25,7 @@
 </p>
 
 > [!WARNING]
-> **Versione 0.1: software sperimentale.** Il codice non ha avuto una revisione di sicurezza indipendente e
+> **Versione 0.2: software sperimentale.** Il codice non ha avuto una revisione di sicurezza indipendente e
 > alcuni flussi sono stati provati solo in ambienti di test. Non usarlo come **unica** copia di password
 > importanti. Le vulnerabilità vanno segnalate in privato: vedi [SECURITY.md](SECURITY.md).
 
@@ -41,7 +41,8 @@ master password, non dalla segretezza del codice. Dettagli e modello di minaccia
 ## Cosa fa
 
 - **Password e 2FA nello stesso vault:** codici a 6 cifre, codici di backup, cronologia delle password,
-  cestino, preferiti, ricerca da tastiera.
+  cestino, preferiti, ricerca da tastiera e più account dello stesso sito raggruppati con cambio rapido
+  (mantenendo username, password e 2FA separati per ciascun account).
 - **Una conferma per ogni compilazione:** Touch ID / password del Mac, Windows Hello o master password sul
   computer, impronta su Android.
 - **Estensione del browser** per Chrome, Arc, Brave, Edge, Vivaldi e Firefox, con tendina sotto i campi di accesso,
@@ -200,10 +201,13 @@ in Kryptos (o di aggiornare la password di quell'account).
 
 ## Codici 2FA
 
-Kryptos può tenere anche il codice della verifica in due passaggi di un sito. Quando il sito mostra il QR,
-premi **Codice 2FA da QR** nel popup dell'estensione, oppure sul telefono inquadralo con la fotocamera. In
-alternativa copia la chiave e incollala nel campo **Codice 2FA** della voce (va bene anche un link
-`otpauth://`). La voce mostra poi il codice a 6 cifre del momento, pronto da copiare.
+Kryptos può tenere anche il codice della verifica in due passaggi di un sito. Per configurarlo hai diversi modi rapidi:
+
+- **Dalla scheda della voce o da Sicurezza:** premi **Aggiungi 2FA**, poi scegli se **incollare uno screenshot del QR** con `⌘V` / `Ctrl+V`, **caricare un'immagine**, **inquadrare il QR con la fotocamera** oppure **inserire la chiave manualmente** (va bene anche un link `otpauth://`).
+- **Dall'estensione browser:** quando il sito mostra il QR, premi **Codice 2FA da QR** nel popup dell'estensione.
+- **Nell'editor:** incolla la chiave o il link `otpauth://` direttamente nel campo **Codice 2FA** della voce.
+
+La voce mostra poi il codice a 6 cifre del momento, pronto da copiare.
 Lì puoi incollare anche i **codici di backup** del sito, uno per riga, oppure premere **Da file** e scegliere
 il file che il sito ti ha fatto scaricare: li copi uno alla volta e segni quelli usati.
 

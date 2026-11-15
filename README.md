@@ -17,7 +17,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="GPL-3.0 license"></a>
   <img src="https://img.shields.io/badge/core-Rust-orange" alt="Rust core">
   <img src="https://img.shields.io/badge/app-Tauri%202-24c8db" alt="Tauri 2">
-  <img src="https://img.shields.io/badge/status-0.1%20experimental-yellow" alt="Status: experimental">
+  <img src="https://img.shields.io/badge/status-0.2%20experimental-yellow" alt="Status: experimental">
 </p>
 
 <p align="center">
@@ -25,7 +25,7 @@
 </p>
 
 > [!WARNING]
-> **Version 0.1: experimental software.** The code has not had an independent security review and some
+> **Version 0.2: experimental software.** The code has not had an independent security review and some
 > flows have only been tried in test environments. Don't use it as the **only** copy of important
 > passwords. Please report vulnerabilities privately: see [SECURITY.md](SECURITY.md).
 
@@ -41,7 +41,8 @@ password, not on keeping the code secret. Details and threat model in
 ## What it does
 
 - **Passwords and 2FA in one vault:** 6-digit codes, backup codes, password history, trash, favorites,
-  keyboard search.
+  keyboard search, and multiple accounts for the same site grouped with a quick switcher (keeping each
+  account's username, password, and 2FA separate).
 - **One confirmation for every fill:** Touch ID / Mac password, Windows Hello or master password on the
   computer, fingerprint on Android.
 - **Browser extension** for Chrome, Arc, Brave, Edge, Vivaldi and Firefox, with a list under login fields, a warning
@@ -201,9 +202,13 @@ Kryptos (or to update the password of that account).
 
 ## 2FA codes
 
-Kryptos can also hold the two-step verification code of a site. When the site shows its QR code, press
-**2FA code from QR** in the extension popup, or point the phone's camera at it. You can also copy the key
-and paste it in the entry's **2FA code** field (an `otpauth://` link works too). The entry then shows the current 6-digit code, ready to copy. Paste the site's **backup codes**
+Kryptos can also hold the two-step verification code of a site. You have several quick ways to add it:
+
+- **From the entry card or Security tab:** press **Add 2FA**, then **paste a QR screenshot** with `⌘V` / `Ctrl+V`, **upload an image**, **scan the QR code with the camera**, or **enter the key manually** (an `otpauth://` URI works too).
+- **From the browser extension:** when the site shows its QR code, press **2FA code from QR** in the extension popup.
+- **In the entry editor:** paste the secret key or `otpauth://` URI directly in the entry's **2FA code** field.
+
+The entry then shows the current 6-digit code, ready to copy. Paste the site's **backup codes**
 there as well, one per line, or press **From file** and pick the file the site let you download: you can
 copy each one and mark it as used.
 

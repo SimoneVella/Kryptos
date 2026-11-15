@@ -251,9 +251,14 @@ selezionare file.
   che i siti reindirizzano alla loro pagina), costruito in Rust dal sito della voce; l'interfaccia non può
   aprire indirizzi arbitrari (il plugin opener non è esposto a JS).
 - **Passphrase**: parole dalla lista EFF inclusa (7776 parole, circa 12,9 bit l'una), per le master password.
-- **QR 2FA con la fotocamera** nell'editor (telefono), **riquadro nelle impostazioni rapide** di Android
-  (`KryptosTileService`, apre solo l'app), scorciatoie da tastiera sul computer (⌘K cerca e copia, ⌘C
-  utente, ⇧⌘C password, ⌥⌘C codice 2FA).
+- **Setup 2FA rapido** dalla scheda della voce o dalla vista **Sicurezza**, oltre all'editor: acquisizione QR via
+  **incolla screenshot da appunti (`⌘V`/`Ctrl+V`)**, **caricamento immagine**, **fotocamera** o **inserimento
+  manuale** della chiave (`otpauth://`/Base32).
+- **Raggruppamento multi-account per sito** nella vista principale: gli account dello stesso sito/app restano
+  voci distinte nel vault (username, password e TOTP separati) ma sono raggruppati con un selettore rapido
+  (pillole/tab) nella scheda di dettaglio.
+- **Riquadro nelle impostazioni rapide** di Android (`KryptosTileService`, apre solo l'app), scorciatoie da
+  tastiera sul computer (⌘K cerca e copia, ⌘C utente, ⇧⌘C password, ⌥⌘C codice 2FA).
 
 ## Assistenti IA (MCP)
 

@@ -23,7 +23,8 @@ Screenshot 16:10: 2560×1600 (accettati anche 1280×800, 1440×900, 2880×1800),
 
 Kryptos è un password manager che tiene il vault cifrato sul tuo Mac. Niente server nostri, niente account, nessun abbonamento.
 
-• Password, codici 2FA e codici di backup in un unico posto
+• Password, codici 2FA (con aggiunta rapida da screenshot/immagine/chiave) e codici di backup in un unico posto
+• Più account dello stesso sito raggruppati con cambio rapido (credenziali e 2FA separati)
 • Progetti: i file .env nel vault, divisi per ambiente, con versioni e confronto
 • Analisi offline di password deboli, riutilizzate e vecchie
 • Generatore di password e passphrase
@@ -33,7 +34,7 @@ Kryptos è un password manager che tiene il vault cifrato sul tuo Mac. Niente se
 
 Argon2id e XChaCha20-Poly1305: algoritmi pubblici e standard. Codice aperto, licenza GPL-3.0.
 
-Kryptos è alla versione 0.1, sperimentale: il codice non ha avuto una revisione di sicurezza indipendente. Non usarlo come unica copia di password importanti. Se dimentichi la master password non esiste recupero.
+Kryptos è alla versione 0.2, sperimentale: il codice non ha avuto una revisione di sicurezza indipendente. Non usarlo come unica copia di password importanti. Se dimentichi la master password non esiste recupero.
 
 ## English
 
@@ -49,7 +50,8 @@ Kryptos è alla versione 0.1, sperimentale: il codice non ha avuto una revisione
 
 Kryptos is a password manager that keeps its encrypted vault on your Mac. No servers of ours, no accounts, no subscription.
 
-• Passwords, 2FA codes and backup codes in one place
+• Passwords, 2FA codes (with quick add from screenshot/image/key) and backup codes in one place
+• Multiple accounts for the same site grouped with a quick switcher (separate credentials & 2FA)
 • Projects: .env files in the vault, split by environment, with versions and comparison
 • Offline analysis of weak, reused and old passwords
 • Password and passphrase generator
@@ -59,7 +61,7 @@ Kryptos is a password manager that keeps its encrypted vault on your Mac. No ser
 
 Argon2id and XChaCha20-Poly1305: public, standard algorithms. Open source, GPL-3.0.
 
-Kryptos is at version 0.1 and experimental: the code has not had an independent security review. Don't use it as the only copy of important passwords. If you forget your master password, there is no recovery.
+Kryptos is at version 0.2 and experimental: the code has not had an independent security review. Don't use it as the only copy of important passwords. If you forget your master password, there is no recovery.
 
 ## Immagini
 

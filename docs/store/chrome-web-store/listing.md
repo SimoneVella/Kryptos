@@ -29,7 +29,7 @@ COSA FA
 COME TRATTA I TUOI DATI
 L'estensione parla solo con l'app sul tuo computer, tramite Native Messaging del browser. Non usa server, non ha account e non contiene statistiche o tracciamento. Sulle pagine gira un piccolo script che nota il clic su un campo di accesso e apre la tendina: non legge quello che scrivi e puoi spegnerlo dal popup.
 
-Kryptos è alla versione 0.1, sperimentale: il codice non ha avuto una revisione di sicurezza indipendente. Non usarlo come unica copia di password importanti.
+Kryptos è alla versione 0.2, sperimentale: il codice non ha avuto una revisione di sicurezza indipendente. Non usarlo come unica copia di password importanti.
 
 Codice sorgente (GPL-3.0): https://github.com/SimoneVella/Kryptos
 
@@ -55,7 +55,7 @@ WHAT IT DOES
 HOW IT TREATS YOUR DATA
 The extension talks only to the app on your computer, through the browser's Native Messaging. It uses no servers, has no account, and contains no analytics or tracking. On pages, a small script notices a click on a login field and opens the list: it doesn't read what you type, and you can turn it off from the popup.
 
-Kryptos is at version 0.1 and experimental: the code has not had an independent security review. Don't use it as the only copy of important passwords.
+Kryptos is at version 0.2 and experimental: the code has not had an independent security review. Don't use it as the only copy of important passwords.
 
 Source code (GPL-3.0): https://github.com/SimoneVella/Kryptos
 
