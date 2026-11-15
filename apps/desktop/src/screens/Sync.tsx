@@ -3,6 +3,7 @@
 // other device's camera. See src-tauri/src/sync.rs.
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import jsQR from "jsqr";
+import { Icon } from "../components/Icon";
 import { api, type MergeReport, type StagedCopy } from "../lib/api";
 import { PasswordInput, Sheet } from "../components/ui";
 import { useT } from "../i18n";
@@ -207,16 +208,120 @@ export function ScanQrSheet({ onClose, onReceived }: { onClose: () => void; onRe
   );
 }
 
+/** Decodes a 2FA QR code (`otpauth://...`) from an image or pasted screenshot. */
+async function decodeQrImage(blob: Blob): Promise<{ uri?: string; wrong?: boolean }> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("image_load_failed"));
+      el.src = url;
+    });
+    const max = Math.max(img.naturalWidth, img.naturalHeight);
+    if (!max) return { wrong: true };
+    const scale = Math.min(1, 1200 / max);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return { wrong: true };
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(data.data, data.width, data.height, { inversionAttempts: "attemptBoth" });
+    if (code?.data.toLowerCase().startsWith("otpauth://")) {
+      return { uri: code.data };
+    }
+    return { wrong: true };
+  } catch {
+    return { wrong: true };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /**
- * Reads a site's 2FA QR code with the camera (the `otpauth://` link inside it).
- * Used by the entry editor; nothing leaves the device.
+ * Reads a site's 2FA QR code with the camera, from a chosen/pasted screenshot
+ * image, or (when `manual` is set) from a pasted secret / `otpauth://` URI.
+ * Everything runs locally; nothing leaves the device.
  */
-export function ScanOtpSheet({ onClose, onFound }: { onClose: () => void; onFound: (uri: string) => void }) {
-  const { t } = useT();
+export function ScanOtpSheet({
+  onClose,
+  onFound,
+  onSave,
+  manual,
+}: {
+  onClose: () => void;
+  onFound?: (uri: string) => void;
+  onSave?: (secret: string) => Promise<void>;
+  manual?: boolean;
+}) {
+  const { t, errorMessage } = useT();
   const video = useRef<HTMLVideoElement>(null);
-  const [error, setError] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [cameraError, setCameraError] = useState("");
+  const [saveError, setSaveError] = useState("");
   const [wrong, setWrong] = useState(false);
+  const [secret, setSecret] = useState("");
+  const [busy, setBusy] = useState(false);
+  const onFoundRef = useRef(onFound);
+  const onSaveRef = useRef(onSave);
+  onFoundRef.current = onFound;
+  onSaveRef.current = onSave;
   useWakeLock();
+
+  const deliver = async (val: string) => {
+    const trimmed = val.trim();
+    if (!trimmed) return;
+    if (onSaveRef.current) {
+      setBusy(true);
+      setSaveError("");
+      try {
+        await onSaveRef.current(trimmed);
+      } catch (err) {
+        setSaveError(errorMessage(err));
+        setBusy(false);
+      }
+    } else {
+      onFoundRef.current?.(trimmed);
+    }
+  };
+  const deliverRef = useRef(deliver);
+  deliverRef.current = deliver;
+
+  const handleBlob = async (blob: Blob) => {
+    setWrong(false);
+    setSaveError("");
+    const res = await decodeQrImage(blob);
+    if (res.uri) {
+      await deliverRef.current(res.uri);
+    } else if (res.wrong) {
+      setWrong(true);
+    }
+  };
+  const handleBlobRef = useRef(handleBlob);
+  handleBlobRef.current = handleBlob;
+
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            void handleBlobRef.current(file);
+            return;
+          }
+        }
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, []);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -236,7 +341,7 @@ export function ScanOtpSheet({ onClose, onFound }: { onClose: () => void; onFoun
         const code = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
         if (code?.data.toLowerCase().startsWith("otpauth://")) {
           stopped = true;
-          onFound(code.data);
+          void deliverRef.current(code.data);
           return;
         }
         // A QR that isn't a 2FA one (a menu, a link): say so instead of staying silent.
@@ -255,20 +360,63 @@ export function ScanOtpSheet({ onClose, onFound }: { onClose: () => void; onFoun
         }
         raf = requestAnimationFrame(tick);
       })
-      .catch((e) => setError(e?.name === "NotFoundError" ? t("sync.noCamera") : t("sync.cameraDenied")));
-    if (!navigator.mediaDevices) setError(t("sync.noCamera"));
+      .catch((e) => setCameraError(e?.name === "NotFoundError" ? t("sync.noCamera") : t("sync.cameraDenied")));
+    if (!navigator.mediaDevices) setCameraError(t("sync.noCamera"));
     return () => {
       stopped = true;
       cancelAnimationFrame(raf);
       stream?.getTracks().forEach((tr) => tr.stop());
     };
-  }, [onFound, t]);
+  }, [t]);
+
+  const submitManual = async (e: FormEvent) => {
+    e.preventDefault();
+    await deliver(secret);
+  };
 
   return (
     <Sheet onClose={onClose} title={t("otpScan.title")}>
       <div className="qr-send">
-        <video ref={video} className="qr-camera" muted playsInline />
-        {error ? <p className="error">{error}</p> : <p className="muted qr-hint">{wrong ? t("otpScan.notOtp") : t("otpScan.hint")}</p>}
+        {!cameraError && <video ref={video} className="qr-camera" muted playsInline />}
+        {cameraError ? (
+          <p className="muted qr-hint">{cameraError}</p>
+        ) : (
+          <p className="muted qr-hint">{wrong ? t("otpScan.notOtp") : t("otpScan.hint")}</p>
+        )}
+        {cameraError && wrong && <p className="error">{t("otpScan.notOtp")}</p>}
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void handleBlob(file);
+          }}
+        />
+        <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => fileInput.current?.click()}>
+          <Icon name="description" size={16} /> {t("otpScan.fromImage")}
+        </button>
+        <p className="muted qr-hint" style={{ fontSize: 12 }}>{t("otpScan.pasteHint")}</p>
+        {manual && (
+          <form className="form" style={{ width: "100%", marginTop: 4 }} onSubmit={submitManual}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                className="input mono"
+                style={{ flex: 1, minWidth: 0 }}
+                placeholder={t("otpScan.manualPlaceholder")}
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                spellCheck={false}
+                autoComplete="off"
+                autoCapitalize="off"
+              />
+              <button className="btn btn-primary" disabled={busy || !secret.trim()}>{t("common.save")}</button>
+            </div>
+          </form>
+        )}
+        {saveError && <p className="error">{saveError}</p>}
       </div>
     </Sheet>
   );

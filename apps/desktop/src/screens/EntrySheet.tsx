@@ -1,10 +1,11 @@
 import type { ReactElement, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../components/Icon";
-import { api, type Author, type Entry, type EntryInput, type TotpCode } from "../lib/api";
+import { api, type Author, type Entry, type EntryInput, type EntrySummary, type TotpCode } from "../lib/api";
 import { Action, Avatar, Sheet, useToast } from "../components/ui";
-import { hostOf, isMac, isMobile } from "../lib/utils";
+import { hostOf, isMac, isMobile, siteKey } from "../lib/utils";
 import { useT } from "../i18n";
+import { ScanOtpSheet } from "./Sync";
 
 /**
  * One entry. On phones and narrow windows it opens as a sheet over the list; on
@@ -14,6 +15,9 @@ export default function EntrySheet(props: {
   id: string;
   inline?: boolean;
   clipboardClearSecs: number;
+  entries?: EntrySummary[];
+  onSelect?: (id: string) => void;
+  onChanged?: () => void;
   onClose: () => void;
   onEdit: (id: string, input: EntryInput) => void;
   onDeleted: () => void;
@@ -23,12 +27,14 @@ export default function EntrySheet(props: {
   const [author, setAuthor] = useState<Author | null>(null);
   const [reveal, setReveal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [addingOtp, setAddingOtp] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
     // The pane stays mounted while another entry is picked: start each one hidden.
     setReveal(false);
     setConfirmDelete(false);
+    setAddingOtp(false);
     api.getEntry(props.id).then(setEntry).catch(props.onClose);
     api.entryAuthor(props.id).then(setAuthor, () => setAuthor(null));
   }, [props.id]);
@@ -81,6 +87,18 @@ export default function EntrySheet(props: {
       backup_codes: entry.backup_codes,
       ai_access: entry.ai_access,
     });
+  const saveOtp = async (uri: string) => {
+    await api.setTotp(entry.id, uri);
+    const updated = await api.getEntry(entry.id);
+    setEntry(updated);
+    props.onChanged?.();
+    toast(t("otpAdd.addedToast", { title: entry.title }));
+    setAddingOtp(false);
+  };
+  const key = siteKey(entry.title, entry.urls);
+  const siblings = (props.entries ?? [])
+    .filter((e) => key && siteKey(e.title, e.urls) === key)
+    .sort((a, b) => (a.username || a.title).localeCompare(b.username || b.title));
 
   return (
     <Frame onClose={props.onClose}>
@@ -94,6 +112,24 @@ export default function EntrySheet(props: {
           {entry.urls[0] && <p className="muted" style={{ marginTop: 4 }}>{hostOf(entry.urls[0])}</p>}
         </div>
       </div>
+
+      {siblings.length > 1 && props.onSelect && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, margin: "-8px 0 18px" }}>
+          <span className="detail-label">{t("entry.otherAccounts")}</span>
+          <div className="chips" style={{ flexWrap: "wrap", justifyContent: "center" }}>
+            {siblings.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={`chip ${s.id === entry.id ? "active" : ""}`}
+                onClick={() => s.id !== entry.id && props.onSelect?.(s.id)}
+              >
+                {s.username || s.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="sheet-actions">
         <Action icon={<Icon name="person" size={20} />} label={t("entry.actionUser")} onClick={() => copy("username")} />
@@ -118,7 +154,19 @@ export default function EntrySheet(props: {
             <Icon name="content_copy" size={18} />
           </button>
         </div>
-        {entry.totp && <TotpItem id={entry.id} onCopy={() => copy("totp")} />}
+        {entry.totp ? (
+          <TotpItem key={entry.id} id={entry.id} onCopy={() => copy("totp")} />
+        ) : (
+          <div className="detail-item">
+            <Icon name="verified_user" size={18} className="muted" />
+            <div className="row-main">
+              <span className="detail-label">{t("entry.totpLabel")}</span>
+            </div>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAddingOtp(true)}>
+              <Icon name="add" size={16} /> {t("entry.addTotp")}
+            </button>
+          </div>
+        )}
         {entry.backup_codes.length > 0 && (
           <BackupCodes
             entry={entry}
@@ -175,6 +223,14 @@ export default function EntrySheet(props: {
         <button className="btn btn-danger btn-block" onClick={() => setConfirmDelete(true)}>
           <Icon name="delete" size={18} /> {t("common.delete")}
         </button>
+      )}
+      {addingOtp && (
+        <ScanOtpSheet
+          manual
+          onClose={() => setAddingOtp(false)}
+          onSave={saveOtp}
+          onFound={saveOtp}
+        />
       )}
     </Frame>
   );

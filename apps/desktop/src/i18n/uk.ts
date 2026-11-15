@@ -105,6 +105,9 @@ const uk: Dict = {
     hint: "Наведіть камеру на QR-код, який сайт показує під час увімкнення двоетапної перевірки.",
     notOtp: "Цей QR-код не для 2FA: знайдіть той, що в налаштуваннях безпеки сайту.",
     found: "Код 2FA прочитано: збережіть запис",
+    fromImage: "Зі зображення / скриншота",
+    pasteHint: "Можна також вставити (⌘V / Ctrl+V) скриншот QR-коду.",
+    manualPlaceholder: "Або вставте секретний ключ / посилання otpauth://",
   },
   ai: {
     group: "ШІ-асистенти",
@@ -399,6 +402,8 @@ const uk: Dict = {
     copyTotpToast: "Код 2FA скопійовано",
     copyTotpAria: "Копіювати код 2FA",
     totpSeconds: "залишилось {secs} с",
+    addTotp: "Додати 2FA",
+    otherAccounts: "Акаунти на цьому сайті",
     backupCodesLabel: "Резервні коди",
     backupCodesLeft: "{left} з {total} ще дійсні",
     backupCodeMark: "Позначити як використаний",

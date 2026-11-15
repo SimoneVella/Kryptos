@@ -196,6 +196,7 @@ export const api = {
   /** Copied by Rust; passwords are auto-cleared from the clipboard after 30 s. */
   copyField: (id: string, field: "username" | "password" | "totp") => invoke<void>("copy_field", { id, field }),
   totpCode: (id: string) => invoke<TotpCode>("totp_code", { id }),
+  setTotp: (id: string, totp: string) => invoke<void>("set_totp", { id, totp }),
 
   /** Copies arbitrary text via Rust, auto-cleared after 30 s. */
   copyText: (text: string) => invoke<void>("copy_text", { text }),

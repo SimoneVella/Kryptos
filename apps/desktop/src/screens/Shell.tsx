@@ -228,6 +228,9 @@ export default function Shell({ onLock, onProfileChanged }: { onLock: () => void
                   inline
                   id={open}
                   clipboardClearSecs={clipboardClearSecs}
+                  entries={entries}
+                  onSelect={setOpen}
+                  onChanged={reload}
                   onClose={() => setOpen(null)}
                   onEdit={(id, input) => setEditing({ id, input })}
                   onDeleted={() => {
@@ -249,6 +252,9 @@ export default function Shell({ onLock, onProfileChanged }: { onLock: () => void
         <EntrySheet
           id={open}
           clipboardClearSecs={clipboardClearSecs}
+          entries={entries}
+          onSelect={setOpen}
+          onChanged={reload}
           onClose={() => setOpen(null)}
           onEdit={(id, input) => setEditing({ id, input })}
           onDeleted={() => {

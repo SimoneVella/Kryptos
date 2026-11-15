@@ -107,6 +107,9 @@ const en = {
     hint: "Point the camera at the QR code the site shows when you turn on two-step verification.",
     notOtp: "That QR code isn't a 2FA one: look for the one shown by the site's security settings.",
     found: "2FA code read: save the entry to keep it",
+    fromImage: "From image / screenshot",
+    pasteHint: "You can also paste (⌘V / Ctrl+V) a screenshot of the QR code.",
+    manualPlaceholder: "Or paste secret key / otpauth:// link",
   },
   ai: {
     group: "AI assistants",
@@ -401,6 +404,8 @@ const en = {
     copyTotpToast: "2FA code copied",
     copyTotpAria: "Copy 2FA code",
     totpSeconds: "{secs} s left",
+    addTotp: "Add 2FA",
+    otherAccounts: "Accounts on this site",
     backupCodesLabel: "Backup codes",
     backupCodesLeft: "{left} of {total} still valid",
     backupCodeMark: "Mark as used",

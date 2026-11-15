@@ -124,6 +124,7 @@ async function invoke(cmd: string, a: Any = {}): Promise<unknown> {
     case "read_backup_codes": return ["1234 5678", "2345 6789", "3456 7890"];
     case "mark_backup_code": entries.find((e) => e.id === a.id)!.backup_codes[a.index].used = a.used; return;
     case "totp_code": { const t = Math.floor(Date.now() / 1000); return { code: String(100000 + (Math.floor(t / 30) * 7919) % 900000), remaining: 30 - (t % 30), period: 30 }; }
+    case "set_totp": entries.find((e) => e.id === a.id)!.totp = a.totp; return;
     case "apply_pending_save": return null;
     case "sync_stage_file": return { file: "Kryptos-backup-2026-09-29.kryptos", same_vault: true };
     case "sync_stage_bytes": return { file: "", same_vault: true };

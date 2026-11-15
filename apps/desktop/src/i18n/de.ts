@@ -105,6 +105,9 @@ const de: Dict = {
     hint: "Richte die Kamera auf den QR-Code, den die Website beim Einschalten der Zwei-Faktor-Authentifizierung zeigt.",
     notOtp: "Dieser QR-Code ist kein 2FA-Code: Suche den in den Sicherheitseinstellungen der Website.",
     found: "2FA-Code gelesen: Speichere den Eintrag, um ihn zu behalten",
+    fromImage: "Aus Bild / Screenshot",
+    pasteHint: "Du kannst auch einen Screenshot des QR-Codes einfügen (⌘V / Strg+V).",
+    manualPlaceholder: "Oder geheimen Schlüssel / otpauth://-Link einfügen",
   },
   ai: {
     group: "KI-Assistenten",
@@ -399,6 +402,8 @@ const de: Dict = {
     copyTotpToast: "2FA-Code kopiert",
     copyTotpAria: "2FA-Code kopieren",
     totpSeconds: "noch {secs} s",
+    addTotp: "2FA hinzufügen",
+    otherAccounts: "Konten auf dieser Website",
     backupCodesLabel: "Backup-Codes",
     backupCodesLeft: "{left} von {total} noch gültig",
     backupCodeMark: "Als verwendet markieren",

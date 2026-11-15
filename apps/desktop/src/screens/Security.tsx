@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { Icon } from "../components/Icon";
 import { api, type DuplicateGroup, type EntrySummary, type HealthReport, type TitleSuggestion } from "../lib/api";
 import { DuplicatesSheet, TitlesSheet } from "./Cleanup";
-import { Avatar } from "../components/ui";
+import { Avatar, useToast } from "../components/ui";
 import { useT } from "../i18n";
+import { ScanOtpSheet } from "./Sync";
 
 export default function Security({
   entries,
@@ -18,8 +19,10 @@ export default function Security({
   onChanged: () => void;
 }) {
   const { t } = useT();
+  const toast = useToast();
   const [smart, setSmart] = useState<{ titles: TitleSuggestion[]; duplicates: DuplicateGroup[] } | null>(null);
   const [sheet, setSheet] = useState<"titles" | "dups" | null>(null);
+  const [otpTarget, setOtpTarget] = useState<EntrySummary | null>(null);
   const loadSmart = () => api.smartSuggestions().then(setSmart, () => {});
   useEffect(() => {
     loadSmart();
@@ -78,7 +81,7 @@ export default function Security({
         />
         <Issue
           icon={<Icon name="verified_user" size={19} />} tint="var(--cool)" title={t("security.no2faTitle")}
-          sub={t("security.no2faSub")} ids={report.no_2fa} byId={byId} onOpen={onOpen}
+          sub={t("security.no2faSub")} ids={report.no_2fa} byId={byId} onOpen={onOpen} onAddOtp={(e) => setOtpTarget(e)}
         />
       </section>
 
@@ -115,6 +118,18 @@ export default function Security({
       {sheet === "dups" && smart && (
         <DuplicatesSheet groups={smart.duplicates} byId={byId} onClose={() => setSheet(null)} onDone={() => (onChanged(), loadSmart())} />
       )}
+      {otpTarget && (
+        <ScanOtpSheet
+          manual
+          onClose={() => setOtpTarget(null)}
+          onSave={async (uri) => {
+            await api.setTotp(otpTarget.id, uri);
+            toast(t("otpAdd.addedToast", { title: otpTarget.title }));
+            setOtpTarget(null);
+            onChanged();
+          }}
+        />
+      )}
 
     </div>
   );
@@ -122,8 +137,9 @@ export default function Security({
 
 function Issue(props: {
   icon: ReactElement; tint: string; title: string; sub: string; ids: string[];
-  byId: Map<string, EntrySummary>; onOpen: (id: string) => void;
+  byId: Map<string, EntrySummary>; onOpen: (id: string) => void; onAddOtp?: (e: EntrySummary) => void;
 }) {
+  const { t } = useT();
   const [expanded, setExpanded] = useState(false);
   const n = props.ids.length;
   return (
@@ -144,14 +160,35 @@ function Issue(props: {
           const e = props.byId.get(id);
           if (!e) return null;
           return (
-            <button key={id} className="row" style={{ paddingLeft: 32 }} onClick={() => props.onOpen(id)}>
+            <div
+              key={id}
+              role="button"
+              tabIndex={0}
+              className="row"
+              style={{ paddingLeft: 32 }}
+              onClick={() => props.onOpen(id)}
+              onKeyDown={(ev) => (ev.key === "Enter" || ev.key === " ") && (ev.preventDefault(), props.onOpen(id))}
+            >
               <Avatar name={e.title} urls={e.urls} />
               <div className="row-main">
                 <span className="row-title">{e.title}</span>
                 <span className="row-sub">{e.username}</span>
               </div>
-              <Icon name="chevron_right" size={18} className="muted" />
-            </button>
+              {props.onAddOtp ? (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    props.onAddOtp!(e);
+                  }}
+                >
+                  <Icon name="add" size={16} /> {t("entry.addTotp")}
+                </button>
+              ) : (
+                <Icon name="chevron_right" size={18} className="muted" />
+              )}
+            </div>
           );
         })}
     </>

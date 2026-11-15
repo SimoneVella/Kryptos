@@ -105,6 +105,9 @@ const it: Dict = {
     hint: "Inquadra il QR che il sito mostra quando attivi la verifica in due passaggi.",
     notOtp: "Questo QR non è di un codice 2FA: cerca quello mostrato nelle impostazioni di sicurezza del sito.",
     found: "Codice 2FA letto: salva la voce per tenerlo",
+    fromImage: "Da immagine o screenshot",
+    pasteHint: "Puoi anche incollare (⌘V / Ctrl+V) uno screenshot del QR code.",
+    manualPlaceholder: "Oppure incolla chiave segreta o link otpauth://",
   },
   ai: {
     group: "Assistenti IA",
@@ -399,6 +402,8 @@ const it: Dict = {
     copyTotpToast: "Codice 2FA copiato",
     copyTotpAria: "Copia codice 2FA",
     totpSeconds: "{secs} s rimanenti",
+    addTotp: "Aggiungi 2FA",
+    otherAccounts: "Account su questo sito",
     backupCodesLabel: "Codici di backup",
     backupCodesLeft: "{left} di {total} ancora validi",
     backupCodeMark: "Segna come usato",

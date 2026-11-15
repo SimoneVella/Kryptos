@@ -17,7 +17,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DMG="${1:-$ROOT/target/release/bundle/dmg/Kryptos_0.1.0_aarch64.dmg}"
+DMG="${1:-$ROOT/target/release/bundle/dmg/Kryptos_0.2.0_aarch64.dmg}"
 
 if [[ ! -f "$DMG" ]]; then
   echo "DMG not found: $DMG" >&2

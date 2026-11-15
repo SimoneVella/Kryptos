@@ -88,6 +88,7 @@ pub fn run() {
             commands::delete_entry,
             commands::copy_field,
             commands::totp_code,
+            commands::set_totp,
             commands::mark_backup_code,
             commands::import_otp,
             commands::otp_add_answer,

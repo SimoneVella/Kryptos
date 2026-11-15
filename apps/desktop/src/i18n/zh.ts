@@ -104,6 +104,9 @@ const zh: Dict = {
     hint: "将相机对准开启两步验证时网站显示的二维码。",
     notOtp: "这不是 2FA 二维码：请查找网站安全设置中显示的那个。",
     found: "已读取 2FA 验证码：保存条目以保留",
+    fromImage: "从图片或截图读取",
+    pasteHint: "也可以直接粘贴（⌘V / Ctrl+V）二维码截图。",
+    manualPlaceholder: "或粘贴密钥 / otpauth:// 链接",
   },
   ai: {
     group: "AI 助手",
@@ -398,6 +401,8 @@ const zh: Dict = {
     copyTotpToast: "已复制 2FA 验证码",
     copyTotpAria: "复制 2FA 验证码",
     totpSeconds: "剩余 {secs} 秒",
+    addTotp: "添加 2FA",
+    otherAccounts: "此网站上的账号",
     backupCodesLabel: "备用验证码",
     backupCodesLeft: "{total} 个中还有 {left} 个可用",
     backupCodeMark: "标记为已使用",

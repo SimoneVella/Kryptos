@@ -105,6 +105,9 @@ const es: Dict = {
     hint: "Apunta la cámara al QR que muestra el sitio al activar la verificación en dos pasos.",
     notOtp: "Ese QR no es de 2FA: busca el que aparece en los ajustes de seguridad del sitio.",
     found: "Código 2FA leído: guarda la entrada para conservarlo",
+    fromImage: "Desde imagen o captura",
+    pasteHint: "También puedes pegar (⌘V / Ctrl+V) una captura del código QR.",
+    manualPlaceholder: "O pega la clave secreta o enlace otpauth://",
   },
   ai: {
     group: "Asistentes de IA",
@@ -399,6 +402,8 @@ const es: Dict = {
     copyTotpToast: "Código 2FA copiado",
     copyTotpAria: "Copiar código 2FA",
     totpSeconds: "quedan {secs} s",
+    addTotp: "Añadir 2FA",
+    otherAccounts: "Cuentas en este sitio",
     backupCodesLabel: "Códigos de respaldo",
     backupCodesLeft: "{left} de {total} aún válidos",
     backupCodeMark: "Marcar como usado",

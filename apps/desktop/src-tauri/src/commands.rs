@@ -195,6 +195,13 @@ pub fn totp_code(state: State<'_, AppState>, id: String) -> CmdResult<TotpCode> 
     })
 }
 
+/// Sets or replaces an entry's 2FA secret or `otpauth://` URI.
+#[tauri::command]
+pub fn set_totp(state: State<'_, AppState>, id: String, totp: String) -> CmdResult<()> {
+    let id = parse_id(&id)?;
+    state.mutate(|v| v.set_totp(id, &totp).map_err(code))
+}
+
 /// Copies one of an entry's earlier passwords (`index` in its history).
 #[tauri::command]
 pub fn copy_history(app: AppHandle, state: State<'_, AppState>, id: String, index: usize) -> CmdResult<()> {

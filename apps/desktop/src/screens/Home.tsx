@@ -3,10 +3,16 @@ import { Icon } from "../components/Icon";
 import type { EntrySummary, HealthReport } from "../lib/api";
 import { Action, Avatar } from "../components/ui";
 import type { Tab } from "./Shell";
-import { hostOf } from "../lib/utils";
+import { hostOf, siteKey } from "../lib/utils";
 import { useT } from "../i18n";
 
 type Filter = "all" | "favorites" | "recent";
+
+const compareEntries = (a: EntrySummary, b: EntrySummary) => {
+  const ka = siteKey(a.title, a.urls);
+  const kb = siteKey(b.title, b.urls);
+  return ka.localeCompare(kb) || a.title.localeCompare(b.title) || a.username.localeCompare(b.username);
+};
 
 export default function Home(props: {
   entries: EntrySummary[];
@@ -34,15 +40,17 @@ export default function Home(props: {
         (filter === "all" || (filter === "favorites" && e.favorite) || (filter === "recent" && e.last_used > 0)) &&
         (!q || e.title.toLowerCase().includes(q) || e.username.toLowerCase().includes(q) || e.urls.some((u) => u.toLowerCase().includes(q))),
     );
-    // Recent: the last 20 used, most recent first.
-    return filter === "recent" ? list.sort((a, b) => b.last_used - a.last_used).slice(0, 20) : list;
+    // Recent: the last 20 used, most recent first; otherwise group accounts of the same site together.
+    return filter === "recent"
+      ? list.sort((a, b) => b.last_used - a.last_used).slice(0, 20)
+      : [...list].sort(compareEntries);
   }, [entries, query, filter]);
 
   const issues = report ? new Set([...report.weak, ...report.reused, ...report.old]).size : 0;
 
   if (props.wide) {
-    // Alphabetical, with a sticky letter above each group.
-    const sorted = filter === "recent" ? visible : [...visible].sort((a, b) => a.title.localeCompare(b.title));
+    // Alphabetical / grouped by site, with a sticky letter above each group.
+    const sorted = visible;
     let last = "";
     return (
       <div className="split">
@@ -83,7 +91,7 @@ export default function Home(props: {
             ) : (
               sorted.map((e) => {
                 const letter = e.title.trim()[0]?.toUpperCase() ?? "#";
-                const head = filter !== "recent" && letter !== last ? ((last = letter), <div key={`l-${letter}`} className="letter">{letter}</div>) : null;
+                const head = filter !== "recent" && letter !== last ? ((last = letter), <div key={`l-${e.id}`} className="letter">{letter}</div>) : null;
                 return [
                   head,
                   // A div, not a button: it holds the quick-copy buttons.

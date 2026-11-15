@@ -2241,7 +2241,7 @@ dependencies = [
 
 [[package]]
 name = "kryptos-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "kryptos-core",
  "serde_json",
@@ -2250,7 +2250,7 @@ dependencies = [
 
 [[package]]
 name = "kryptos-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "argon2",
  "base64 0.22.1",
@@ -2279,7 +2279,7 @@ dependencies = [
 
 [[package]]
 name = "kryptos-desktop"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "block2",
@@ -2310,7 +2310,7 @@ dependencies = [
 
 [[package]]
 name = "kryptos-mcp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "kryptos-core",
  "serde_json",
@@ -2318,7 +2318,7 @@ dependencies = [
 
 [[package]]
 name = "kryptos-native-host"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "kryptos-core",
  "libc",
